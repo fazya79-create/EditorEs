@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">EditorEs</string>
+    <string name="explorer_title">Explorer</string>
     <string name="home_tagline">Native C++ studio in your pocket</string>
     <string name="create_project">Create Project</string>
     <string name="open_project">Open Project</string>

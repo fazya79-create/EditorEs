@@ -23,14 +23,14 @@ object TextMateSetup {
             themeRegistry.loadTheme(
                 ThemeModel(
                     IThemeSource.fromInputStream(
-                        FileProviderRegistry.getInstance().tryGetInputStream("textmate/darcula.json"),
-                        "textmate/darcula.json",
+                        FileProviderRegistry.getInstance().tryGetInputStream("textmate/dark_plus.json"),
+                        "textmate/dark_plus.json",
                         null
                     ),
-                    "darcula"
+                    "dark_plus"
                 ).apply { isDark = true }
             )
-            themeRegistry.setTheme("darcula")
+            themeRegistry.setTheme("dark_plus")
             GrammarRegistry.getInstance().loadGrammars("textmate/languages.json")
         }
     }

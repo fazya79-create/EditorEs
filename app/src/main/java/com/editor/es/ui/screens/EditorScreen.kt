@@ -2,7 +2,6 @@ package com.editor.es.ui.screens
 
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -73,7 +72,14 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
 private val ErrorTint = Color(0xFFEF6767)
-private val TabShape = RoundedCornerShape(12.dp)
+private val SidebarBackground = Color(0xFF252526)
+private val TitleBarBackground = Color(0xFF3C3C3C)
+private val EditorBackground = Color(0xFF1E1E1E)
+private val TabBarBackground = Color(0xFF252526)
+private val TabActiveForeground = Color.White
+private val TabInactiveForeground = Color(0xFF969696)
+private val DirtyDot = Color(0xFFE8E8E8)
+private val AccentBlue = Color(0xFF007ACC)
 private val DrawerShape = RoundedCornerShape(topEnd = 24.dp, bottomEnd = 24.dp)
 private val HamburgerBrush = Brush.linearGradient(
     colors = listOf(EditorEsPalette.mint, EditorEsPalette.amber)
@@ -226,12 +232,13 @@ fun EditorScreen(projectPath: String) {
                     .width(300.dp)
                     .fillMaxHeight()
                     .clip(DrawerShape)
-                    .background(EditorEsPalette.abyss)
+                    .background(SidebarBackground)
                     .systemBarsPadding()
             ) {
                 ExplorerDrawerContent(
                     projectDir = projectDir,
                     explorer = explorer,
+                    activeFilePath = activePath,
                     onFileClick = { file ->
                         scope.launch { drawerState.close() }
                         openFile(file)
@@ -247,23 +254,24 @@ fun EditorScreen(projectPath: String) {
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .background(EditorEsPalette.abyss)
+                .background(EditorBackground)
                 .systemBarsPadding()
         ) {
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 8.dp, vertical = 6.dp),
+                    .background(TitleBarBackground)
+                    .padding(horizontal = 4.dp, vertical = 4.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 IconButton(onClick = { scope.launch { drawerState.open() } }) {
-                    HamburgerIcon(modifier = Modifier.size(24.dp))
+                    HamburgerIcon(modifier = Modifier.size(22.dp))
                 }
                 Text(
                     text = projectDir.name,
-                    fontSize = 16.sp,
-                    fontWeight = FontWeight.SemiBold,
-                    color = EditorEsPalette.textPrimary,
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.Medium,
+                    color = TabActiveForeground,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                     modifier = Modifier.weight(1f)
@@ -275,8 +283,9 @@ fun EditorScreen(projectPath: String) {
                         tint = when (saveState) {
                             SaveState.Saved -> EditorEsPalette.mint
                             SaveState.Failed -> ErrorTint
-                            else -> EditorEsPalette.textPrimary
-                        }
+                            else -> Color(0xFFCCCCCC)
+                        },
+                        modifier = Modifier.size(20.dp)
                     )
                 }
             }
@@ -286,7 +295,7 @@ fun EditorScreen(projectPath: String) {
                 LazyRow(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = 8.dp),
+                        .background(TabBarBackground),
                     content = {
                         items(tabs, key = { it.path }) { tab ->
                             TabChip(
@@ -436,54 +445,57 @@ private fun TabChip(
     onClick: () -> Unit,
     onClose: () -> Unit
 ) {
-    Row(
+    Column(
         modifier = Modifier
-            .padding(end = 6.dp)
-            .clip(TabShape)
-            .background(
-                if (active) EditorEsPalette.buttonSecondaryBackground
-                else EditorEsPalette.abyss
-            )
-            .border(
-                width = 1.dp,
-                color = if (active) EditorEsPalette.teal else EditorEsPalette.buttonSecondaryBorder.copy(alpha = 0.35f),
-                shape = TabShape
-            )
+            .height(36.dp)
+            .background(if (active) EditorBackground else TabBarBackground)
             .clickable(onClick = onClick)
-            .padding(horizontal = 10.dp, vertical = 8.dp),
-        verticalAlignment = Alignment.CenterVertically
     ) {
-        Icon(
-            imageVector = Icons.Outlined.Close,
-            contentDescription = stringResource(R.string.close),
-            tint = EditorEsPalette.textSecondary,
+        Box(
             modifier = Modifier
-                .size(15.dp)
-                .clickable(onClick = onClose)
+                .fillMaxWidth()
+                .height(1.dp)
+                .background(if (active) AccentBlue else Color.Transparent)
         )
-        Spacer(modifier = Modifier.width(8.dp))
-        Icon(
-            imageVector = FileTypeIcons.resolve(tab.name),
-            contentDescription = null,
-            modifier = Modifier.size(16.dp)
-        )
-        Spacer(modifier = Modifier.width(7.dp))
-        Text(
-            text = tab.name,
-            fontSize = 13.sp,
-            fontWeight = if (active) FontWeight.SemiBold else FontWeight.Normal,
-            color = if (active) EditorEsPalette.textPrimary else EditorEsPalette.textSecondary,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis
-        )
-        if (tab.dirty) {
-            Spacer(modifier = Modifier.width(6.dp))
-            Box(
+        Row(
+            modifier = Modifier
+                .fillMaxHeight()
+                .padding(horizontal = 10.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Icon(
+                imageVector = Icons.Outlined.Close,
+                contentDescription = stringResource(R.string.close),
+                tint = if (active) Color(0xFFCCCCCC) else TabInactiveForeground,
                 modifier = Modifier
-                    .size(6.dp)
-                    .clip(RoundedCornerShape(3.dp))
-                    .background(EditorEsPalette.amber)
+                    .size(15.dp)
+                    .clickable(onClick = onClose)
             )
+            Spacer(modifier = Modifier.width(7.dp))
+            Icon(
+                imageVector = FileTypeIcons.resolve(tab.name),
+                contentDescription = null,
+                tint = Color.Unspecified,
+                modifier = Modifier.size(16.dp)
+            )
+            Spacer(modifier = Modifier.width(7.dp))
+            Text(
+                text = tab.name,
+                fontSize = 13.sp,
+                fontWeight = if (active) FontWeight.Medium else FontWeight.Normal,
+                color = if (active) TabActiveForeground else TabInactiveForeground,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+            if (tab.dirty) {
+                Spacer(modifier = Modifier.width(6.dp))
+                Box(
+                    modifier = Modifier
+                        .size(7.dp)
+                        .clip(RoundedCornerShape(4.dp))
+                        .background(DirtyDot)
+                )
+            }
         }
     }
 }
@@ -514,21 +526,21 @@ private fun EmptyEditorState() {
             Icon(
                 imageVector = Icons.Outlined.InsertDriveFile,
                 contentDescription = null,
-                tint = EditorEsPalette.textSecondary,
+                tint = TabInactiveForeground,
                 modifier = Modifier.size(44.dp)
             )
             Spacer(modifier = Modifier.height(12.dp))
             Text(
                 text = stringResource(R.string.no_open_files),
-                fontSize = 16.sp,
-                fontWeight = FontWeight.SemiBold,
-                color = EditorEsPalette.textPrimary
+                fontSize = 15.sp,
+                fontWeight = FontWeight.Medium,
+                color = TabActiveForeground
             )
             Spacer(modifier = Modifier.height(4.dp))
             Text(
                 text = stringResource(R.string.open_from_explorer),
                 fontSize = 13.sp,
-                color = EditorEsPalette.textSecondary
+                color = TabInactiveForeground
             )
         }
     }
