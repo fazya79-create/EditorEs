@@ -110,7 +110,6 @@ fun ConfirmDialog(
     title: String,
     message: String,
     confirmLabel: String,
-    danger: Boolean = false,
     onDismiss: () -> Unit,
     onConfirm: () -> Unit
 ) {
@@ -146,6 +145,48 @@ fun ConfirmDialog(
                         onConfirm()
                         onDismiss()
                     }
+                )
+            }
+        }
+    }
+}
+
+@Composable
+fun UnsavedChangesDialog(
+    fileName: String,
+    onDismiss: () -> Unit,
+    onSave: () -> Unit,
+    onDontSave: () -> Unit
+) {
+    Dialog(onDismissRequest = onDismiss) {
+        DialogCard {
+            Text(
+                text = stringResource(R.string.close),
+                fontSize = 20.sp,
+                fontWeight = FontWeight.Bold,
+                color = EditorEsPalette.textPrimary
+            )
+            Spacer(modifier = Modifier.height(12.dp))
+            Text(
+                text = stringResource(R.string.unsaved_changes_message, fileName),
+                fontSize = 14.sp,
+                color = EditorEsPalette.textSecondary
+            )
+            Spacer(modifier = Modifier.height(22.dp))
+            Row {
+                EditorEsButton(
+                    label = stringResource(R.string.dont_save),
+                    icon = Icons.Outlined.Close,
+                    modifier = Modifier.weight(1f),
+                    onClick = onDontSave
+                )
+                Spacer(modifier = Modifier.width(10.dp))
+                EditorEsButton(
+                    primary = true,
+                    label = stringResource(R.string.save),
+                    icon = Icons.Outlined.Check,
+                    modifier = Modifier.weight(1f),
+                    onClick = onSave
                 )
             }
         }

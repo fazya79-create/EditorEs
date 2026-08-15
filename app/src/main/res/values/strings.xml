@@ -30,6 +30,7 @@
     <string name="delete_file_message">Delete %1$s?</string>
     <string name="delete_folder_message">Delete %1$s and everything inside it?</string>
     <string name="unsaved_changes_message">Save changes to %1$s before closing?</string>
+    <string name="dont_save">Don\'t Save</string>
     <string name="discard">Discard</string>
     <string name="no_open_files">No open files</string>
     <string name="open_from_explorer">Open a file from the explorer</string>

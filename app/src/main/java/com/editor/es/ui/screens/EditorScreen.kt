@@ -1,8 +1,12 @@
 package com.editor.es.ui.screens
 
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.spring
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectHorizontalDragGestures
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -11,6 +15,7 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.systemBarsPadding
@@ -23,12 +28,9 @@ import androidx.compose.material.icons.outlined.Check
 import androidx.compose.material.icons.outlined.Close
 import androidx.compose.material.icons.outlined.InsertDriveFile
 import androidx.compose.material.icons.outlined.Save
-import androidx.compose.material3.DrawerValue
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.ModalNavigationDrawer
 import androidx.compose.material3.Text
-import androidx.compose.material3.rememberDrawerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -44,9 +46,12 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.editor.es.R
@@ -56,6 +61,7 @@ import com.editor.es.editor.EditorLanguageResolver
 import com.editor.es.editor.EditorPane
 import com.editor.es.ui.dialogs.ConfirmDialog
 import com.editor.es.ui.dialogs.NameInputDialog
+import com.editor.es.ui.dialogs.UnsavedChangesDialog
 import com.editor.es.ui.explorer.ExplorerDrawerContent
 import com.editor.es.ui.explorer.ExplorerState
 import com.editor.es.ui.explorer.NodeAction
@@ -66,6 +72,7 @@ import io.github.rosemoe.sora.text.Content
 import io.github.rosemoe.sora.text.ContentListener
 import io.github.rosemoe.sora.widget.CodeEditor
 import java.io.File
+import kotlin.math.roundToInt
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -80,6 +87,7 @@ private val TabActiveForeground = Color.White
 private val TabInactiveForeground = Color(0xFF969696)
 private val DirtyDot = Color(0xFFE8E8E8)
 private val AccentBlue = Color(0xFF007ACC)
+private val DrawerWidth = 300.dp
 private val DrawerShape = RoundedCornerShape(topEnd = 24.dp, bottomEnd = 24.dp)
 private val HamburgerBrush = Brush.linearGradient(
     colors = listOf(EditorEsPalette.mint, EditorEsPalette.amber)
@@ -120,7 +128,10 @@ private class DirtyMarker(private val onDirty: () -> Unit) : ContentListener {
 @Composable
 fun EditorScreen(projectPath: String) {
     val scope = rememberCoroutineScope()
-    val drawerState = rememberDrawerState(DrawerValue.Closed)
+    val drawerAnim = remember { Animatable(0f) }
+    val density = LocalDensity.current
+    val drawerWidthPx = remember(density) { with(density) { DrawerWidth.toPx() } }
+    var edgeDragActive by remember { mutableStateOf(false) }
     val projectDir = remember { File(projectPath) }
     val explorer = remember { ExplorerState(projectDir) }
 
@@ -223,34 +234,22 @@ fun EditorScreen(projectPath: String) {
         }
     }
 
-    ModalNavigationDrawer(
-        drawerState = drawerState,
-        gesturesEnabled = true,
-        drawerContent = {
-            Column(
-                modifier = Modifier
-                    .width(300.dp)
-                    .fillMaxHeight()
-                    .clip(DrawerShape)
-                    .background(SidebarBackground)
-                    .systemBarsPadding()
-            ) {
-                ExplorerDrawerContent(
-                    projectDir = projectDir,
-                    explorer = explorer,
-                    activeFilePath = activePath,
-                    onFileClick = { file ->
-                        scope.launch { drawerState.close() }
-                        openFile(file)
-                    },
-                    onMenuRequested = { dialog = ExplorerDialog.Menu(it) },
-                    onQuickAction = { action, parent ->
-                        dialog = ExplorerDialog.Input(initial = "", parent = parent, kind = action)
-                    }
-                )
-            }
-        }
-    ) {
+    fun openDrawer() {
+        scope.launch { drawerAnim.animateTo(1f, spring(stiffness = 320f, dampingRatio = 0.8f)) }
+    }
+
+    fun closeDrawer() {
+        scope.launch { drawerAnim.animateTo(0f, spring(stiffness = 320f, dampingRatio = 0.8f)) }
+    }
+
+    fun settleDrawer() {
+        val target = if (drawerAnim.value > 0.5f) 1f else 0f
+        scope.launch { drawerAnim.animateTo(target, spring(stiffness = 320f, dampingRatio = 0.8f)) }
+    }
+
+    val drawerProgress = drawerAnim.value
+
+    Box(modifier = Modifier.fillMaxSize()) {
         Column(
             modifier = Modifier
                 .fillMaxSize()
@@ -264,7 +263,7 @@ fun EditorScreen(projectPath: String) {
                     .padding(horizontal = 4.dp, vertical = 4.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                IconButton(onClick = { scope.launch { drawerState.open() } }) {
+                IconButton(onClick = { openDrawer() }) {
                     HamburgerIcon(modifier = Modifier.size(22.dp))
                 }
                 Text(
@@ -325,6 +324,76 @@ fun EditorScreen(projectPath: String) {
                     )
                 }
             }
+        }
+
+        if (drawerProgress > 0f || edgeDragActive) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(Color.Black.copy(alpha = 0.5f * drawerProgress))
+                    .clickable(
+                        interactionSource = remember { MutableInteractionSource() },
+                        indication = null
+                    ) { closeDrawer() }
+            )
+            Column(
+                modifier = Modifier
+                    .width(DrawerWidth)
+                    .fillMaxHeight()
+                    .offset { IntOffset(((drawerProgress - 1f) * drawerWidthPx).roundToInt(), 0) }
+                    .clip(DrawerShape)
+                    .background(SidebarBackground)
+                    .pointerInput(Unit) {
+                        detectHorizontalDragGestures(
+                            onDragEnd = { settleDrawer() },
+                            onDragCancel = { settleDrawer() }
+                        ) { change, drag ->
+                            change.consume()
+                            val next = (drawerAnim.value + drag / drawerWidthPx).coerceIn(0f, 1f)
+                            scope.launch { drawerAnim.snapTo(next) }
+                        }
+                    }
+                    .systemBarsPadding()
+            ) {
+                ExplorerDrawerContent(
+                    projectDir = projectDir,
+                    explorer = explorer,
+                    activeFilePath = activePath,
+                    onFileClick = { file ->
+                        closeDrawer()
+                        openFile(file)
+                    },
+                    onMenuRequested = { dialog = ExplorerDialog.Menu(it) },
+                    onQuickAction = { action, parent ->
+                        dialog = ExplorerDialog.Input(initial = "", parent = parent, kind = action)
+                    }
+                )
+            }
+        }
+
+        if (drawerProgress < 0.05f || edgeDragActive) {
+            Box(
+                modifier = Modifier
+                    .width(24.dp)
+                    .fillMaxHeight()
+                    .pointerInput(Unit) {
+                        detectHorizontalDragGestures(
+                            onDragStart = { edgeDragActive = true },
+                            onDragEnd = {
+                                edgeDragActive = false
+                                settleDrawer()
+                            },
+                            onDragCancel = {
+                                edgeDragActive = false
+                                settleDrawer()
+                            }
+                        ) { change, drag ->
+                            change.consume()
+                            val next = (drawerAnim.value + drag / drawerWidthPx).coerceIn(0f, 1f)
+                            scope.launch { drawerAnim.snapTo(next) }
+                        }
+                    }
+            )
         }
     }
 
@@ -410,8 +479,8 @@ fun EditorScreen(projectPath: String) {
                     .forEach { removeTab(it.path) }
             }
         )
-        is ExplorerDialog.UnsavedClose -> UnsavedCloseDialog(
-            name = current.name,
+        is ExplorerDialog.UnsavedClose -> UnsavedChangesDialog(
+            fileName = current.name,
             onDismiss = { dialog = null },
             onSave = {
                 val path = current.path
@@ -429,7 +498,7 @@ fun EditorScreen(projectPath: String) {
                     dialog = null
                 }
             },
-            onDiscard = {
+            onDontSave = {
                 removeTab(current.path)
                 dialog = null
             }
@@ -544,20 +613,4 @@ private fun EmptyEditorState() {
             )
         }
     }
-}
-
-@Composable
-private fun UnsavedCloseDialog(
-    name: String,
-    onDismiss: () -> Unit,
-    onSave: () -> Unit,
-    onDiscard: () -> Unit
-) {
-    ConfirmDialog(
-        title = stringResource(R.string.close),
-        message = stringResource(R.string.unsaved_changes_message, name),
-        confirmLabel = stringResource(R.string.save),
-        onDismiss = onDismiss,
-        onConfirm = onSave
-    )
 }
