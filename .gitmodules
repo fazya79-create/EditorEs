@@ -1,0 +1,4 @@
+[submodule "sora-editor"]
+	path = sora-editor
+	url = https://github.com/Rosemoe/sora-editor.git
+	branch = 0.24.6

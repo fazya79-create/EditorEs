@@ -58,6 +58,13 @@ android {
 
     packaging {
         resources.excludes += "/META-INF/{AL2.0,LGPL2.1}"
+        resources.pickFirsts += listOf(
+            "license/README.dom.txt",
+            "license/LICENSE.dom-documentation.txt",
+            "license/NOTICE",
+            "license/LICENSE.dom-software.txt",
+            "license/LICENSE"
+        )
     }
 }
 
@@ -69,6 +76,8 @@ kotlin {
 
 dependencies {
     coreLibraryDesugaring(libs.androidx.desugar.jdk.libs)
+    implementation("io.github.rosemoe:editor")
+    implementation("io.github.rosemoe:language-textmate")
     implementation(platform(libs.androidx.compose.bom))
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.activity.compose)

@@ -2,8 +2,8 @@ pluginManagement {
     repositories {
         google {
             content {
-                includeGroupByRegex("com\\.android.*")
-                includeGroupByRegex("com\\.google.*")
+                includeGroupByRegex("com\.android.*")
+                includeGroupByRegex("com\.google.*")
                 includeGroupByRegex("androidx.*")
             }
         }
@@ -20,3 +20,4 @@ dependencyResolutionManagement {
 }
 rootProject.name = "EditorEs"
 include(":app")
+includeBuild("sora-editor")
