@@ -15,6 +15,11 @@ import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material.icons.outlined.Terminal
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
@@ -26,16 +31,18 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.editor.es.R
 import com.editor.es.ui.components.EditorEsButton
-import com.editor.es.ui.components.entranceFadeUp
+import com.editor.es.ui.components.EntranceItem
 import com.editor.es.ui.navigation.EditorEsRoute
 import com.editor.es.ui.theme.EditorEsPalette
 
 private val LogoBrush = Brush.linearGradient(
-    colors = listOf(EditorEsPalette.mist, EditorEsPalette.accent)
+    colors = listOf(EditorEsPalette.mint, EditorEsPalette.amber)
 )
 
 @Composable
 fun HomeScreen(onNavigate: (EditorEsRoute) -> Unit) {
+    var visible by remember { mutableStateOf(false) }
+    LaunchedEffect(Unit) { visible = true }
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -44,51 +51,59 @@ fun HomeScreen(onNavigate: (EditorEsRoute) -> Unit) {
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {
-        EditorEsLogo(modifier = Modifier.size(88.dp).entranceFadeUp(0))
+        EntranceItem(visible = visible, delayMillis = 0) {
+            EditorEsLogo(modifier = Modifier.size(88.dp))
+        }
         Spacer(modifier = Modifier.height(16.dp))
-        Text(
-            text = stringResource(R.string.app_name),
-            fontSize = 30.sp,
-            fontWeight = FontWeight.Bold,
-            color = EditorEsPalette.textPrimary,
-            modifier = Modifier.entranceFadeUp(60)
-        )
+        EntranceItem(visible = visible, delayMillis = 90) {
+            Text(
+                text = stringResource(R.string.app_name),
+                fontSize = 30.sp,
+                fontWeight = FontWeight.Bold,
+                color = EditorEsPalette.textPrimary
+            )
+        }
         Spacer(modifier = Modifier.height(6.dp))
-        Text(
-            text = stringResource(R.string.home_tagline),
-            fontSize = 14.sp,
-            color = EditorEsPalette.textSecondary,
-            modifier = Modifier.entranceFadeUp(120)
-        )
+        EntranceItem(visible = visible, delayMillis = 160) {
+            Text(
+                text = stringResource(R.string.home_tagline),
+                fontSize = 14.sp,
+                color = EditorEsPalette.textSecondary
+            )
+        }
         Spacer(modifier = Modifier.height(56.dp))
-        EditorEsButton(
-            index = 2,
-            primary = true,
-            label = stringResource(R.string.create_project),
-            icon = Icons.Outlined.Add,
-            onClick = { onNavigate(EditorEsRoute.CreateProject) }
-        )
+        EntranceItem(visible = visible, delayMillis = 240) {
+            EditorEsButton(
+                primary = true,
+                label = stringResource(R.string.create_project),
+                icon = Icons.Outlined.Add,
+                onClick = { onNavigate(EditorEsRoute.CreateProject) }
+            )
+        }
         Spacer(modifier = Modifier.height(14.dp))
-        EditorEsButton(
-            index = 3,
-            label = stringResource(R.string.open_project),
-            icon = Icons.Outlined.FolderOpen,
-            onClick = { onNavigate(EditorEsRoute.OpenProject) }
-        )
+        EntranceItem(visible = visible, delayMillis = 320) {
+            EditorEsButton(
+                label = stringResource(R.string.open_project),
+                icon = Icons.Outlined.FolderOpen,
+                onClick = { onNavigate(EditorEsRoute.OpenProject) }
+            )
+        }
         Spacer(modifier = Modifier.height(14.dp))
-        EditorEsButton(
-            index = 4,
-            label = stringResource(R.string.terminal),
-            icon = Icons.Outlined.Terminal,
-            onClick = { onNavigate(EditorEsRoute.Terminal) }
-        )
+        EntranceItem(visible = visible, delayMillis = 400) {
+            EditorEsButton(
+                label = stringResource(R.string.terminal),
+                icon = Icons.Outlined.Terminal,
+                onClick = { onNavigate(EditorEsRoute.Terminal) }
+            )
+        }
         Spacer(modifier = Modifier.height(14.dp))
-        EditorEsButton(
-            index = 5,
-            label = stringResource(R.string.settings),
-            icon = Icons.Outlined.Settings,
-            onClick = { onNavigate(EditorEsRoute.Settings) }
-        )
+        EntranceItem(visible = visible, delayMillis = 480) {
+            EditorEsButton(
+                label = stringResource(R.string.settings),
+                icon = Icons.Outlined.Settings,
+                onClick = { onNavigate(EditorEsRoute.Settings) }
+            )
+        }
     }
 }
 

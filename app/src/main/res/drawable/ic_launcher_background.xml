@@ -11,7 +11,8 @@
             android:startY="0"
             android:endX="108"
             android:endY="108"
-            android:startColor="#FF022F40"
-            android:endColor="#FF38AECC" />
+            android:startColor="#FF001219"
+            android:centerColor="#FF005F73"
+            android:endColor="#FF0A9396" />
     </path>
 </vector>

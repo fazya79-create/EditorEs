@@ -11,9 +11,11 @@ import androidx.compose.ui.unit.dp
 
 @Immutable
 data class EditorEsColors(
-    val deep: Color,
-    val accent: Color,
-    val mist: Color,
+    val abyss: Color,
+    val ocean: Color,
+    val teal: Color,
+    val mint: Color,
+    val amber: Color,
     val textPrimary: Color,
     val textSecondary: Color,
     val buttonPrimaryBackground: Color,
@@ -24,26 +26,29 @@ data class EditorEsColors(
 )
 
 val EditorEsPalette = EditorEsColors(
-    deep = Color(0xFF022F40),
-    accent = Color(0xFF38AECC),
-    mist = Color(0xFF9FD8E6),
-    textPrimary = Color(0xFFF4FBFD),
-    textSecondary = Color(0xB3E6F6FA),
-    buttonPrimaryBackground = Color(0xFF38AECC),
-    buttonPrimaryContent = Color(0xFF022F40),
-    buttonSecondaryBackground = Color(0x2638AECC),
-    buttonSecondaryBorder = Color(0x4D38AECC),
-    buttonSecondaryContent = Color(0xFFEAF7FB)
+    abyss = Color(0xFF001219),
+    ocean = Color(0xFF005F73),
+    teal = Color(0xFF0A9396),
+    mint = Color(0xFF94D2BD),
+    amber = Color(0xFFEE9B00),
+    textPrimary = Color(0xFFF3FAF8),
+    textSecondary = Color(0xB8DCEBE6),
+    buttonPrimaryBackground = Color(0xFFEE9B00),
+    buttonPrimaryContent = Color(0xFF001219),
+    buttonSecondaryBackground = Color(0x240A9396),
+    buttonSecondaryBorder = Color(0x550A9396),
+    buttonSecondaryContent = Color(0xFFE4F2EE)
 )
 
 private val EditorEsColorScheme = darkColorScheme(
-    primary = Color(0xFF38AECC),
-    onPrimary = Color(0xFF022F40),
-    secondary = Color(0xFF9FD8E6),
-    background = Color(0xFF022F40),
-    surface = Color(0xFF022F40),
-    onBackground = Color(0xFFF4FBFD),
-    onSurface = Color(0xFFF4FBFD)
+    primary = Color(0xFFEE9B00),
+    onPrimary = Color(0xFF001219),
+    secondary = Color(0xFF94D2BD),
+    tertiary = Color(0xFF0A9396),
+    background = Color(0xFF001219),
+    surface = Color(0xFF001219),
+    onBackground = Color(0xFFF3FAF8),
+    onSurface = Color(0xFFF3FAF8)
 )
 
 private val EditorEsShapes = Shapes(

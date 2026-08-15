@@ -16,8 +16,11 @@ import com.editor.es.ui.navigation.EditorEsNavHost
 import com.editor.es.ui.theme.EditorEsTheme
 
 private val RootBrush = Brush.linearGradient(
-    0f to Color(0xFF022F40),
-    1f to Color(0xFF38AECC),
+    0f to Color(0xFF001219),
+    0.5f to Color(0xFF005F73),
+    0.78f to Color(0xFF0A9396),
+    0.94f to Color(0xFF94D2BD),
+    1f to Color(0xFFEE9B00),
     start = Offset(0f, 0f),
     end = Offset(Float.POSITIVE_INFINITY, Float.POSITIVE_INFINITY)
 )

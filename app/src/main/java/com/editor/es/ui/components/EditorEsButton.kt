@@ -1,8 +1,8 @@
 package com.editor.es.ui.components
 
-import androidx.compose.animation.core.Animatable
-import androidx.compose.animation.core.FastOutSlowInEasing
-import androidx.compose.animation.core.tween
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
@@ -18,18 +18,15 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.composed
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.editor.es.ui.theme.EditorEsPalette
-import kotlinx.coroutines.delay
 
 @Composable
 fun EditorEsButton(
@@ -37,27 +34,26 @@ fun EditorEsButton(
     icon: ImageVector,
     modifier: Modifier = Modifier,
     primary: Boolean = false,
-    index: Int = 0,
     onClick: () -> Unit = {}
 ) {
     val interactionSource = remember { MutableInteractionSource() }
     val pressed by interactionSource.collectIsPressedAsState()
-    val pressScale = remember { Animatable(1f) }
-    LaunchedEffect(pressed) {
-        pressScale.animateTo(
-            targetValue = if (pressed) 0.95f else 1f,
-            animationSpec = tween(durationMillis = 140, easing = FastOutSlowInEasing)
-        )
-    }
+    val pressScale by animateFloatAsState(
+        targetValue = if (pressed) 0.96f else 1f,
+        animationSpec = spring(
+            dampingRatio = Spring.DampingRatioLowBouncy,
+            stiffness = Spring.StiffnessMedium
+        ),
+        label = "pressScale"
+    )
     Button(
         onClick = onClick,
         modifier = modifier
             .fillMaxWidth()
             .height(58.dp)
-            .entranceFadeUp(delayMillis = index * 120)
             .graphicsLayer {
-                scaleX = pressScale.value
-                scaleY = pressScale.value
+                scaleX = pressScale
+                scaleY = pressScale
             },
         interactionSource = interactionSource,
         shape = RoundedCornerShape(20.dp),
@@ -72,20 +68,5 @@ fun EditorEsButton(
         Icon(imageVector = icon, contentDescription = null, modifier = Modifier.size(22.dp))
         Spacer(modifier = Modifier.width(14.dp))
         Text(text = label, fontSize = 17.sp, fontWeight = FontWeight.SemiBold)
-    }
-}
-
-fun Modifier.entranceFadeUp(delayMillis: Int): Modifier = composed {
-    val progress = remember { Animatable(0f) }
-    LaunchedEffect(Unit) {
-        delay(delayMillis.toLong())
-        progress.animateTo(
-            targetValue = 1f,
-            animationSpec = tween(durationMillis = 620, easing = FastOutSlowInEasing)
-        )
-    }
-    graphicsLayer {
-        alpha = progress.value
-        translationY = (1f - progress.value) * 48f
     }
 }
