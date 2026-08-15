@@ -1,5 +1,8 @@
 package com.editor.es.ui.screens
 
+import android.graphics.Rect
+import android.os.Build
+import android.view.View
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.spring
 import androidx.compose.foundation.Canvas
@@ -9,12 +12,14 @@ import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.imeNestedPadding
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -32,6 +37,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
@@ -48,6 +54,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -62,6 +69,7 @@ import com.editor.es.editor.EditorPane
 import com.editor.es.ui.dialogs.ConfirmDialog
 import com.editor.es.ui.dialogs.NameInputDialog
 import com.editor.es.ui.dialogs.UnsavedChangesDialog
+import com.editor.es.ui.editor.SymbolBar
 import com.editor.es.ui.explorer.ExplorerDrawerContent
 import com.editor.es.ui.explorer.ExplorerState
 import com.editor.es.ui.explorer.NodeAction
@@ -129,9 +137,27 @@ private class DirtyMarker(private val onDirty: () -> Unit) : ContentListener {
 fun EditorScreen(projectPath: String) {
     val scope = rememberCoroutineScope()
     val drawerAnim = remember { Animatable(0f) }
+    val view = LocalView.current
     val density = LocalDensity.current
     val drawerWidthPx = remember(density) { with(density) { DrawerWidth.toPx() } }
     var edgeDragActive by remember { mutableStateOf(false) }
+
+    DisposableEffect(view) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            val stripWidthPx = (40f * density.density).toInt()
+            val layoutListener = View.OnLayoutChangeListener { v, _, _, _, _, _, _, _, _ ->
+                v.systemGestureExclusionRects = listOf(Rect(0, 0, stripWidthPx, v.height))
+            }
+            view.addOnLayoutChangeListener(layoutListener)
+            onDispose {
+                view.removeOnLayoutChangeListener(layoutListener)
+                view.systemGestureExclusionRects = emptyList()
+            }
+        } else {
+            onDispose {}
+        }
+    }
+
     val projectDir = remember { File(projectPath) }
     val explorer = remember { ExplorerState(projectDir) }
 
@@ -255,6 +281,7 @@ fun EditorScreen(projectPath: String) {
                 .fillMaxSize()
                 .background(EditorBackground)
                 .systemBarsPadding()
+                .imeNestedPadding()
         ) {
             Row(
                 modifier = Modifier
@@ -313,7 +340,7 @@ fun EditorScreen(projectPath: String) {
                     }
                 )
                 Spacer(modifier = Modifier.height(6.dp))
-                Box(modifier = Modifier.fillMaxSize()) {
+                Box(modifier = Modifier.weight(1f)) {
                     EditorPane(
                         onEditorCreated = { editor ->
                             editorRef = editor
@@ -324,6 +351,7 @@ fun EditorScreen(projectPath: String) {
                     )
                 }
             }
+            SymbolBar(editor = editorRef)
         }
 
         if (drawerProgress > 0f || edgeDragActive) {
@@ -374,7 +402,7 @@ fun EditorScreen(projectPath: String) {
         if (drawerProgress < 0.05f || edgeDragActive) {
             Box(
                 modifier = Modifier
-                    .width(24.dp)
+                    .width(40.dp)
                     .fillMaxHeight()
                     .pointerInput(Unit) {
                         detectHorizontalDragGestures(
@@ -586,9 +614,9 @@ private fun HamburgerIcon(modifier: Modifier = Modifier) {
 }
 
 @Composable
-private fun EmptyEditorState() {
+private fun ColumnScope.EmptyEditorState() {
     Box(
-        modifier = Modifier.fillMaxSize(),
+        modifier = Modifier.weight(1f).fillMaxWidth(),
         contentAlignment = Alignment.Center
     ) {
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
