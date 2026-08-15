@@ -41,7 +41,7 @@ private val LogoBrush = Brush.linearGradient(
 )
 
 @Composable
-fun HomeScreen(onNavigate: (EditorEsRoute) -> Unit) {
+fun HomeScreen(onNavigate: (EditorEsRoute) -> Unit, onProjectCreated: (String) -> Unit) {
     var visible by remember { mutableStateOf(false) }
     var showCreateDialog by remember { mutableStateOf(false) }
     LaunchedEffect(Unit) { visible = true }
@@ -110,7 +110,10 @@ fun HomeScreen(onNavigate: (EditorEsRoute) -> Unit) {
     if (showCreateDialog) {
         CreateProjectDialog(
             onClose = { showCreateDialog = false },
-            onCreated = { showCreateDialog = false }
+            onCreated = { path ->
+                showCreateDialog = false
+                onProjectCreated(path)
+            }
         )
     }
 }

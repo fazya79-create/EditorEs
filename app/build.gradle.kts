@@ -14,15 +14,14 @@ val signingProperties = Properties().apply {
 
 android {
     namespace = "com.editor.es"
-    compileSdk = 36
+    compileSdk = 37
 
     defaultConfig {
         applicationId = "com.editor.es"
         minSdk = 26
-        targetSdk = 36
+        targetSdk = 37
         versionCode = 1
         versionName = "1.0.0"
-        resourceConfigurations += listOf("en")
     }
 
     if (keystoreFile.exists()) {
@@ -51,6 +50,10 @@ android {
 
     buildFeatures {
         compose = true
+    }
+
+    androidResources {
+        localeFilters.set(listOf("en"))
     }
 
     packaging {
