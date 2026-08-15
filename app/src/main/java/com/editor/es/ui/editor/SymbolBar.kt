@@ -130,7 +130,7 @@ private fun insertSymbol(editor: CodeEditor?, symbol: SymbolKey) {
     if (editor == null || !editor.isEditable) return
     val insert = symbol.insert
     if (insert == null) {
-        if (editor.snippetController.isInSnippet) {
+        if (editor.snippetController.isInSnippet()) {
             editor.snippetController.shiftToNextTabStop()
         } else {
             editor.indentOrCommitTab()
