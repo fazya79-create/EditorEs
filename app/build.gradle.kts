@@ -53,7 +53,7 @@ android {
     }
 
     androidResources {
-        localeFilters.set(listOf("en"))
+        localeFilters += listOf("en")
     }
 
     packaging {
