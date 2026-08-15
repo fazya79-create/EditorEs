@@ -1,10 +1,10 @@
 [versions]
-agp = "9.1.1"
+agp = "9.1.0"
 kotlin = "2.3.10"
-coreKtx = "1.19.0"
-activityCompose = "1.13.0"
+coreKtx = "1.18.0"
+activityCompose = "1.12.4"
 navigationCompose = "2.9.8"
-composeBom = "2026.08.00"
+composeBom = "2026.06.01"
 desugarLibs = "2.1.5"
 
 [libraries]
