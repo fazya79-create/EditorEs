@@ -47,55 +47,47 @@ object ProjectCreator {
         StarterFile.NativeLib -> nativeLibCppTemplate
     }
 
-    private fun cmakeTemplate(library: String, source: String): String =
-        """
-        cmake_minimum_required(VERSION 3.22.1)
+    private fun cmakeTemplate(library: String, source: String): String = buildString {
+        appendLine("cmake_minimum_required(VERSION 3.22.1)")
+        appendLine()
+        appendLine("project(\"$library\")")
+        appendLine()
+        appendLine("add_library($library SHARED $source)")
+        appendLine()
+        appendLine("find_library(log-lib log)")
+        appendLine()
+        appendLine("target_link_libraries($library \${log-lib})")
+    }
 
-        project("$library")
+    private fun ndkTemplate(library: String, source: String): String = buildString {
+        appendLine("LOCAL_PATH := \$(call my-dir)")
+        appendLine()
+        appendLine("include \$(CLEAR_VARS)")
+        appendLine()
+        appendLine("LOCAL_MODULE := $library")
+        appendLine("LOCAL_SRC_FILES := $source")
+        appendLine("LOCAL_LDLIBS := -llog")
+        appendLine()
+        appendLine("include \$(BUILD_SHARED_LIBRARY)")
+    }
 
-        add_library($library SHARED $source)
+    private val mainCppTemplate = buildString {
+        appendLine("#include <iostream>")
+        appendLine()
+        appendLine("int main(int argc, char **argv) {")
+        appendLine("    std::cout << \"Hello from EditorEs\" << std::endl;")
+        appendLine("    return 0;")
+        appendLine("}")
+    }
 
-        find_library(log-lib log)
-
-        target_link_libraries($library ${'$'}{log-lib})
-        """.trimIndent() + "
-"
-
-    private fun ndkTemplate(library: String, source: String): String =
-        """
-        LOCAL_PATH := ${'$'}(call my-dir)
-
-        include ${'$'}(CLEAR_VARS)
-
-        LOCAL_MODULE := $library
-        LOCAL_SRC_FILES := $source
-        LOCAL_LDLIBS := -llog
-
-        include ${'$'}(BUILD_SHARED_LIBRARY)
-        """.trimIndent() + "
-"
-
-    private val mainCppTemplate =
-        """
-        #include <iostream>
-
-        int main(int argc, char **argv) {
-            std::cout << "Hello from EditorEs" << std::endl;
-            return 0;
-        }
-        """.trimIndent() + "
-"
-
-    private val nativeLibCppTemplate =
-        """
-        #include <jni.h>
-        #include <string>
-
-        extern "C" JNIEXPORT jstring JNICALL
-        Java_com_editor_es_MainActivity_stringFromJNI(JNIEnv *env, jobject) {
-            std::string message = "Hello from EditorEs";
-            return env->NewStringUTF(message.c_str());
-        }
-        """.trimIndent() + "
-"
+    private val nativeLibCppTemplate = buildString {
+        appendLine("#include <jni.h>")
+        appendLine("#include <string>")
+        appendLine()
+        appendLine("extern \"C\" JNIEXPORT jstring JNICALL")
+        appendLine("Java_com_editor_es_MainActivity_stringFromJNI(JNIEnv *env, jobject) {")
+        appendLine("    std::string message = \"Hello from EditorEs\";")
+        appendLine("    return env->NewStringUTF(message.c_str());")
+        appendLine("}")
+    }
 }
