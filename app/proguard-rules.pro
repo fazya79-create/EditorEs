@@ -1,5 +1,8 @@
--keepattributes Signature, InnerClasses, EnclosingMethod, *Annotation*
-
--keep class org.eclipse.tm4e.** { *; }
--keep class io.github.rosemoe.sora.langs.textmate.** { *; }
--keep class org.joni.** { *; }
+-keep class org.eclipse.tm4e.core.internal.theme.raw.** { *; }
+-keep class org.eclipse.tm4e.core.internal.grammar.raw.** { *; }
+-keep class io.github.rosemoe.sora.langs.textmate.registry.reader.** { *; }
+-keep class org.eclipse.tm4e.core.internal.parser.** { *; }
+-keepattributes Signature
+-keepattributes *Annotation*
+-keepattributes InnerClasses
+-keepattributes EnclosingMethod
