@@ -52,9 +52,8 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.input.pointer.awaitFirstDown
 import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.input.pointer.positionChange
-import androidx.compose.ui.input.pointer.util.changedToUp
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.stringResource
@@ -418,7 +417,7 @@ fun EditorScreen(projectPath: String) {
                                 while (true) {
                                     val change = awaitPointerEvent().changes
                                         .firstOrNull { it.id == down.id } ?: break
-                                    if (change.changedToUp()) break
+                                    if (!change.pressed) break
                                     val dx = change.position.x - startX
                                     val dy = change.position.y - startY
                                     if (!dragging && abs(dx) > touchSlop && abs(dx) > abs(dy)) {
@@ -427,7 +426,8 @@ fun EditorScreen(projectPath: String) {
                                     }
                                     if (dragging) {
                                         change.consume()
-                                        val next = (drawerAnim.value + change.positionChange().x / drawerWidthPx)
+                                        val delta = change.position.x - change.previousPosition.x
+                                        val next = (drawerAnim.value + delta / drawerWidthPx)
                                             .coerceIn(0f, 1f)
                                         scope.launch { drawerAnim.snapTo(next) }
                                     }
