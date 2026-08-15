@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material3.Text
@@ -27,45 +28,31 @@ private val SymbolBarBackground = Color(0xFF252526)
 private val SymbolForeground = Color(0xFFD4D4D4)
 private val SymbolDivider = Color(0xFF333333)
 
-private data class SymbolKey(val label: String, val insert: String?)
+private data class SymbolKey(val label: String, val insert: String, val offset: Int)
 
 private val FirstRowSymbols = listOf(
-    SymbolKey("→", null),
-    SymbolKey("{", "{"),
-    SymbolKey("}", "}"),
-    SymbolKey("(", "("),
-    SymbolKey(")", ")"),
-    SymbolKey("[", "["),
-    SymbolKey("]", "]"),
-    SymbolKey("<", "<"),
-    SymbolKey(">", ">"),
-    SymbolKey(";", ";"),
-    SymbolKey(":", ":"),
-    SymbolKey(",", ","),
-    SymbolKey(".", "."),
-    SymbolKey("\"", "\""),
-    SymbolKey("'", "'"),
-    SymbolKey("=", "=")
+    SymbolKey("→", "", 0),
+    SymbolKey("{", "{}", 1),
+    SymbolKey("}", "}", 1),
+    SymbolKey("(", "()", 1),
+    SymbolKey(")", ")", 1),
+    SymbolKey("[", "[]", 1),
+    SymbolKey("]", "]", 1),
+    SymbolKey("\"", "\"\"", 1),
+    SymbolKey("'", "''", 1),
+    SymbolKey(";", ";", 1)
 )
 
 private val SecondRowSymbols = listOf(
-    SymbolKey("\\", "\\"),
-    SymbolKey("+", "+"),
-    SymbolKey("-", "-"),
-    SymbolKey("*", "*"),
-    SymbolKey("/", "/"),
-    SymbolKey("%", "%"),
-    SymbolKey("&", "&"),
-    SymbolKey("|", "|"),
-    SymbolKey("!", "!"),
-    SymbolKey("?", "?"),
-    SymbolKey("^", "^"),
-    SymbolKey("~", "~"),
-    SymbolKey("#", "#"),
-    SymbolKey("->", "->"),
-    SymbolKey("::", "::"),
-    SymbolKey("&&", "&&"),
-    SymbolKey("||", "||")
+    SymbolKey(",", ",", 1),
+    SymbolKey(".", ".", 1),
+    SymbolKey(":", ":", 1),
+    SymbolKey("+", "+", 1),
+    SymbolKey("-", "-", 1),
+    SymbolKey("/", "/", 1),
+    SymbolKey("=", "=", 1),
+    SymbolKey("<", "<", 1),
+    SymbolKey(">", ">", 1)
 )
 
 @Composable
@@ -103,7 +90,8 @@ private fun SymbolRow(
         modifier = Modifier
             .fillMaxWidth()
             .height(34.dp)
-            .horizontalScroll(scrollState),
+            .horizontalScroll(scrollState)
+            .padding(horizontal = 12.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         symbols.forEach { symbol ->
@@ -128,14 +116,13 @@ private fun SymbolRow(
 
 private fun insertSymbol(editor: CodeEditor?, symbol: SymbolKey) {
     if (editor == null || !editor.isEditable) return
-    val insert = symbol.insert
-    if (insert == null) {
+    if (symbol.label == "→") {
         if (editor.snippetController.isInSnippet()) {
             editor.snippetController.shiftToNextTabStop()
         } else {
             editor.indentOrCommitTab()
         }
     } else {
-        editor.insertText(insert, 1)
+        editor.insertText(symbol.insert, symbol.offset)
     }
 }

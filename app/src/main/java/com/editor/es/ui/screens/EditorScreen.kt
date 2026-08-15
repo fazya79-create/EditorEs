@@ -53,6 +53,8 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.input.pointer.positionChange
+import androidx.compose.ui.input.pointer.util.changedToUp
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.stringResource
@@ -80,6 +82,7 @@ import io.github.rosemoe.sora.text.Content
 import io.github.rosemoe.sora.text.ContentListener
 import io.github.rosemoe.sora.widget.CodeEditor
 import java.io.File
+import kotlin.math.abs
 import kotlin.math.roundToInt
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
@@ -405,20 +408,35 @@ fun EditorScreen(projectPath: String) {
                     .width(40.dp)
                     .fillMaxHeight()
                     .pointerInput(Unit) {
-                        detectHorizontalDragGestures(
-                            onDragStart = { edgeDragActive = true },
-                            onDragEnd = {
-                                edgeDragActive = false
-                                settleDrawer()
-                            },
-                            onDragCancel = {
-                                edgeDragActive = false
-                                settleDrawer()
+                        val touchSlop = viewConfiguration.touchSlop
+                        while (true) {
+                            awaitPointerEventScope {
+                                val down = awaitFirstDown(requireUnconsumed = false)
+                                val startX = down.position.x
+                                val startY = down.position.y
+                                var dragging = false
+                                while (true) {
+                                    val change = awaitPointerEvent().changes
+                                        .firstOrNull { it.id == down.id } ?: break
+                                    if (change.changedToUp()) break
+                                    val dx = change.position.x - startX
+                                    val dy = change.position.y - startY
+                                    if (!dragging && abs(dx) > touchSlop && abs(dx) > abs(dy)) {
+                                        dragging = true
+                                        edgeDragActive = true
+                                    }
+                                    if (dragging) {
+                                        change.consume()
+                                        val next = (drawerAnim.value + change.positionChange().x / drawerWidthPx)
+                                            .coerceIn(0f, 1f)
+                                        scope.launch { drawerAnim.snapTo(next) }
+                                    }
+                                }
+                                if (dragging) {
+                                    edgeDragActive = false
+                                    settleDrawer()
+                                }
                             }
-                        ) { change, drag ->
-                            change.consume()
-                            val next = (drawerAnim.value + drag / drawerWidthPx).coerceIn(0f, 1f)
-                            scope.launch { drawerAnim.snapTo(next) }
                         }
                     }
             )
