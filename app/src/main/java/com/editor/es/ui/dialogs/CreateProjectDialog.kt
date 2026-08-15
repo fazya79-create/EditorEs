@@ -44,7 +44,7 @@ import kotlinx.coroutines.withContext
 private val ErrorColor = Color(0xFFEF6767)
 
 @Composable
-fun CreateProjectDialog(onClose: () -> Unit, onCreated: (String) -> Unit) {
+fun CreateProjectDialog(onClose: () -> Unit, onCreated: () -> Unit) {
     var folderName by remember { mutableStateOf("") }
     var buildIndex by remember { mutableIntStateOf(0) }
     var libraryName by remember { mutableStateOf("") }
@@ -131,7 +131,7 @@ fun CreateProjectDialog(onClose: () -> Unit, onCreated: (String) -> Unit) {
                         )
                     }
                     creating = false
-                    result.fold(onSuccess = onCreated, onFailure = { error = it.message })
+                    result.fold(onSuccess = { onCreated() }, onFailure = { error = it.message })
                 }
             }
         }

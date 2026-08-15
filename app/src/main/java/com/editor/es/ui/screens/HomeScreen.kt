@@ -33,7 +33,6 @@ import com.editor.es.R
 import com.editor.es.ui.components.EditorEsButton
 import com.editor.es.ui.components.EntranceItem
 import com.editor.es.ui.dialogs.CreateProjectDialog
-import com.editor.es.ui.dialogs.ProjectCreatedDialog
 import com.editor.es.ui.navigation.EditorEsRoute
 import com.editor.es.ui.theme.EditorEsPalette
 
@@ -45,7 +44,6 @@ private val LogoBrush = Brush.linearGradient(
 fun HomeScreen(onNavigate: (EditorEsRoute) -> Unit) {
     var visible by remember { mutableStateOf(false) }
     var showCreateDialog by remember { mutableStateOf(false) }
-    var createdPath by remember { mutableStateOf<String?>(null) }
     LaunchedEffect(Unit) { visible = true }
     Column(
         modifier = Modifier
@@ -112,14 +110,8 @@ fun HomeScreen(onNavigate: (EditorEsRoute) -> Unit) {
     if (showCreateDialog) {
         CreateProjectDialog(
             onClose = { showCreateDialog = false },
-            onCreated = { path ->
-                showCreateDialog = false
-                createdPath = path
-            }
+            onCreated = { showCreateDialog = false }
         )
-    }
-    createdPath?.let { path ->
-        ProjectCreatedDialog(path = path, onDismiss = { createdPath = null })
     }
 }
 
