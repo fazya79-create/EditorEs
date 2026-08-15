@@ -1,0 +1,43 @@
+package com.editor.es.data
+
+import java.io.File
+
+object FileOps {
+
+    private val namePattern = Regex("^[A-Za-z0-9._][A-Za-z0-9._-]{0,79}$")
+
+    fun createFile(parent: File, name: String): Result<File> = runCatching {
+        val clean = name.trim()
+        require(namePattern.matches(clean)) { "Invalid file name" }
+        val target = File(parent, clean)
+        require(!target.exists()) { "A file or folder named $clean already exists" }
+        require(target.createNewFile()) { "Unable to create the file" }
+        target
+    }
+
+    fun createFolder(parent: File, name: String): Result<File> = runCatching {
+        val clean = name.trim()
+        require(namePattern.matches(clean)) { "Invalid folder name" }
+        val target = File(parent, clean)
+        require(!target.exists()) { "A file or folder named $clean already exists" }
+        require(target.mkdirs()) { "Unable to create the folder" }
+        target
+    }
+
+    fun rename(target: File, newName: String): Result<File> = runCatching {
+        val clean = newName.trim()
+        require(namePattern.matches(clean)) { "Invalid name" }
+        val destination = File(target.parentFile, clean)
+        require(!destination.exists()) { "A file or folder named $clean already exists" }
+        require(target.renameTo(destination)) { "Unable to rename" }
+        destination
+    }
+
+    fun delete(target: File): Result<Unit> = runCatching {
+        if (target.isDirectory) {
+            require(target.deleteRecursively()) { "Unable to delete the folder" }
+        } else {
+            require(target.delete()) { "Unable to delete the file" }
+        }
+    }
+}

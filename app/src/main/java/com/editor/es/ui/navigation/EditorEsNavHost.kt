@@ -23,21 +23,16 @@ import com.editor.es.R
 import com.editor.es.ui.screens.EditorScreen
 import com.editor.es.ui.screens.HomeScreen
 import com.editor.es.ui.screens.PlaceholderScreen
-import com.editor.es.ui.screens.ProjectFileListScreen
-import java.io.File
 
 enum class EditorEsRoute(val path: String) {
     Home("home"),
     OpenProject("open_project"),
     Terminal("terminal"),
     Settings("settings"),
-    Files("files"),
     Editor("editor")
 }
 
-fun editorFilesRoute(path: String): String = EditorEsRoute.Files.path + "/" + Uri.encode(path)
-
-fun editorFileRoute(path: String): String = EditorEsRoute.Editor.path + "/" + Uri.encode(path)
+fun editorRoute(path: String): String = EditorEsRoute.Editor.path + "/" + Uri.encode(path)
 
 @Composable
 fun EditorEsNavHost(
@@ -62,29 +57,15 @@ fun EditorEsNavHost(
         composable(EditorEsRoute.Home.path) {
             HomeScreen(
                 onNavigate = { route -> navController.navigate(route.path) },
-                onProjectCreated = { path -> navController.navigate(editorFilesRoute(path)) }
-            )
-        }
-        composable(
-            route = EditorEsRoute.Files.path + "/{path}",
-            arguments = listOf(navArgument("path") { type = NavType.StringType })
-        ) { backStackEntry ->
-            val projectPath = backStackEntry.arguments?.getString("path").orEmpty()
-            ProjectFileListScreen(
-                projectDir = File(projectPath),
-                onBack = { navController.popBackStack() },
-                onOpenFile = { filePath -> navController.navigate(editorFileRoute(filePath)) }
+                onProjectCreated = { path -> navController.navigate(editorRoute(path)) }
             )
         }
         composable(
             route = EditorEsRoute.Editor.path + "/{path}",
             arguments = listOf(navArgument("path") { type = NavType.StringType })
         ) { backStackEntry ->
-            val filePath = backStackEntry.arguments?.getString("path").orEmpty()
-            EditorScreen(
-                filePath = filePath,
-                onBack = { navController.popBackStack() }
-            )
+            val projectPath = backStackEntry.arguments?.getString("path").orEmpty()
+            EditorScreen(projectPath = projectPath)
         }
         composable(EditorEsRoute.OpenProject.path) {
             PlaceholderScreen(

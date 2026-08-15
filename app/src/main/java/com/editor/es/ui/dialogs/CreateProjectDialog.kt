@@ -33,7 +33,6 @@ import androidx.compose.ui.window.Dialog
 import com.editor.es.R
 import com.editor.es.data.BuildSystem
 import com.editor.es.data.ProjectCreator
-import com.editor.es.data.StarterFile
 import com.editor.es.ui.components.EditorEsButton
 import com.editor.es.ui.components.EditorEsDropdown
 import com.editor.es.ui.theme.EditorEsPalette
@@ -48,7 +47,6 @@ fun CreateProjectDialog(onClose: () -> Unit, onCreated: (String) -> Unit) {
     var folderName by remember { mutableStateOf("") }
     var buildIndex by remember { mutableIntStateOf(0) }
     var libraryName by remember { mutableStateOf("") }
-    var fileIndex by remember { mutableIntStateOf(0) }
     var error by remember { mutableStateOf<String?>(null) }
     var creating by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
@@ -96,17 +94,6 @@ fun CreateProjectDialog(onClose: () -> Unit, onCreated: (String) -> Unit) {
                 libraryName = it
                 error = null
             }
-            Spacer(modifier = Modifier.height(14.dp))
-            FieldLabel(text = stringResource(R.string.file_name))
-            Spacer(modifier = Modifier.height(8.dp))
-            EditorEsDropdown(
-                options = StarterFile.entries.map { it.fileName },
-                selectedIndex = fileIndex,
-                onSelect = {
-                    fileIndex = it
-                    error = null
-                }
-            )
             error?.let { message ->
                 Spacer(modifier = Modifier.height(12.dp))
                 Text(text = message, fontSize = 13.sp, color = ErrorColor)
@@ -126,8 +113,7 @@ fun CreateProjectDialog(onClose: () -> Unit, onCreated: (String) -> Unit) {
                         ProjectCreator.create(
                             folderName = folderName,
                             buildSystem = BuildSystem.entries[buildIndex],
-                            libraryName = libraryName,
-                            starterFile = StarterFile.entries[fileIndex]
+                            libraryName = libraryName
                         )
                     }
                     creating = false

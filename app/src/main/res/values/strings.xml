@@ -15,8 +15,21 @@
     <string name="folder_name">Folder Name</string>
     <string name="build_system">Build System</string>
     <string name="library_name">Library Name</string>
-    <string name="file_name">File Name</string>
     <string name="create">Create</string>
     <string name="creating">Creating…</string>
     <string name="close">Close</string>
+    <string name="save">Save</string>
+    <string name="explorer">Explorer</string>
+    <string name="new_file">New file</string>
+    <string name="new_folder">New folder</string>
+    <string name="rename">Rename</string>
+    <string name="delete">Delete</string>
+    <string name="cancel">Cancel</string>
+    <string name="confirm">Confirm</string>
+    <string name="delete_file_message">Delete %1$s?</string>
+    <string name="delete_folder_message">Delete %1$s and everything inside it?</string>
+    <string name="unsaved_changes_message">Save changes to %1$s before closing?</string>
+    <string name="discard">Discard</string>
+    <string name="no_open_files">No open files</string>
+    <string name="open_from_explorer">Open a file from the explorer</string>
 </resources>
