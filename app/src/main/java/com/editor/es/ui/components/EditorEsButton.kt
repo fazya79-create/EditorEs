@@ -34,6 +34,7 @@ fun EditorEsButton(
     icon: ImageVector,
     modifier: Modifier = Modifier,
     primary: Boolean = false,
+    enabled: Boolean = true,
     onClick: () -> Unit = {}
 ) {
     val interactionSource = remember { MutableInteractionSource() }
@@ -48,6 +49,7 @@ fun EditorEsButton(
     )
     Button(
         onClick = onClick,
+        enabled = enabled,
         modifier = modifier
             .fillMaxWidth()
             .height(58.dp)
@@ -59,7 +61,9 @@ fun EditorEsButton(
         shape = RoundedCornerShape(20.dp),
         colors = ButtonDefaults.buttonColors(
             containerColor = if (primary) EditorEsPalette.buttonPrimaryBackground else EditorEsPalette.buttonSecondaryBackground,
-            contentColor = if (primary) EditorEsPalette.buttonPrimaryContent else EditorEsPalette.buttonSecondaryContent
+            contentColor = if (primary) EditorEsPalette.buttonPrimaryContent else EditorEsPalette.buttonSecondaryContent,
+            disabledContainerColor = (if (primary) EditorEsPalette.buttonPrimaryBackground else EditorEsPalette.buttonSecondaryBackground).copy(alpha = 0.45f),
+            disabledContentColor = EditorEsPalette.textSecondary
         ),
         border = if (primary) null else BorderStroke(1.dp, EditorEsPalette.buttonSecondaryBorder),
         elevation = ButtonDefaults.buttonElevation(defaultElevation = 0.dp, pressedElevation = 0.dp),
