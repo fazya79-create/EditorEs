@@ -3,13 +3,15 @@ package com.editor.es.editor
 import android.content.Context
 import android.graphics.Typeface
 import io.github.rosemoe.sora.langs.textmate.TextMateColorScheme
+import io.github.rosemoe.sora.langs.textmate.registry.ThemeRegistry
+import io.github.rosemoe.sora.widget.CodeEditor
 import io.github.rosemoe.sora.widget.schemes.EditorColorScheme
 
 object EditorTheme {
 
-    fun apply(editor: io.github.rosemoe.sora.widget.CodeEditor, context: Context) {
+    fun apply(editor: CodeEditor, context: Context) {
         runCatching {
-            editor.colorScheme = TextMateColorScheme.create()
+            editor.colorScheme = TextMateColorScheme.create(ThemeRegistry.getInstance())
             editor.typefaceText = Typeface.createFromAsset(context.assets, "fonts/JetBrainsMono-Regular.ttf")
         }.onFailure {
             editor.colorScheme = object : EditorColorScheme() {
@@ -24,7 +26,6 @@ object EditorTheme {
                     setColor(SELECTED_TEXT_BACKGROUND, 0x660A9396)
                     setColor(SELECTION_HANDLE, 0xFFEE9B00.toInt())
                     setColor(CURRENT_LINE, 0x220A9396)
-                    setColor(CURSOR_COLOR, 0xFFEE9B00.toInt())
                 }
             }
         }

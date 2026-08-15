@@ -30,7 +30,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
 import com.editor.es.ui.theme.EditorEsPalette
-import io.github.rosemoe.sora.text.ContentIO
 import io.github.rosemoe.sora.widget.CodeEditor
 import io.github.rosemoe.sora.widget.component.EditorAutoCompletion
 import io.github.rosemoe.sora.widget.getComponent
@@ -90,7 +89,7 @@ fun SoraEditorScreen(file: File, onBack: () -> Unit) {
                     scope.launch {
                         val saved = withContext(Dispatchers.IO) {
                             runCatching {
-                                file.writeText(ContentIO.get(editor.text).toString())
+                                file.writeText(editor.text.toString())
                             }.isSuccess
                         }
                         saveState = if (saved) EditorSaveState.Saved else EditorSaveState.Failed
