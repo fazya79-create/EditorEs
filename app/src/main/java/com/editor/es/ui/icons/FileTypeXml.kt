@@ -10,8 +10,8 @@ import androidx.compose.ui.unit.dp
 val FileTypeXml: ImageVector by lazy {
     ImageVector.Builder(
         name = "FileTypeXml",
-        defaultWidth = 24f,
-        defaultHeight = 24f,
+        defaultWidth = 24.dp,
+        defaultHeight = 24.dp,
         viewportWidth = 24f,
         viewportHeight = 24f
     ).apply {
@@ -24,9 +24,9 @@ val FileTypeXml: ImageVector by lazy {
             horizontalLineToRelative(8f)
             lineToRelative(6f, 6f)
             verticalLineToRelative(12f)
-            arcToRelative(2f, 2f, 0f, 0f, 1f, true, true)
+            arcToRelative(2f, 2f, 0f, false, true, -2f, 2f)
             horizontalLineTo(6f)
-            arcToRelative(2f, 2f, 0f, 0f, 1f, true, true)
+            arcToRelative(2f, 2f, 0f, false, true, -2f, -2f)
             verticalLineTo(4f)
             curveToRelative(0f, -1.11f, 0.89f, -2f, 2f, -2f)
             moveToRelative(0.12f, 13.5f)

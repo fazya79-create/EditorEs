@@ -10,8 +10,8 @@ import androidx.compose.ui.unit.dp
 val FileTypeJava: ImageVector by lazy {
     ImageVector.Builder(
         name = "FileTypeJava",
-        defaultWidth = 32f,
-        defaultHeight = 32f,
+        defaultWidth = 32.dp,
+        defaultHeight = 32.dp,
         viewportWidth = 32f,
         viewportHeight = 32f
     ).apply {
@@ -23,16 +23,16 @@ val FileTypeJava: ImageVector by lazy {
             close()
             moveTo(28f, 4f)
             horizontalLineTo(7f)
-            arcToRelative(1f, 1f, 0f, 0f, 0f, true, true)
+            arcToRelative(1f, 1f, 0f, false, false, -1f, 1f)
             verticalLineToRelative(13f)
-            arcToRelative(4f, 4f, 0f, 0f, 0f, true, true)
+            arcToRelative(4f, 4f, 0f, false, false, 4f, 4f)
             horizontalLineToRelative(10f)
-            arcToRelative(4f, 4f, 0f, 0f, 0f, true, true)
+            arcToRelative(4f, 4f, 0f, false, false, 4f, -4f)
             verticalLineToRelative(-4f)
             horizontalLineToRelative(4f)
-            arcToRelative(2f, 2f, 0f, 0f, 0f, true, true)
+            arcToRelative(2f, 2f, 0f, false, false, 2f, -2f)
             verticalLineTo(6f)
-            arcToRelative(2f, 2f, 0f, 0f, 0f, true, true)
+            arcToRelative(2f, 2f, 0f, false, false, -2f, -2f)
             moveToRelative(0f, 8f)
             horizontalLineToRelative(-4f)
             verticalLineTo(6f)

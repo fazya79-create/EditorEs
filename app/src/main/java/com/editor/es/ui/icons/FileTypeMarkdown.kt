@@ -10,8 +10,8 @@ import androidx.compose.ui.unit.dp
 val FileTypeMarkdown: ImageVector by lazy {
     ImageVector.Builder(
         name = "FileTypeMarkdown",
-        defaultWidth = 32f,
-        defaultHeight = 32f,
+        defaultWidth = 32.dp,
+        defaultHeight = 32.dp,
         viewportWidth = 32f,
         viewportHeight = 32f
     ).apply {

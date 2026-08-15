@@ -10,8 +10,8 @@ import androidx.compose.ui.unit.dp
 val FileTypeCMake: ImageVector by lazy {
     ImageVector.Builder(
         name = "FileTypeCMake",
-        defaultWidth = 24f,
-        defaultHeight = 24f,
+        defaultWidth = 24.dp,
+        defaultHeight = 24.dp,
         viewportWidth = 24f,
         viewportHeight = 24f
     ).apply {

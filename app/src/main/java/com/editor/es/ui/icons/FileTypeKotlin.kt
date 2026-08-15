@@ -11,8 +11,8 @@ import androidx.compose.ui.unit.dp
 val FileTypeKotlin: ImageVector by lazy {
     ImageVector.Builder(
         name = "FileTypeKotlin",
-        defaultWidth = 24f,
-        defaultHeight = 24f,
+        defaultWidth = 24.dp,
+        defaultHeight = 24.dp,
         viewportWidth = 24f,
         viewportHeight = 24f
     ).apply {

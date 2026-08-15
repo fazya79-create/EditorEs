@@ -10,8 +10,8 @@ import androidx.compose.ui.unit.dp
 val FileTypeJson: ImageVector by lazy {
     ImageVector.Builder(
         name = "FileTypeJson",
-        defaultWidth = 960f,
-        defaultHeight = 960f,
+        defaultWidth = 960.dp,
+        defaultHeight = 960.dp,
         viewportWidth = 960f,
         viewportHeight = 960f
     ).apply {
