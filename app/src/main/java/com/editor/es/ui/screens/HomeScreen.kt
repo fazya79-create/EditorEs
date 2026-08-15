@@ -1,0 +1,105 @@
+package com.editor.es.ui.screens
+
+import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Add
+import androidx.compose.material.icons.outlined.FolderOpen
+import androidx.compose.material.icons.outlined.Settings
+import androidx.compose.material.icons.outlined.Terminal
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import com.editor.es.R
+import com.editor.es.ui.components.EditorEsButton
+import com.editor.es.ui.components.entranceFadeUp
+import com.editor.es.ui.navigation.EditorEsRoute
+import com.editor.es.ui.theme.EditorEsPalette
+
+private val LogoBrush = Brush.linearGradient(
+    colors = listOf(EditorEsPalette.mist, EditorEsPalette.accent)
+)
+
+@Composable
+fun HomeScreen(onNavigate: (EditorEsRoute) -> Unit) {
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(horizontal = 32.dp)
+            .padding(bottom = 40.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center
+    ) {
+        EditorEsLogo(modifier = Modifier.size(88.dp).entranceFadeUp(0))
+        Spacer(modifier = Modifier.height(16.dp))
+        Text(
+            text = stringResource(R.string.app_name),
+            fontSize = 30.sp,
+            fontWeight = FontWeight.Bold,
+            color = EditorEsPalette.textPrimary,
+            modifier = Modifier.entranceFadeUp(60)
+        )
+        Spacer(modifier = Modifier.height(6.dp))
+        Text(
+            text = stringResource(R.string.home_tagline),
+            fontSize = 14.sp,
+            color = EditorEsPalette.textSecondary,
+            modifier = Modifier.entranceFadeUp(120)
+        )
+        Spacer(modifier = Modifier.height(56.dp))
+        EditorEsButton(
+            index = 2,
+            primary = true,
+            label = stringResource(R.string.create_project),
+            icon = Icons.Outlined.Add,
+            onClick = { onNavigate(EditorEsRoute.CreateProject) }
+        )
+        Spacer(modifier = Modifier.height(14.dp))
+        EditorEsButton(
+            index = 3,
+            label = stringResource(R.string.open_project),
+            icon = Icons.Outlined.FolderOpen,
+            onClick = { onNavigate(EditorEsRoute.OpenProject) }
+        )
+        Spacer(modifier = Modifier.height(14.dp))
+        EditorEsButton(
+            index = 4,
+            label = stringResource(R.string.terminal),
+            icon = Icons.Outlined.Terminal,
+            onClick = { onNavigate(EditorEsRoute.Terminal) }
+        )
+        Spacer(modifier = Modifier.height(14.dp))
+        EditorEsButton(
+            index = 5,
+            label = stringResource(R.string.settings),
+            icon = Icons.Outlined.Settings,
+            onClick = { onNavigate(EditorEsRoute.Settings) }
+        )
+    }
+}
+
+@Composable
+private fun EditorEsLogo(modifier: Modifier = Modifier) {
+    Canvas(modifier = modifier) {
+        val strokeWidth = size.minDimension * 0.05f
+        drawLine(brush = LogoBrush, start = Offset(size.width * 0.38f, size.height * 0.24f), end = Offset(size.width * 0.20f, size.height * 0.5f), strokeWidth = strokeWidth, cap = StrokeCap.Round)
+        drawLine(brush = LogoBrush, start = Offset(size.width * 0.20f, size.height * 0.5f), end = Offset(size.width * 0.38f, size.height * 0.76f), strokeWidth = strokeWidth, cap = StrokeCap.Round)
+        drawLine(brush = LogoBrush, start = Offset(size.width * 0.62f, size.height * 0.24f), end = Offset(size.width * 0.80f, size.height * 0.5f), strokeWidth = strokeWidth, cap = StrokeCap.Round)
+        drawLine(brush = LogoBrush, start = Offset(size.width * 0.80f, size.height * 0.5f), end = Offset(size.width * 0.62f, size.height * 0.76f), strokeWidth = strokeWidth, cap = StrokeCap.Round)
+        drawLine(brush = LogoBrush, start = Offset(size.width * 0.57f, size.height * 0.20f), end = Offset(size.width * 0.43f, size.height * 0.80f), strokeWidth = strokeWidth, cap = StrokeCap.Round)
+    }
+}
