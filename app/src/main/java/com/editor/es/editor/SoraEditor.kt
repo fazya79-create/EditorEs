@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.systemBarsPadding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import androidx.compose.material.icons.outlined.Check
@@ -60,6 +61,7 @@ fun SoraEditorScreen(file: File, onBack: () -> Unit) {
         modifier = Modifier
             .fillMaxSize()
             .background(EditorBackground)
+            .systemBarsPadding()
     ) {
         Row(
             modifier = Modifier
