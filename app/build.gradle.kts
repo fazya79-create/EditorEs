@@ -1,4 +1,5 @@
 import java.util.Properties
+import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 
 plugins {
     alias(libs.plugins.android.application)
@@ -14,12 +15,12 @@ val signingProperties = Properties().apply {
 
 android {
     namespace = "com.editor.es"
-    compileSdk = 35
+    compileSdk = 36
 
     defaultConfig {
         applicationId = "com.editor.es"
         minSdk = 26
-        targetSdk = 35
+        targetSdk = 36
         versionCode = 1
         versionName = "1.0.0"
         resourceConfigurations += listOf("en")
@@ -46,10 +47,7 @@ android {
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
-    }
-
-    kotlinOptions {
-        jvmTarget = "17"
+        isCoreLibraryDesugaringEnabled = true
     }
 
     buildFeatures {
@@ -61,7 +59,14 @@ android {
     }
 }
 
+kotlin {
+    compilerOptions {
+        jvmTarget.set(JvmTarget.JVM_17)
+    }
+}
+
 dependencies {
+    coreLibraryDesugaring(libs.androidx.desugar.jdk.libs)
     implementation(platform(libs.androidx.compose.bom))
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.activity.compose)
