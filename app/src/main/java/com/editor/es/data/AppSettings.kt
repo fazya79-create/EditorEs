@@ -62,6 +62,21 @@ object AppSettings {
         prefs.edit().putFloat(key, value).apply()
     }
 
+    fun string(key: String, default: String): String {
+        if (!ready()) return default
+        val cached = cache[key]
+        if (cached is String) return cached
+        val stored = prefs.getString(key, default) ?: default
+        cache[key] = stored
+        return stored
+    }
+
+    fun putString(key: String, value: String) {
+        if (!ready()) return
+        cache[key] = value
+        prefs.edit().putString(key, value).apply()
+    }
+
     fun resetAll(specs: List<SettingSpec>) {
         for (spec in specs) {
             when (spec) {

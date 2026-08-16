@@ -16,6 +16,13 @@ sealed interface BuildEvent {
     data class Failed(val message: String) : BuildEvent
 }
 
+sealed interface BuildRequest {
+    data class Build(val preset: String, val configurePreset: String) : BuildRequest
+    data class Rebuild(val preset: String, val configurePreset: String) : BuildRequest
+    data class Reconfigure(val configurePreset: String) : BuildRequest
+    data class Raw(val label: String, val command: String) : BuildRequest
+}
+
 class BuildRunner(private val context: Context) {
 
     @Volatile
@@ -28,96 +35,171 @@ class BuildRunner(private val context: Context) {
         process = null
     }
 
-    suspend fun run(projectDir: File, onEvent: (BuildEvent) -> Unit): Unit =
+    suspend fun listPresets(projectDir: File, type: String): List<String> =
         withContext(Dispatchers.IO) {
-            try {
-                if (!ProotConfig.isInstalled(context)) {
-                    onEvent(BuildEvent.Failed("Ubuntu environment is not installed"))
-                    return@withContext
-                }
-                if (!ToolchainPaths.isInstalled(context, ToolchainKind.Ndk)) {
-                    onEvent(BuildEvent.Failed("Android NDK is not installed"))
-                    return@withContext
-                }
-                if (!ToolchainPaths.isInstalled(context, ToolchainKind.CMake)) {
-                    onEvent(BuildEvent.Failed("CMake is not installed"))
-                    return@withContext
-                }
-                if (!File(projectDir, "CMakeLists.txt").isFile) {
-                    onEvent(BuildEvent.Failed("CMakeLists.txt not found in ${projectDir.name}"))
-                    return@withContext
-                }
-
-                val cmakeHost = ToolchainPaths.cmakeBinary(context)
-                cmakeHost.setExecutable(true, false)
-                File(cmakeHost.parentFile, "ninja").setExecutable(true, false)
-                if (!cmakeHost.canExecute()) {
-                    onEvent(BuildEvent.Failed("cmake is not executable at ${cmakeHost.absolutePath}"))
-                    return@withContext
-                }
-
-                val guestProject = projectDir.absolutePath
-                runCatching {
-                    File(ProotConfig.rootfsDir(context), guestProject.trimStart('/')).mkdirs()
-                }
-                val args = ProotConfig.commandArgs(
-                    context = context,
-                    script = buildScript(),
-                    guestCwd = guestProject,
-                    binds = listOf("$guestProject:$guestProject"),
-                    extraPath = listOf(ToolchainPaths.guestCMakeBin())
-                )
-
-                onEvent(BuildEvent.Line("> cmake + ninja (${abi()}, android-${apiLevel()}, ${buildType()})"))
-                onEvent(BuildEvent.Line("> ${ToolchainPaths.guestCMake()}"))
-
-                val builder = ProcessBuilder(args)
-                builder.redirectErrorStream(true)
-                builder.environment().putAll(ProotConfig.prootEnvMap(context))
-                val started = builder.start()
-                process = started
-
-                BufferedReader(InputStreamReader(started.inputStream)).use { reader ->
-                    while (true) {
-                        val line = reader.readLine() ?: break
-                        onEvent(BuildEvent.Line(line))
-                    }
-                }
-                val exit = started.waitFor()
-                process = null
-                onEvent(BuildEvent.Finished(exit))
-            } catch (e: Exception) {
-                process = null
-                onEvent(BuildEvent.Failed(e.message ?: "Build failed"))
-            }
+            if (!ready()) return@withContext emptyList()
+            val cmake = ToolchainPaths.guestCMake()
+            val output = capture(projectDir, "$cmake --list-presets=$type 2>&1 || true")
+            CmakePresets.parseListOutput(output)
         }
 
-    private fun buildScript(): String {
-        val cmake = ToolchainPaths.guestCMake()
-        val toolchain = ToolchainPaths.guestNdkToolchainFile()
-        val ninja = ToolchainPaths.guestNinja()
-        return listOf(
-            "set -e",
-            "$cmake -S . -B build -G Ninja" +
-                " -DCMAKE_MAKE_PROGRAM=$ninja" +
-                " -DCMAKE_TOOLCHAIN_FILE=$toolchain" +
-                " -DCMAKE_EXPORT_COMPILE_COMMANDS=ON" +
-                " -DANDROID_ABI=${abi()}" +
-                " -DANDROID_PLATFORM=android-${apiLevel()}" +
-                " -DCMAKE_BUILD_TYPE=${buildType()}",
-            "$cmake --build build"
-        ).joinToString(" && ")
+    suspend fun run(
+        projectDir: File,
+        request: BuildRequest,
+        onEvent: (BuildEvent) -> Unit
+    ): Unit = withContext(Dispatchers.IO) {
+        try {
+            val failure = preflight(projectDir)
+            if (failure != null) {
+                onEvent(BuildEvent.Failed(failure))
+                return@withContext
+            }
+
+            val script = when (request) {
+                is BuildRequest.Build ->
+                    buildScript(projectDir, request.preset, request.configurePreset, false, onEvent)
+                is BuildRequest.Rebuild ->
+                    buildScript(projectDir, request.preset, request.configurePreset, true, onEvent)
+                is BuildRequest.Reconfigure -> {
+                    val binaryDir = CmakePresets.binaryDirOf(projectDir, request.configurePreset)
+                    onEvent(BuildEvent.Line("> removing ${binaryDir.name}"))
+                    binaryDir.deleteRecursively()
+                    onEvent(BuildEvent.Line("> configure ${request.configurePreset}"))
+                    configureCommand(request.configurePreset)
+                }
+                is BuildRequest.Raw -> {
+                    onEvent(BuildEvent.Line("> ${request.label}"))
+                    onEvent(BuildEvent.Line("> ${request.command}"))
+                    request.command
+                }
+            }
+
+            execute(projectDir, script, onEvent)
+        } catch (e: Exception) {
+            process = null
+            onEvent(BuildEvent.Failed(e.message ?: "Build failed"))
+        }
     }
 
-    private fun abi(): String = when (AppSettings.int(PreferenceSettings.BuildAbi, 0)) {
+    private fun buildScript(
+        projectDir: File,
+        preset: String,
+        configurePreset: String,
+        cleanFirst: Boolean,
+        onEvent: (BuildEvent) -> Unit
+    ): String {
+        val cmake = ToolchainPaths.guestCMake()
+        val binaryDir = CmakePresets.binaryDirOf(projectDir, configurePreset)
+        val staleReason = staleCacheReason(binaryDir, projectDir)
+        if (staleReason != null) {
+            onEvent(BuildEvent.Line("> stale cache: $staleReason"))
+            binaryDir.deleteRecursively()
+        }
+        val steps = mutableListOf("set -e")
+        if (!File(binaryDir, "CMakeCache.txt").isFile) {
+            onEvent(BuildEvent.Line("> configure $configurePreset"))
+            steps += configureCommand(configurePreset)
+        }
+        onEvent(BuildEvent.Line("> build $preset"))
+        val clean = if (cleanFirst) " --clean-first" else ""
+        steps += "$cmake --build --preset $preset$clean"
+        return steps.joinToString(" && ")
+    }
+
+    private fun configureCommand(configurePreset: String): String =
+        "${ToolchainPaths.guestCMake()} --preset $configurePreset"
+
+    private fun staleCacheReason(binaryDir: File, projectDir: File): String? {
+        val cache = File(binaryDir, "CMakeCache.txt")
+        if (!cache.isFile) return null
+        val home = runCatching {
+            cache.useLines { lines ->
+                lines.firstOrNull { it.startsWith("CMAKE_HOME_DIRECTORY:") }
+                    ?.substringAfter('=')
+                    ?.trim()
+            }
+        }.getOrNull() ?: return null
+        if (home.isEmpty()) return null
+        val expected = projectDir.absolutePath.trimEnd('/')
+        if (home.trimEnd('/') == expected) return null
+        return "cache points at $home"
+    }
+
+    private fun preflight(projectDir: File): String? {
+        if (!ProotConfig.isInstalled(context)) return "Ubuntu environment is not installed"
+        if (!ToolchainPaths.isInstalled(context, ToolchainKind.Ndk)) {
+            return "Android NDK is not installed"
+        }
+        if (!ToolchainPaths.isInstalled(context, ToolchainKind.CMake)) {
+            return "CMake is not installed"
+        }
+        if (!File(projectDir, "CMakeLists.txt").isFile) {
+            return "CMakeLists.txt not found in ${projectDir.name}"
+        }
+        val cmakeHost = ToolchainPaths.cmakeBinary(context)
+        cmakeHost.setExecutable(true, false)
+        File(cmakeHost.parentFile, "ninja").setExecutable(true, false)
+        if (!cmakeHost.canExecute()) {
+            return "cmake is not executable at ${cmakeHost.absolutePath}"
+        }
+        return null
+    }
+
+    private fun ready(): Boolean =
+        ProotConfig.isInstalled(context) &&
+            ToolchainPaths.isInstalled(context, ToolchainKind.Ndk) &&
+            ToolchainPaths.isInstalled(context, ToolchainKind.CMake)
+
+    private fun prootArgsFor(projectDir: File, script: String): List<String> {
+        val guestProject = projectDir.absolutePath
+        runCatching {
+            File(ProotConfig.rootfsDir(context), guestProject.trimStart('/')).mkdirs()
+        }
+        return ProotConfig.commandArgs(
+            context = context,
+            script = script,
+            guestCwd = guestProject,
+            binds = listOf("$guestProject:$guestProject"),
+            extraPath = listOf(ToolchainPaths.guestCMakeBin(), ToolchainPaths.guestNdkBin())
+        )
+    }
+
+    private fun capture(projectDir: File, script: String): String {
+        val builder = ProcessBuilder(prootArgsFor(projectDir, script))
+        builder.redirectErrorStream(true)
+        builder.environment().putAll(ProotConfig.prootEnvMap(context))
+        val started = builder.start()
+        val output = started.inputStream.bufferedReader().use { it.readText() }
+        started.waitFor()
+        return output
+    }
+
+    private fun execute(projectDir: File, script: String, onEvent: (BuildEvent) -> Unit) {
+        val builder = ProcessBuilder(prootArgsFor(projectDir, script))
+        builder.redirectErrorStream(true)
+        builder.environment().putAll(ProotConfig.prootEnvMap(context))
+        val started = builder.start()
+        process = started
+        BufferedReader(InputStreamReader(started.inputStream)).use { reader ->
+            while (true) {
+                val line = reader.readLine() ?: break
+                onEvent(BuildEvent.Line(line))
+            }
+        }
+        val exit = started.waitFor()
+        process = null
+        onEvent(BuildEvent.Finished(exit))
+    }
+
+    fun abi(): String = when (AppSettings.int(PreferenceSettings.BuildAbi, 0)) {
         1 -> "armeabi-v7a"
         2 -> "x86_64"
         else -> "arm64-v8a"
     }
 
-    private fun apiLevel(): Int = AppSettings.int(PreferenceSettings.BuildApiLevel, 24)
+    fun apiLevel(): Int = AppSettings.int(PreferenceSettings.BuildApiLevel, 24)
 
-    private fun buildType(): String = when (AppSettings.int(PreferenceSettings.BuildType, 0)) {
+    fun buildType(): String = when (AppSettings.int(PreferenceSettings.BuildType, 0)) {
         1 -> "Debug"
         2 -> "RelWithDebInfo"
         3 -> "MinSizeRel"

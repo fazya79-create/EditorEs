@@ -64,8 +64,12 @@ import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.editor.es.R
+import com.editor.es.build.BuildAction
 import com.editor.es.build.BuildEvent
+import com.editor.es.build.BuildRequest
 import com.editor.es.build.BuildRunner
+import com.editor.es.build.RunConfigurations
+import com.editor.es.build.RunMenuState
 import com.editor.es.data.AppSettings
 import com.editor.es.data.PreferenceSettings
 import com.editor.es.lsp.LspManager
@@ -77,6 +81,8 @@ import com.editor.es.editor.EditorConfigurator
 import com.editor.es.editor.EditorLanguageResolver
 import com.editor.es.editor.EditorPane
 import com.editor.es.ui.build.BuildConsole
+import com.editor.es.ui.build.NewCommandDialog
+import com.editor.es.ui.build.RunMenu
 import com.editor.es.ui.build.ConsoleLine
 import com.editor.es.ui.build.ConsoleLineKind
 import com.editor.es.ui.build.ToolchainInstallDialog
@@ -182,6 +188,12 @@ fun EditorScreen(projectPath: String) {
     val lspScope = remember { CoroutineScope(SupervisorJob() + Dispatchers.IO) }
     var lspStatus by remember { mutableStateOf<String?>(null) }
     val buildRunner = remember { BuildRunner(context) }
+    val runConfigurations = remember(projectDir) {
+        RunConfigurations(context, projectDir, buildRunner)
+    }
+    var runMenu by remember { mutableStateOf<RunMenuState?>(null) }
+    var menuExpanded by remember { mutableStateOf(false) }
+    var showNewCommand by remember { mutableStateOf(false) }
     val consoleLines = remember { mutableStateListOf<ConsoleLine>() }
     var consoleVisible by remember { mutableStateOf(false) }
     var building by remember { mutableStateOf(false) }
@@ -305,7 +317,7 @@ fun EditorScreen(projectPath: String) {
         if (consoleLines.size > limit) consoleLines.removeRange(0, consoleLines.size - limit)
     }
 
-    fun startBuild() {
+    fun execute(request: BuildRequest) {
         if (building) return
         if (AppSettings.bool(PreferenceSettings.ConsoleAutoOpen, true)) consoleVisible = true
         building = true
@@ -317,8 +329,7 @@ fun EditorScreen(projectPath: String) {
                     if (savedCount == 1) "> saved 1 file" else "> saved $savedCount files"
                 )
             }
-            appendConsole("> building ${projectDir.name}")
-            buildRunner.run(projectDir) { event ->
+            buildRunner.run(projectDir, request) { event ->
                 when (event) {
                     is BuildEvent.Line -> appendConsole(event.text)
                     is BuildEvent.Finished -> {
@@ -338,10 +349,35 @@ fun EditorScreen(projectPath: String) {
         }
     }
 
-    fun requestBuild() {
+    fun refreshRunMenu() {
+        scope.launch { runMenu = runConfigurations.load() }
+    }
+
+    fun runAction(action: BuildAction, rebuild: Boolean) {
+        val configure = runMenu?.selected ?: action.configurePreset
+        val request = when {
+            action.isRaw -> BuildRequest.Raw(action.label, action.rawCommand.orEmpty())
+            rebuild -> BuildRequest.Rebuild(action.name, configure ?: action.name)
+            else -> BuildRequest.Build(action.name, configure ?: action.name)
+        }
+        execute(request)
+    }
+
+    fun openRunMenu() {
         val ready = ToolchainPaths.isInstalled(context, ToolchainKind.CMake) &&
             ToolchainPaths.isInstalled(context, ToolchainKind.Ndk)
-        if (ready) startBuild() else showToolchainDialog = true
+        if (!ready) {
+            showToolchainDialog = true
+            return
+        }
+        scope.launch {
+            if (!runConfigurations.hasPresets()) {
+                withContext(Dispatchers.IO) { runConfigurations.bootstrap() }
+                appendConsole("> created ${com.editor.es.build.CmakePresets.ProjectFileName}")
+            }
+            runMenu = runConfigurations.load()
+            menuExpanded = true
+        }
     }
 
     fun undo() {
@@ -459,13 +495,53 @@ fun EditorScreen(projectPath: String) {
                     )
                 }
 
-                IconButton(onClick = { requestBuild() }, enabled = !building) {
-                    Icon(
-                        imageVector = Icons.Outlined.PlayArrow,
-                        contentDescription = stringResource(R.string.run_build),
-                        tint = if (building) DisabledTint else AccentGreen,
-                        modifier = Modifier.size(22.dp)
-                    )
+                Box {
+                    IconButton(onClick = { openRunMenu() }, enabled = !building) {
+                        Icon(
+                            imageVector = Icons.Outlined.PlayArrow,
+                            contentDescription = stringResource(R.string.run_build),
+                            tint = if (building) DisabledTint else AccentGreen,
+                            modifier = Modifier.size(22.dp)
+                        )
+                    }
+                    val menu = runMenu
+                    if (menu != null) {
+                        RunMenu(
+                            expanded = menuExpanded,
+                            configurePresets = menu.configurePresets,
+                            actions = menu.actions,
+                            selected = menu.selected,
+                            canDelete = { runConfigurations.isUserDefined(it) },
+                            onDismiss = { menuExpanded = false },
+                            onSelectPreset = { name ->
+                                runConfigurations.selectPreset(name)
+                                refreshRunMenu()
+                            },
+                            onBuild = { action ->
+                                menuExpanded = false
+                                runAction(action, false)
+                            },
+                            onRebuild = { action ->
+                                menuExpanded = false
+                                runAction(action, true)
+                            },
+                            onReconfigure = {
+                                menuExpanded = false
+                                val preset = menu.selected
+                                if (preset != null) {
+                                    execute(BuildRequest.Reconfigure(preset))
+                                }
+                            },
+                            onDelete = { action ->
+                                runConfigurations.remove(action)
+                                refreshRunMenu()
+                            },
+                            onNewCommand = {
+                                menuExpanded = false
+                                showNewCommand = true
+                            }
+                        )
+                    }
                 }
             }
             Box(modifier = Modifier.weight(1f)) {
@@ -603,12 +679,42 @@ fun EditorScreen(projectPath: String) {
         }
     }
 
+    if (showNewCommand) {
+        val menu = runMenu
+        NewCommandDialog(
+            configurePresets = menu?.configurePresets.orEmpty(),
+            defaultPreset = menu?.selected,
+            onDismiss = { showNewCommand = false },
+            onSave = { result ->
+                showNewCommand = false
+                scope.launch {
+                    withContext(Dispatchers.IO) {
+                        if (result.rawCommand != null) {
+                            runConfigurations.saveRawCommand(result.name, result.rawCommand)
+                        } else {
+                            runConfigurations.saveBuildPreset(
+                                name = result.name,
+                                configurePreset = result.configurePreset,
+                                targets = result.targets,
+                                jobs = result.jobs,
+                                verbose = result.verbose,
+                                cleanFirst = result.cleanFirst
+                            )
+                        }
+                    }
+                    runMenu = runConfigurations.load()
+                    menuExpanded = true
+                }
+            }
+        )
+    }
+
     if (showToolchainDialog) {
         ToolchainInstallDialog(
             onDismiss = { showToolchainDialog = false },
             onReady = {
                 showToolchainDialog = false
-                startBuild()
+                openRunMenu()
             }
         )
     }
