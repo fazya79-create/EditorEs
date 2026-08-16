@@ -33,9 +33,9 @@ class EditorEsSessionClient(
     }
 
     override fun onCopyTextToClipboard(session: TerminalSession, text: String?) {
-        if (text.isNullOrEmpty()) return
+        val cleaned = trimSelection(text) ?: return
         context.getSystemService(ClipboardManager::class.java)
-            .setPrimaryClip(ClipData.newPlainText("terminal", text))
+            .setPrimaryClip(ClipData.newPlainText("terminal", cleaned))
     }
 
     override fun onPasteTextFromClipboard(session: TerminalSession?) {
@@ -141,4 +141,16 @@ class EditorEsViewClient(
     override fun logStackTraceWithMessage(tag: String?, message: String?, e: Exception?) {}
 
     override fun logStackTrace(tag: String?, e: Exception?) {}
+}
+
+internal fun trimSelection(text: String?): String? {
+    if (text.isNullOrEmpty()) return null
+    val lines = text.split('\n')
+    val trimmed = lines.map { it.trimEnd(' ', '\t', '\u00A0') }
+    var start = 0
+    var end = trimmed.size
+    while (start < end && trimmed[start].isBlank()) start++
+    while (end > start && trimmed[end - 1].isBlank()) end--
+    if (start >= end) return null
+    return trimmed.subList(start, end).joinToString("\n").ifBlank { null }
 }

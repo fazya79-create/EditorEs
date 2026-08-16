@@ -2,6 +2,7 @@ package com.editor.es.ui.screens
 
 import android.content.ClipData
 import android.content.ClipboardManager
+import android.view.inputmethod.InputMethodManager
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.spring
@@ -58,6 +59,8 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.runtime.withFrameNanos
+import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
@@ -210,6 +213,7 @@ fun EditorScreen(projectPath: String) {
     var toolsExpanded by remember { mutableStateOf(false) }
     var findState by remember { mutableStateOf(FindState()) }
     var findVisible by remember { mutableStateOf(false) }
+    val findFocusRequester = remember { FocusRequester() }
     var symbolPanel by remember { mutableStateOf<List<SymbolEntry>?>(null) }
     var locationPanel by remember { mutableStateOf<Pair<String, List<LocationEntry>>?>(null) }
     val consoleLines = remember { mutableStateListOf<ConsoleLine>() }
@@ -567,6 +571,17 @@ fun EditorScreen(projectPath: String) {
         closeDrawer()
     }
 
+    LaunchedEffect(findVisible) {
+        if (!findVisible) return@LaunchedEffect
+        editorRef?.let { editor ->
+            editor.clearFocus()
+            val manager = context.getSystemService(InputMethodManager::class.java)
+            manager?.hideSoftInputFromWindow(editor.windowToken, 0)
+        }
+        withFrameNanos { }
+        runCatching { findFocusRequester.requestFocus() }
+    }
+
     BackHandler(enabled = drawerProgress == 0f && findVisible) {
         closeFind()
     }
@@ -794,6 +809,7 @@ fun EditorScreen(projectPath: String) {
             if (findVisible) {
                 FindReplaceBar(
                     state = findState,
+                    focusRequester = findFocusRequester,
                     onQueryChange = { value -> runSearch(findState.copy(query = value)) },
                     onReplacementChange = { value ->
                         findState = findState.copy(replacement = value)
@@ -941,8 +957,7 @@ fun EditorScreen(projectPath: String) {
                     onMenuRequested = { dialog = ExplorerDialog.Menu(it) },
                     onQuickAction = { action, parent ->
                         dialog = ExplorerDialog.Input(initial = "", parent = parent, kind = action)
-                    },
-                    onCopyPath = { file -> copyProjectPath(file) }
+                    }
                 )
             }
         }
@@ -1011,6 +1026,10 @@ fun EditorScreen(projectPath: String) {
                 dialog = when (action) {
                     NodeAction.NewFile -> ExplorerDialog.Input("", target, action)
                     NodeAction.NewFolder -> ExplorerDialog.Input("", target, action)
+                    NodeAction.CopyPath -> {
+                        copyProjectPath(target)
+                        null
+                    }
                     NodeAction.Rename -> ExplorerDialog.Input(target.name, target, action)
                     NodeAction.Delete -> ExplorerDialog.Delete(target)
                 }

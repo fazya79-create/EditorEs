@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.ContentCopy
 import androidx.compose.material.icons.outlined.CreateNewFolder
 import androidx.compose.material.icons.outlined.DeleteOutline
 import androidx.compose.material.icons.outlined.DriveFileRenameOutline
@@ -62,6 +63,11 @@ fun NodeActionSheet(
                     onClick = { onAction(NodeAction.NewFolder) }
                 )
             }
+            ActionRow(
+                label = stringResource(R.string.copy_path),
+                icon = Icons.Outlined.ContentCopy,
+                onClick = { onAction(NodeAction.CopyPath) }
+            )
             ActionRow(
                 label = stringResource(R.string.rename),
                 icon = Icons.Outlined.DriveFileRenameOutline,

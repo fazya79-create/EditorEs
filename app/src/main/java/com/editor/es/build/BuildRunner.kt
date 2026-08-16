@@ -160,6 +160,7 @@ class BuildRunner(private val context: Context) {
 
     private fun prootArgsFor(projectDir: File, script: String): List<String> {
         val guestProject = projectDir.absolutePath
+        ProotConfig.prepareStorageMounts(context)
         runCatching {
             File(ProotConfig.rootfsDir(context), guestProject.trimStart('/')).mkdirs()
         }

@@ -117,6 +117,7 @@ class LspManager(private val context: Context, private val projectDir: File) {
         val connected = runCatching { lspEditor.connect(false) }.getOrDefault(false)
         if (connected) {
             attached[path] = lspEditor
+            withContext(Dispatchers.Main) { LspPopupSizing.apply(lspEditor, editor) }
             onStatus("clangd connected")
         } else {
             onStatus("clangd failed to start")

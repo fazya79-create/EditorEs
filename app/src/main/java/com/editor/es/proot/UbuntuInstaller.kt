@@ -260,6 +260,7 @@ class UbuntuInstaller(private val context: Context) {
         )
 
         ProotConfig.writeShellProfile(context)
+        ProotConfig.prepareStorageMounts(context)
 
         listOf("tmp", "root", "var/tmp", "var/cache/apt/archives/partial", "var/lib/apt/lists/partial")
             .forEach { path ->

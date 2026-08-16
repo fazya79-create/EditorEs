@@ -27,6 +27,27 @@ object ProotConfig {
     private const val GuestNdkBin = "/opt/ndk/toolchains/llvm/prebuilt/linux-arm64/bin"
     private const val GuestNdkRoot = "/opt/ndk"
 
+    private const val PrimaryStorage = "/storage/emulated/0"
+
+    private val StorageBinds: List<String>
+        get() = buildList {
+            val primary = File(PrimaryStorage)
+            if (primary.isDirectory) {
+                add("$PrimaryStorage:$PrimaryStorage")
+                add("$PrimaryStorage:/sdcard")
+            }
+            val external = File("/storage")
+            if (external.isDirectory) add("/storage:/storage")
+        }
+
+    fun prepareStorageMounts(context: Context) {
+        val rootfs = rootfsDir(context)
+        runCatching {
+            File(rootfs, "storage/emulated/0").mkdirs()
+            File(rootfs, "sdcard").mkdirs()
+        }
+    }
+
     private val ToolchainPath = "$GuestCMakeBin:$GuestNdkBin"
 
     private val FullGuestPath = "$ToolchainPath:$GuestPath"
@@ -89,6 +110,7 @@ object ProotConfig {
             "--bind=$rootfs/proc/.version:/proc/version",
             "--bind=$rootfs/proc/.vmstat:/proc/vmstat",
             "--bind=$rootfs/proc/.sysctl_entry_cap_last_cap:/proc/sys/kernel/cap_last_cap",
+            *StorageBinds.map { "--bind=$it" }.toTypedArray(),
             "/usr/bin/env",
             "-i",
             "HOME=/root",
@@ -153,6 +175,7 @@ object ProotConfig {
             "--bind=$rootfs/proc/.vmstat:/proc/vmstat",
             "--bind=$rootfs/proc/.sysctl_entry_cap_last_cap:/proc/sys/kernel/cap_last_cap"
         )
+        StorageBinds.forEach { args += "--bind=$it" }
         binds.forEach { args += "--bind=$it" }
         args += listOf(
             "/usr/bin/env",
@@ -208,6 +231,7 @@ object ProotConfig {
             "--bind=$rootfs/proc/.vmstat:/proc/vmstat",
             "--bind=$rootfs/proc/.sysctl_entry_cap_last_cap:/proc/sys/kernel/cap_last_cap"
         )
+        StorageBinds.forEach { args += "--bind=$it" }
         binds.forEach { args += "--bind=$it" }
         args += listOf(
             "/usr/bin/env",

@@ -25,6 +25,7 @@
     <string name="explorer">Explorer</string>
     <string name="new_file">New file</string>
     <string name="new_folder">New folder</string>
+    <string name="copy_path">Copy path</string>
     <string name="rename">Rename</string>
     <string name="delete">Delete</string>
     <string name="cancel">Cancel</string>

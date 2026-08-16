@@ -26,6 +26,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
@@ -53,6 +55,7 @@ data class FindState(
 @Composable
 fun FindReplaceBar(
     state: FindState,
+    focusRequester: FocusRequester,
     onQueryChange: (String) -> Unit,
     onReplacementChange: (String) -> Unit,
     onToggleOption: (String) -> Unit,
@@ -75,7 +78,9 @@ fun FindReplaceBar(
                 value = state.query,
                 placeholder = "Find",
                 onValueChange = onQueryChange,
-                modifier = Modifier.weight(1f)
+                modifier = Modifier
+                    .weight(1f)
+                    .focusRequester(focusRequester)
             )
             Spacer(modifier = Modifier.width(6.dp))
             Text(
