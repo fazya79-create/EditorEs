@@ -238,12 +238,12 @@ fun TerminalScreen(onBack: () -> Unit) {
                         )
                         val client = EditorEsSessionClient(ctx, this)
                         sessionClient = client
+                        setTextSize(TerminalTextSize)
                         setTypeface(
                             runCatching {
                                 Typeface.createFromAsset(ctx.assets, "fonts/JetBrainsMono-Regular.ttf")
                             }.getOrDefault(Typeface.MONOSPACE)
                         )
-                        setTextSize(TerminalTextSize)
                         val session = TerminalSession(
                             "/system/bin/sh",
                             ctx.filesDir.absolutePath,
