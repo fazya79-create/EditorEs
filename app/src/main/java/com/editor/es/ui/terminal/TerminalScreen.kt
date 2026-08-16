@@ -1,5 +1,6 @@
 package com.editor.es.ui.terminal
 
+import android.content.Context
 import android.graphics.Typeface
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
