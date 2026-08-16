@@ -75,10 +75,17 @@ class EditorEsViewClient(
     private val ctrlArmed: () -> Boolean,
     private val altArmed: () -> Boolean,
     private val shiftArmed: () -> Boolean,
-    private val onKeyConsumed: () -> Unit
+    private val onKeyConsumed: () -> Unit,
+    private val onZoom: (Boolean) -> Unit
 ) : TerminalViewClient {
 
-    override fun onScale(scale: Float): Float = 1f
+    override fun onScale(scale: Float): Float {
+        if (scale < 0.9f || scale > 1.1f) {
+            onZoom(scale > 1f)
+            return 1f
+        }
+        return scale
+    }
 
     override fun onSingleTapUp(e: MotionEvent?) {
         context.getSystemService(InputMethodManager::class.java)

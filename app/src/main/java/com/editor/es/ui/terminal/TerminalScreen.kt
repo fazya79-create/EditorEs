@@ -4,9 +4,7 @@ import android.graphics.Typeface
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.interaction.MutableInteractionSource
-import androidx.compose.foundation.interaction.collectIsPressedAsState
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -37,6 +35,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -50,6 +49,7 @@ import com.termux.terminal.TerminalColors
 import com.termux.terminal.TerminalSession
 import com.termux.terminal.TextStyle
 import com.termux.view.TerminalView
+import kotlinx.coroutines.delay
 
 private val TerminalBackground = Color(0xFF0A2129)
 private val HeaderBackground = Color(0xFF0E2A33)
@@ -58,7 +58,11 @@ private val KeyBorder = Color(0x3302F5A1)
 private val KeyForeground = Color(0xFFD9F3E6)
 private val ArmedBackground = Color(0x2902F5A1)
 private val KeyShape = RoundedCornerShape(10.dp)
-private val TerminalTextSize = 13
+internal val TerminalTextSize = 13
+private const val MinTerminalTextSize = 8
+private const val MaxTerminalTextSize = 24
+private const val HoldDelayMs = 350L
+private const val RepeatIntervalMs = 60L
 
 private enum class ModifierKey {
     Ctrl,
@@ -68,27 +72,28 @@ private enum class ModifierKey {
 private data class TerminalKey(
     val label: String,
     val payload: String? = null,
-    val modifier: ModifierKey? = null
+    val modifier: ModifierKey? = null,
+    val repeatable: Boolean = false
 )
 
 private val FirstRow = listOf(
     TerminalKey("ESC", "\u001b"),
     TerminalKey("/", "/"),
     TerminalKey("-", "-"),
-    TerminalKey("HOME", "\u001b[H"),
-    TerminalKey("▲", "\u001b[A"),
-    TerminalKey("END", "\u001b[F"),
-    TerminalKey("PGUP", "\u001b[5~")
+    TerminalKey("HOME", "\u001b[H", repeatable = true),
+    TerminalKey("▲", "\u001b[A", repeatable = true),
+    TerminalKey("END", "\u001b[F", repeatable = true),
+    TerminalKey("PGUP", "\u001b[5~", repeatable = true)
 )
 
 private val SecondRow = listOf(
     TerminalKey("TAB", "\t"),
     TerminalKey("CTRL", modifier = ModifierKey.Ctrl),
     TerminalKey("ALT", modifier = ModifierKey.Alt),
-    TerminalKey("◀", "\u001b[D"),
-    TerminalKey("▼", "\u001b[B"),
-    TerminalKey("▶", "\u001b[C"),
-    TerminalKey("PGDN", "\u001b[6~")
+    TerminalKey("◀", "\u001b[D", repeatable = true),
+    TerminalKey("▼", "\u001b[B", repeatable = true),
+    TerminalKey("▶", "\u001b[C", repeatable = true),
+    TerminalKey("PGDN", "\u001b[6~", repeatable = true)
 )
 
 private fun buildEnv(home: String): Array<String> = arrayOf(
@@ -118,6 +123,8 @@ fun TerminalScreen(onBack: () -> Unit) {
     val context = LocalContext.current
     var ctrlArmed by remember { mutableStateOf(false) }
     var altArmed by remember { mutableStateOf(false) }
+    var terminalTextSize by remember { mutableStateOf(TerminalTextSize) }
+    var appliedTextSize by remember { mutableStateOf(TerminalTextSize) }
     var terminalView by remember { mutableStateOf<TerminalView?>(null) }
     var sessionClient by remember { mutableStateOf<EditorEsSessionClient?>(null) }
     var sessionRef by remember { mutableStateOf<TerminalSession?>(null) }
@@ -233,12 +240,17 @@ fun TerminalScreen(onBack: () -> Unit) {
                                 onKeyConsumed = {
                                     ctrlArmed = false
                                     altArmed = false
+                                },
+                                onZoom = { zoomIn ->
+                                    val delta = if (zoomIn) 1 else -1
+                                    terminalTextSize = (terminalTextSize + delta)
+                                        .coerceIn(MinTerminalTextSize, MaxTerminalTextSize)
                                 }
                             )
                         )
                         val client = EditorEsSessionClient(ctx, this)
                         sessionClient = client
-                        setTextSize(TerminalTextSize)
+                        setTextSize(terminalTextSize)
                         setTypeface(
                             runCatching {
                                 Typeface.createFromAsset(ctx.assets, "fonts/JetBrainsMono-Regular.ttf")
@@ -257,6 +269,12 @@ fun TerminalScreen(onBack: () -> Unit) {
                         terminalView = this
                         requestFocus()
                     }
+                },
+                update = { view ->
+                    if (appliedTextSize != terminalTextSize) {
+                        view.setTextSize(terminalTextSize)
+                        appliedTextSize = terminalTextSize
+                    }
                 }
             )
         }
@@ -264,7 +282,7 @@ fun TerminalScreen(onBack: () -> Unit) {
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(start = 6.dp, end = 6.dp, top = 6.dp),
+                    .padding(start = 4.dp, end = 4.dp, top = 4.dp),
                 content = {
                     FirstRow.forEach { key ->
                         TerminalKeyChip(
@@ -280,7 +298,7 @@ fun TerminalScreen(onBack: () -> Unit) {
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(6.dp),
+                    .padding(4.dp),
                 content = {
                     SecondRow.forEach { key ->
                         TerminalKeyChip(
@@ -304,28 +322,47 @@ private fun TerminalKeyChip(
     onTap: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val interactionSource = remember { MutableInteractionSource() }
-    val pressed by interactionSource.collectIsPressedAsState()
+    var pressed by remember { mutableStateOf(false) }
     Box(
         modifier = modifier
             .padding(horizontal = 2.dp)
-            .height(42.dp)
+            .height(30.dp)
             .graphicsLayer {
-                val scale = if (pressed) 0.92f else 1f
+                val scale = if (pressed) 0.9f else 1f
                 scaleX = scale
                 scaleY = scale
             }
             .clip(KeyShape)
             .background(if (armed) ArmedBackground else KeyBackground)
             .border(1.dp, if (armed) SpringGreen else KeyBorder, KeyShape)
-            .clickable(interactionSource = interactionSource, indication = null, onClick = onTap),
+            .pointerInput(key) {
+                detectTapGestures(
+                    onPress = {
+                        pressed = true
+                        onTap()
+                        try {
+                            if (key.repeatable) {
+                                delay(HoldDelayMs)
+                                while (true) {
+                                    onTap()
+                                    delay(RepeatIntervalMs)
+                                }
+                            } else {
+                                tryAwaitRelease()
+                            }
+                        } finally {
+                            pressed = false
+                        }
+                    }
+                )
+            },
         contentAlignment = Alignment.Center
     ) {
         Text(
             text = key.label,
-            fontSize = 11.sp,
+            fontSize = 9.5.sp,
             fontWeight = if (armed) FontWeight.Bold else FontWeight.SemiBold,
-            letterSpacing = 0.4.sp,
+            letterSpacing = 0.3.sp,
             color = if (armed) SpringGreen else KeyForeground,
             maxLines = 1
         )
