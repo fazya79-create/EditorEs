@@ -7,8 +7,18 @@ import io.github.rosemoe.sora.lsp.client.languageserver.serverdefinition.languag
 import io.github.rosemoe.sora.lsp.editor.LspEditor
 import io.github.rosemoe.sora.lsp.editor.LspProject
 import io.github.rosemoe.sora.widget.CodeEditor
+import io.github.rosemoe.sora.widget.component.EditorAutoCompletion
+import io.github.rosemoe.sora.widget.getComponent
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import org.eclipse.lsp4j.CodeActionOptions
+import org.eclipse.lsp4j.CompletionOptions
+import org.eclipse.lsp4j.DiagnosticRegistrationOptions
+import org.eclipse.lsp4j.DocumentLinkOptions
+import org.eclipse.lsp4j.RenameOptions
+import org.eclipse.lsp4j.ServerCapabilities
+import org.eclipse.lsp4j.SignatureHelpOptions
+import org.eclipse.lsp4j.jsonrpc.messages.Either
 import java.io.File
 
 class LspManager(private val context: Context, private val projectDir: File) {
@@ -23,9 +33,35 @@ class LspManager(private val context: Context, private val projectDir: File) {
 
     fun tooLarge(file: File): Boolean = file.length() > MaxFileBytes
 
+    private fun expectedCapabilities(): ServerCapabilities = ServerCapabilities().apply {
+        completionProvider = CompletionOptions(true, CompletionTriggers)
+        signatureHelpProvider = SignatureHelpOptions(SignatureTriggers, SignatureRetriggers)
+        hoverProvider = Either.forLeft(true)
+        definitionProvider = Either.forLeft(true)
+        typeDefinitionProvider = Either.forLeft(true)
+        implementationProvider = Either.forLeft(true)
+        referencesProvider = Either.forLeft(true)
+        documentHighlightProvider = Either.forLeft(true)
+        documentSymbolProvider = Either.forLeft(true)
+        workspaceSymbolProvider = Either.forLeft(true)
+        documentFormattingProvider = Either.forLeft(true)
+        documentRangeFormattingProvider = Either.forLeft(true)
+        codeActionProvider = Either.forRight(CodeActionOptions())
+        renameProvider = Either.forRight(RenameOptions(true))
+        inlayHintProvider = Either.forLeft(true)
+        colorProvider = Either.forLeft(true)
+        foldingRangeProvider = Either.forLeft(true)
+        selectionRangeProvider = Either.forLeft(true)
+        documentLinkProvider = DocumentLinkOptions(false)
+        callHierarchyProvider = Either.forLeft(true)
+        typeHierarchyProvider = Either.forLeft(true)
+        diagnosticProvider = DiagnosticRegistrationOptions(true, true)
+    }
+
     private fun ensureProject(): LspProject {
         project?.let { return it }
         val created = LspProject(projectDir.absolutePath)
+        val capabilities = expectedCapabilities()
         for (ext in CppExtensions) {
             created.addServerDefinition(
                 languageServerDefinition {
@@ -34,6 +70,7 @@ class LspManager(private val context: Context, private val projectDir: File) {
                     connection {
                         provider { ClangdConnection(context, projectDir) }
                     }
+                    expectedCapabilities(capabilities)
                 }
             )
         }
@@ -65,7 +102,11 @@ class LspManager(private val context: Context, private val projectDir: File) {
             lspEditor.editor = editor
             lspEditor.isEnableHover = true
             lspEditor.isEnableSignatureHelp = true
-            lspEditor.isEnableInlayHint = false
+            lspEditor.isEnableInlayHint = true
+            lspEditor.completionTriggers.addAll(CompletionTriggers)
+            lspEditor.signatureHelpTriggers.addAll(SignatureTriggers)
+            lspEditor.signatureHelpReTriggers.addAll(SignatureRetriggers)
+            editor.getComponent<EditorAutoCompletion>().setEnabledAnimation(true)
         }
         val connected = runCatching { lspEditor.connect(false) }.getOrDefault(false)
         if (connected) {
@@ -100,7 +141,8 @@ class LspManager(private val context: Context, private val projectDir: File) {
         if (File(projectDir, "compile_flags.txt").isFile) return
         if (File(projectDir, "build/compile_commands.json").isFile) return
         if (File(projectDir, "compile_commands.json").isFile) return
-        val sysroot = "${ToolchainPaths.guestDir(ToolchainKind.Ndk)}/toolchains/llvm/prebuilt/linux-arm64/sysroot"
+        val ndk = ToolchainPaths.guestDir(ToolchainKind.Ndk)
+        val sysroot = "$ndk/toolchains/llvm/prebuilt/linux-arm64/sysroot"
         runCatching {
             File(projectDir, "compile_flags.txt").writeText(
                 listOf(
@@ -118,9 +160,15 @@ class LspManager(private val context: Context, private val projectDir: File) {
     }
 
     companion object {
-        private const val MaxFileBytes = 300L * 1024L
+        private const val MaxFileBytes = 2L * 1024L * 1024L
 
         private val CppExtensions =
             listOf(".cpp", ".cc", ".cxx", ".c", ".h", ".hpp", ".hh", ".hxx")
+
+        private val CompletionTriggers = listOf(".", ">", ":", "<", "\"", "/", "*", "&")
+
+        private val SignatureTriggers = listOf("(", ",", "<")
+
+        private val SignatureRetriggers = listOf(")", ">")
     }
 }

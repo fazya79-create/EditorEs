@@ -58,16 +58,22 @@ class ClangdConnection(
 
     companion object {
         private val ClangdFlags = listOf(
-            "--background-index=false",
+            "--background-index",
+            "--background-index-priority=low",
             "--pch-storage=disk",
             "--malloc-trim",
-            "-j=1",
-            "--limit-results=40",
-            "--limit-references=200",
-            "--header-insertion=never",
-            "--clang-tidy=false",
-            "--all-scopes-completion=false",
-            "--completion-style=bundled",
+            "-j=2",
+            "--clang-tidy",
+            "--all-scopes-completion",
+            "--completion-style=detailed",
+            "--function-arg-placeholders",
+            "--header-insertion=iwyu",
+            "--header-insertion-decorators",
+            "--include-cleaner-stdlib",
+            "--rename-file-limit=50",
+            "--limit-results=100",
+            "--limit-references=1000",
+            "--ranking-model=decision_forest",
             "--log=error"
         )
 
