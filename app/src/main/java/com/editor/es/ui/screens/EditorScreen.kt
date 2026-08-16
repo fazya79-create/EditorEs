@@ -172,15 +172,15 @@ fun EditorScreen(projectPath: String) {
     }
     var activePath by remember { mutableStateOf(tabs.firstOrNull()?.path) }
     var editorRef by remember { mutableStateOf<CodeEditor?>(null) }
+    var saveState by remember { mutableStateOf<SaveState>(SaveState.Idle) }
+    var dialog by remember { mutableStateOf<ExplorerDialog?>(null) }
+
+    val context = LocalContext.current
     val settings = remember { AppSettings(context) }
     val lspManager = remember(projectDir) { LspManager(context, projectDir) }
     val lspScope = remember { CoroutineScope(SupervisorJob() + Dispatchers.IO) }
     var lspEnabled by remember { mutableStateOf(settings.lspEnabled) }
     var lspStatus by remember { mutableStateOf<String?>(null) }
-    var saveState by remember { mutableStateOf<SaveState>(SaveState.Idle) }
-    var dialog by remember { mutableStateOf<ExplorerDialog?>(null) }
-
-    val context = LocalContext.current
     val buildRunner = remember { BuildRunner(context) }
     val consoleLines = remember { mutableStateListOf<ConsoleLine>() }
     var consoleVisible by remember { mutableStateOf(false) }

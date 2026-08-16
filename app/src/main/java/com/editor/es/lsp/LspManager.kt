@@ -32,7 +32,7 @@ class LspManager(private val context: Context, private val projectDir: File) {
                     name("clangd")
                     ext(ext.removePrefix("."))
                     connection {
-                        custom { ClangdConnection(context, projectDir) }
+                        provider { ClangdConnection(context, projectDir) }
                     }
                 }
             )
