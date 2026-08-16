@@ -219,8 +219,8 @@ object EditorSettings {
             CompletionWidthMode,
             "Completion width",
             "How wide the completion popup grows",
-            listOf("Compact", "Auto", "Full width"),
-            0
+            0,
+            listOf(0 to "Compact", 1 to "Auto", 2 to "Full width")
         ),
         BoolSpec(AutoCompletionOnComposing, "Complete while composing", "Suggest during IME composition", true),
         BoolSpec(SelectCompletionOnEnter, "Enter selects first item", "Accept the first suggestion with enter", true),
