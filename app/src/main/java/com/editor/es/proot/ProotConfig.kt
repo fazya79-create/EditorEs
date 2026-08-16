@@ -155,7 +155,7 @@ object ProotConfig {
             "TERM=dumb",
             "TMPDIR=/tmp",
             "/usr/bin/bash",
-            "-lc",
+            "-c",
             script
         )
         return args

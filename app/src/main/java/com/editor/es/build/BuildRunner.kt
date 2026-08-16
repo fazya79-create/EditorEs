@@ -46,6 +46,15 @@ class BuildRunner(private val context: Context) {
                     return@withContext
                 }
 
+                val cmakeHost = ToolchainPaths.cmakeBinary(context)
+                val ninjaHost = File(cmakeHost.parentFile, "ninja")
+                if (!cmakeHost.canExecute()) cmakeHost.setExecutable(true, false)
+                if (!ninjaHost.canExecute()) ninjaHost.setExecutable(true, false)
+                if (!cmakeHost.canExecute()) {
+                    onEvent(BuildEvent.Failed("cmake is not executable at ${cmakeHost.absolutePath}"))
+                    return@withContext
+                }
+
                 val guestProject = "/project"
                 val script = buildScript()
                 val args = ProotConfig.commandArgs(
@@ -57,6 +66,7 @@ class BuildRunner(private val context: Context) {
                 )
 
                 onEvent(BuildEvent.Line("> cmake configure + build (arm64-v8a, android-24)"))
+                onEvent(BuildEvent.Line("> using ${ToolchainPaths.guestCMake()}"))
 
                 val builder = ProcessBuilder(args)
                 builder.redirectErrorStream(true)
@@ -80,17 +90,18 @@ class BuildRunner(private val context: Context) {
         }
 
     private fun buildScript(): String {
+        val cmake = ToolchainPaths.guestCMake()
         val toolchain = ToolchainPaths.guestNdkToolchainFile()
         val ninja = ToolchainPaths.guestNinja()
         return listOf(
             "set -e",
-            "cmake -S . -B build -G Ninja" +
+            "$cmake -S . -B build -G Ninja" +
                 " -DCMAKE_MAKE_PROGRAM=$ninja" +
                 " -DCMAKE_TOOLCHAIN_FILE=$toolchain" +
                 " -DANDROID_ABI=arm64-v8a" +
                 " -DANDROID_PLATFORM=android-24" +
                 " -DCMAKE_BUILD_TYPE=Release",
-            "cmake --build build"
+            "$cmake --build build"
         ).joinToString(" && ")
     }
 }

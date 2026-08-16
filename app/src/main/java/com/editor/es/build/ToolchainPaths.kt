@@ -72,6 +72,8 @@ object ToolchainPaths {
 
     fun guestCMakeBin(): String = "${guestDir(ToolchainKind.CMake)}/bin"
 
+    fun guestCMake(): String = "${guestDir(ToolchainKind.CMake)}/bin/cmake"
+
     fun guestNinja(): String = "${guestDir(ToolchainKind.CMake)}/bin/ninja"
 
     fun downloadCache(context: Context, kind: ToolchainKind): File =
