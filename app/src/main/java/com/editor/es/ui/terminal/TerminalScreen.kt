@@ -21,9 +21,11 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.ime
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -55,6 +57,7 @@ import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
@@ -207,6 +210,7 @@ fun TerminalScreen(onBack: () -> Unit) {
     var sessionRef by remember { mutableStateOf<TerminalSession?>(null) }
     var previousSessionId by remember { mutableStateOf<Int?>(null) }
     val isFinishing = remember { mutableStateOf(false) }
+    val imeVisible = WindowInsets.ime.getBottom(LocalDensity.current) > 0
     var flow by remember {
         mutableStateOf(
             if (ProotConfig.isInstalled(context)) TerminalFlow.Terminal else TerminalFlow.AskInstall
@@ -394,39 +398,42 @@ fun TerminalScreen(onBack: () -> Unit) {
                 }
             )
         }
-        Column(modifier = Modifier.background(HeaderBackground)) {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(start = 4.dp, end = 4.dp, top = 4.dp),
-                content = {
-                    FirstRow.forEach { key ->
-                        TerminalKeyChip(
-                            key = key,
-                            armed = (key.modifier == ModifierKey.Ctrl && ctrlArmed) ||
-                                (key.modifier == ModifierKey.Alt && altArmed),
-                            onTap = { sendKey(key) },
-                            modifier = Modifier.weight(1f)
-                        )
+        if (imeVisible) {
+            Column(modifier = Modifier.background(HeaderBackground)) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(start = 4.dp, end = 4.dp, top = 4.dp),
+                    content = {
+                        FirstRow.forEach { key ->
+                            TerminalKeyChip(
+                                key = key,
+                                armed = (key.modifier == ModifierKey.Ctrl && ctrlArmed) ||
+                                    (key.modifier == ModifierKey.Alt && altArmed),
+                                onTap = { sendKey(key) },
+                                modifier = Modifier.weight(1f)
+                            )
+                        }
                     }
-                }
-            )
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(4.dp),
-                content = {
-                    SecondRow.forEach { key ->
-                        TerminalKeyChip(
-                            key = key,
-                            armed = (key.modifier == ModifierKey.Ctrl && ctrlArmed) ||
-                                (key.modifier == ModifierKey.Alt && altArmed),
-                            onTap = { sendKey(key) },
-                            modifier = Modifier.weight(1f)
-                        )
+                )
+
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(4.dp),
+                    content = {
+                        SecondRow.forEach { key ->
+                            TerminalKeyChip(
+                                key = key,
+                                armed = (key.modifier == ModifierKey.Ctrl && ctrlArmed) ||
+                                    (key.modifier == ModifierKey.Alt && altArmed),
+                                onTap = { sendKey(key) },
+                                modifier = Modifier.weight(1f)
+                            )
+                        }
                     }
-                }
-            )
+                )
+            }
         }
         }
 
