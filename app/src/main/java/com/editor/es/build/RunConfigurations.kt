@@ -35,7 +35,8 @@ class RunConfigurations(
             projectDir = projectDir,
             abi = runner.abi(),
             apiLevel = runner.apiLevel(),
-            buildType = runner.buildType()
+            buildType = runner.buildType(),
+            ninjaPath = ToolchainPaths.guestNinja()
         )
         selectPreset(CmakePresets.defaultPresetName(runner.buildType()))
     }

@@ -162,6 +162,8 @@ object ProotConfig {
             "LOGNAME=root",
             "LANG=C.UTF-8",
             "PATH=$path",
+            "ANDROID_NDK_ROOT=$GuestNdkRoot",
+            "ANDROID_NDK_HOME=$GuestNdkRoot",
             "TERM=dumb",
             "TMPDIR=/tmp",
             "/usr/bin/bash",

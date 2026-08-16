@@ -107,7 +107,8 @@ class BuildRunner(private val context: Context) {
     }
 
     private fun configureCommand(configurePreset: String): String =
-        "${ToolchainPaths.guestCMake()} --preset $configurePreset"
+        "${ToolchainPaths.guestCMake()} --preset $configurePreset" +
+            " -DCMAKE_MAKE_PROGRAM=${ToolchainPaths.guestNinja()}"
 
     private fun staleCacheReason(binaryDir: File, projectDir: File): String? {
         val cache = File(binaryDir, "CMakeCache.txt")
@@ -137,10 +138,17 @@ class BuildRunner(private val context: Context) {
             return "CMakeLists.txt not found in ${projectDir.name}"
         }
         val cmakeHost = ToolchainPaths.cmakeBinary(context)
+        val ninjaHost = File(cmakeHost.parentFile, "ninja")
         cmakeHost.setExecutable(true, false)
-        File(cmakeHost.parentFile, "ninja").setExecutable(true, false)
+        ninjaHost.setExecutable(true, false)
         if (!cmakeHost.canExecute()) {
             return "cmake is not executable at ${cmakeHost.absolutePath}"
+        }
+        if (!ninjaHost.isFile) {
+            return "ninja is missing at ${ninjaHost.absolutePath}, reinstall CMake"
+        }
+        if (!ToolchainPaths.ndkToolchainFile(context).isFile) {
+            return "NDK toolchain file is missing, reinstall the NDK"
         }
         return null
     }

@@ -33,7 +33,13 @@ object CmakePresets {
     fun hasAny(projectDir: File): Boolean =
         projectFile(projectDir).isFile || userFile(projectDir).isFile
 
-    fun bootstrap(projectDir: File, abi: String, apiLevel: Int, buildType: String) {
+    fun bootstrap(
+        projectDir: File,
+        abi: String,
+        apiLevel: Int,
+        buildType: String,
+        ninjaPath: String
+    ) {
         val base = JSONObject()
             .put("name", "android-base")
             .put("hidden", true)
@@ -49,6 +55,7 @@ object CmakePresets {
                     .put("ANDROID_ABI", abi)
                     .put("ANDROID_PLATFORM", "android-$apiLevel")
                     .put("CMAKE_EXPORT_COMPILE_COMMANDS", "ON")
+                    .put("CMAKE_MAKE_PROGRAM", ninjaPath)
             )
 
         val configures = JSONArray().put(base)
