@@ -1,14 +1,11 @@
 package com.editor.es.ui.screens
 
-import android.graphics.Rect
-import android.os.Build
-import android.view.View
+import androidx.activity.compose.BackHandler
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.spring
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Box
@@ -38,7 +35,6 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
@@ -55,7 +51,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -82,7 +77,6 @@ import io.github.rosemoe.sora.text.Content
 import io.github.rosemoe.sora.text.ContentListener
 import io.github.rosemoe.sora.widget.CodeEditor
 import java.io.File
-import kotlin.math.abs
 import kotlin.math.roundToInt
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
@@ -140,26 +134,8 @@ private class DirtyMarker(private val onDirty: () -> Unit) : ContentListener {
 fun EditorScreen(projectPath: String) {
     val scope = rememberCoroutineScope()
     val drawerAnim = remember { Animatable(0f) }
-    val view = LocalView.current
     val density = LocalDensity.current
     val drawerWidthPx = remember(density) { with(density) { DrawerWidth.toPx() } }
-    var edgeDragActive by remember { mutableStateOf(false) }
-
-    DisposableEffect(view) {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-            val stripWidthPx = (40f * density.density).toInt()
-            val layoutListener = View.OnLayoutChangeListener { v, _, _, _, _, _, _, _, _ ->
-                v.systemGestureExclusionRects = listOf(Rect(0, 0, stripWidthPx, v.height))
-            }
-            view.addOnLayoutChangeListener(layoutListener)
-            onDispose {
-                view.removeOnLayoutChangeListener(layoutListener)
-                view.systemGestureExclusionRects = emptyList()
-            }
-        } else {
-            onDispose {}
-        }
-    }
 
     val projectDir = remember { File(projectPath) }
     val explorer = remember { ExplorerState(projectDir) }
@@ -278,6 +254,10 @@ fun EditorScreen(projectPath: String) {
 
     val drawerProgress = drawerAnim.value
 
+    BackHandler(enabled = drawerProgress > 0f) {
+        closeDrawer()
+    }
+
     Box(modifier = Modifier.fillMaxSize()) {
         Column(
             modifier = Modifier
@@ -357,24 +337,11 @@ fun EditorScreen(projectPath: String) {
                         }
                     }
                 }
-                if (drawerProgress < 0.05f || edgeDragActive) {
-                    EdgeGestureStrip(
-                        onDragStart = { edgeDragActive = true },
-                        onDrag = { delta ->
-                            val next = (drawerAnim.value + delta / drawerWidthPx).coerceIn(0f, 1f)
-                            scope.launch { drawerAnim.snapTo(next) }
-                        },
-                        onDragEnd = {
-                            edgeDragActive = false
-                            settleDrawer()
-                        }
-                    )
-                }
             }
             SymbolBar(editor = editorRef)
         }
 
-        if (drawerProgress > 0f || edgeDragActive) {
+        if (drawerProgress > 0f) {
             Box(
                 modifier = Modifier
                     .fillMaxSize()
@@ -606,46 +573,6 @@ private fun HamburgerIcon(modifier: Modifier = Modifier) {
             )
         }
     }
-}
-
-@Composable
-private fun EdgeGestureStrip(
-    onDragStart: () -> Unit,
-    onDrag: (Float) -> Unit,
-    onDragEnd: () -> Unit
-) {
-    Box(
-        modifier = Modifier
-            .width(40.dp)
-            .fillMaxHeight()
-            .pointerInput(Unit) {
-                val touchSlop = viewConfiguration.touchSlop
-                while (true) {
-                    awaitPointerEventScope {
-                        val down = awaitFirstDown(requireUnconsumed = false)
-                        val startX = down.position.x
-                        val startY = down.position.y
-                        var dragging = false
-                        while (true) {
-                            val change = awaitPointerEvent().changes
-                                .firstOrNull { it.id == down.id } ?: break
-                            if (!change.pressed) break
-                            val dx = change.position.x - startX
-                            val dy = change.position.y - startY
-                            if (!dragging && abs(dx) > touchSlop && abs(dx) > abs(dy)) {
-                                dragging = true
-                                onDragStart()
-                            }
-                            if (dragging) {
-                                change.consume()
-                                onDrag(change.position.x - change.previousPosition.x)
-                            }
-                        }
-                        if (dragging) onDragEnd()
-                    }
-                }
-            }
-    )
 }
 
 @Composable
