@@ -9,22 +9,30 @@ object ProotConfig {
     const val RootfsName = "ubuntu"
     const val FakeKernelVersion = "6.2.1-PRoot-Distro"
     const val InstallMarker = ".installed"
+    const val RootfsVersion = "noble-24.04.4"
 
-    private const val TarballUrlAarch64 =
-        "https://github.com/termux/proot-distro/releases/download/v4.0.2/ubuntu-aarch64-pd-v4.0.2.tar.xz"
-    private const val TarballSha256Aarch64 =
-        "257e71bbbb8f336491f63a1d1927a83584d8b4ff8a7f4fb15392674473b838d2"
+    private const val TarballUrlArm64 =
+        "https://cdimage.ubuntu.com/ubuntu-base/releases/24.04/release/ubuntu-base-24.04.4-base-arm64.tar.gz"
+    private const val TarballSha256Arm64 =
+        "04207713ece899c3740823d33690441ad3a7f0ded1101aca744e2b0f37ac7ff2"
     private const val TarballUrlArm =
-        "https://github.com/termux/proot-distro/releases/download/v4.0.2/ubuntu-arm-pd-v4.0.2.tar.xz"
+        "https://cdimage.ubuntu.com/ubuntu-base/releases/24.04/release/ubuntu-base-24.04.4-base-armhf.tar.gz"
     private const val TarballSha256Arm =
-        "aa72f2a1bbb9d55e9b6b239d539183990e8ba6b2fcd038f5cb5680e6326b17b6"
+        "991520b47f6586f38a78505cf016e300b6191bb8ff86a0723481ec23a37ab7f4"
+
+    private const val GuestPath =
+        "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
 
     fun rootfsDir(context: Context): File = File(context.filesDir, RootfsName)
 
     fun isInstalled(context: Context): Boolean {
         val rootfs = rootfsDir(context)
-        return File(rootfs, InstallMarker).exists() && File(rootfs, "etc").isDirectory
+        return File(rootfs, InstallMarker).readTextOrNull() == RootfsVersion &&
+            File(rootfs, "etc").isDirectory &&
+            File(rootfs, "usr/bin/bash").exists()
     }
+
+    private fun File.readTextOrNull(): String? = runCatching { readText().trim() }.getOrNull()
 
     fun prootBinary(context: Context): String =
         File(context.applicationInfo.nativeLibraryDir, "libproot.so").absolutePath
@@ -34,16 +42,16 @@ object ProotConfig {
 
     fun isAvailable(context: Context): Boolean = File(prootBinary(context)).exists()
 
-    private fun isAarch64(context: Context): Boolean =
-        context.applicationInfo.nativeLibraryDir.endsWith("arm64")
+    private fun isArm64(context: Context): Boolean =
+        context.applicationInfo.nativeLibraryDir.contains("64")
 
     fun tarballUrl(context: Context): String =
-        if (isAarch64(context)) TarballUrlAarch64 else TarballUrlArm
+        if (isArm64(context)) TarballUrlArm64 else TarballUrlArm
 
     fun tarballSha256(context: Context): String =
-        if (isAarch64(context)) TarballSha256Aarch64 else TarballSha256Arm
+        if (isArm64(context)) TarballSha256Arm64 else TarballSha256Arm
 
-    fun tarballFile(context: Context): File = File(context.cacheDir, "ubuntu-rootfs.tar.xz")
+    fun tarballFile(context: Context): File = File(context.cacheDir, "ubuntu-rootfs.tar.gz")
 
     fun tmpDir(context: Context): File = File(context.cacheDir, "proot-tmp").apply { mkdirs() }
 
@@ -54,9 +62,10 @@ object ProotConfig {
             "-L",
             "--kernel-release=$FakeKernelVersion",
             "--link2symlink",
+            "--sysvipc",
             "--kill-on-exit",
             "--rootfs=$rootfs",
-            "--root-id",
+            "--change-id=0:0",
             "--cwd=/root",
             "--bind=/dev",
             "--bind=/dev/urandom:/dev/random",
@@ -75,34 +84,68 @@ object ProotConfig {
             "/usr/bin/env",
             "-i",
             "HOME=/root",
+            "USER=root",
+            "LOGNAME=root",
             "LANG=C.UTF-8",
-            "PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
+            "PATH=$GuestPath",
             "TERM=xterm-256color",
             "TMPDIR=/tmp",
-            "/bin/sh"
+            "/usr/bin/bash",
+            "-l"
         )
     }
 
     fun prootEnv(context: Context): Array<String> = arrayOf(
         "TERM=xterm-256color",
+        "HOME=${context.filesDir.absolutePath}",
         "PROOT_LOADER=${loaderBinary(context)}",
         "PROOT_TMP_DIR=${tmpDir(context).absolutePath}"
     )
 
-    fun registerAndroidUser(context: Context) {
+    fun registerAndroidIds(context: Context) {
         val rootfs = rootfsDir(context)
         val uid = Process.myUid()
-        val gid = uid
+        val userName = "aid_app_$uid"
         val passwd = File(rootfs, "etc/passwd")
         val shadow = File(rootfs, "etc/shadow")
-        val userName = "aid_a$uid"
+        val group = File(rootfs, "etc/group")
+        val gshadow = File(rootfs, "etc/gshadow")
         runCatching {
             if (passwd.exists() && !passwd.readText().contains(userName)) {
-                passwd.appendText("$userName:x:$uid:$gid:EditorEs:/:/sbin/nologin\n")
+                passwd.appendText("$userName:x:$uid:$uid:EditorEs:/:/usr/sbin/nologin\n")
             }
             if (shadow.exists() && !shadow.readText().contains(userName)) {
                 shadow.appendText("$userName:*:18446:0:99999:7:::\n")
             }
         }
+        val existing = runCatching { group.readText() }.getOrDefault("")
+        val lines = StringBuilder()
+        val shadowLines = StringBuilder()
+        for (gid in supplementaryGids()) {
+            val name = "aid_$gid"
+            if (existing.contains(":$gid:") || existing.contains("$name:")) continue
+            lines.append("$name:x:$gid:root,$userName\n")
+            shadowLines.append("$name:*::root,$userName\n")
+        }
+        runCatching {
+            if (group.exists() && lines.isNotEmpty()) group.appendText(lines.toString())
+            if (gshadow.exists() && shadowLines.isNotEmpty()) gshadow.appendText(shadowLines.toString())
+        }
+    }
+
+    private fun supplementaryGids(): List<Int> {
+        val gids = linkedSetOf(Process.myUid())
+        runCatching {
+            File("/proc/self/status").forEachLine { line ->
+                if (line.startsWith("Groups:")) {
+                    line.removePrefix("Groups:")
+                        .trim()
+                        .split(Regex("\\s+"))
+                        .mapNotNull { it.toIntOrNull() }
+                        .forEach { gids.add(it) }
+                }
+            }
+        }
+        return gids.toList()
     }
 }

@@ -5,11 +5,10 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.apache.commons.compress.archivers.tar.TarArchiveEntry
 import org.apache.commons.compress.archivers.tar.TarArchiveInputStream
-import org.apache.commons.compress.compressors.xz.XZCompressorInputStream
+import org.apache.commons.compress.compressors.gzip.GzipCompressorInputStream
 import java.io.BufferedInputStream
 import java.io.File
 import java.io.FileOutputStream
-import java.io.InputStream
 import java.net.HttpURLConnection
 import java.net.URL
 import java.security.MessageDigest
@@ -53,12 +52,13 @@ class UbuntuInstaller(private val context: Context) {
         val tarball = ProotConfig.tarballFile(context)
         if (tarball.exists() && verifySha256(tarball)) return
         val tmp = File(tarball.parentFile, tarball.name + ".tmp")
-        var connection = openFollowingRedirects(URL(ProotConfig.tarballUrl(context)))
+        val connection = openFollowingRedirects(URL(ProotConfig.tarballUrl(context)))
         val total = connection.contentLengthLong
         FileOutputStream(tmp).use { out ->
             val buffer = ByteArray(64 * 1024)
             connection.inputStream.use { input ->
                 var received = 0L
+                var lastPercent = -1
                 while (true) {
                     if (cancelled.get()) throw InstallCancelledException()
                     val read = input.read(buffer)
@@ -66,13 +66,17 @@ class UbuntuInstaller(private val context: Context) {
                     out.write(buffer, 0, read)
                     received += read
                     if (total > 0) {
-                        onProgress(
-                            InstallPhase.Downloading(
-                                percent = ((received * 100) / total).toInt().coerceIn(0, 100),
-                                receivedMb = received / (1024.0 * 1024.0),
-                                totalMb = total / (1024.0 * 1024.0)
+                        val percent = ((received * 100) / total).toInt().coerceIn(0, 100)
+                        if (percent != lastPercent) {
+                            lastPercent = percent
+                            onProgress(
+                                InstallPhase.Downloading(
+                                    percent = percent,
+                                    receivedMb = received / (1024.0 * 1024.0),
+                                    totalMb = total / (1024.0 * 1024.0)
+                                )
                             )
-                        )
+                        }
                     }
                 }
             }
@@ -95,7 +99,8 @@ class UbuntuInstaller(private val context: Context) {
             connection.setRequestProperty("User-Agent", "EditorEs/1.0")
             val status = connection.responseCode
             if (status in 301..303 || status == 307 || status == 308) {
-                val location = connection.getHeaderField("Location") ?: throw IllegalStateException("Redirect without location")
+                val location = connection.getHeaderField("Location")
+                    ?: throw IllegalStateException("Redirect without location")
                 connection.disconnect()
                 current = URL(current, location)
                 return@repeat
@@ -125,23 +130,25 @@ class UbuntuInstaller(private val context: Context) {
         rootfs.deleteRecursivelySafe()
         rootfs.mkdirs()
         val tarball = ProotConfig.tarballFile(context)
+        val pendingLinks = mutableListOf<Pair<File, String>>()
         var count = 0
         TarArchiveInputStream(
-            XZCompressorInputStream(BufferedInputStream(tarball.inputStream(), 256 * 1024))
+            GzipCompressorInputStream(BufferedInputStream(tarball.inputStream(), 256 * 1024))
         ).use { tar ->
             while (true) {
                 if (cancelled.get()) throw InstallCancelledException()
                 val entry = tar.nextEntry ?: break
-                val name = stripFirstComponent(entry.name) ?: continue
-                if (name.startsWith("dev/") || name == "dev") continue
+                val name = normalizeEntryName(entry.name) ?: continue
+                if (name == "dev" || name.startsWith("dev/")) continue
+                if (name == "proc" || name.startsWith("proc/")) continue
+                if (name == "sys" || name.startsWith("sys/")) continue
                 val target = File(rootfs, name)
                 if (!target.canonicalPath.startsWith(rootfs.canonicalPath)) continue
                 when {
-                    entry.isDirectory -> {
-                        target.mkdirs()
-                    }
+                    entry.isDirectory -> target.mkdirs()
                     entry.isSymbolicLink -> {
                         target.parentFile?.mkdirs()
+                        target.delete()
                         runCatching {
                             java.nio.file.Files.createSymbolicLink(
                                 target.toPath(),
@@ -151,12 +158,7 @@ class UbuntuInstaller(private val context: Context) {
                     }
                     entry.isLink -> {
                         target.parentFile?.mkdirs()
-                        val linkTarget = File(rootfs, stripFirstComponent(entry.linkName) ?: continue)
-                        if (!runCatching {
-                                java.nio.file.Files.createLink(target.toPath(), linkTarget.toPath())
-                            }.isSuccess) {
-                            linkTarget.copyTo(target, overwrite = true)
-                        }
+                        pendingLinks += target to (normalizeEntryName(entry.linkName) ?: continue)
                     }
                     else -> {
                         target.parentFile?.mkdirs()
@@ -175,34 +177,52 @@ class UbuntuInstaller(private val context: Context) {
                 onProgress(InstallPhase.Extracting(name, count))
             }
         }
-        if (!File(rootfs, "etc").isDirectory) throw IllegalStateException("Rootfs structure is invalid")
+        for ((target, linkName) in pendingLinks) {
+            val source = File(rootfs, linkName)
+            if (!source.exists()) continue
+            target.delete()
+            if (!runCatching {
+                    java.nio.file.Files.createLink(target.toPath(), source.toPath())
+                }.isSuccess
+            ) {
+                runCatching { source.copyTo(target, overwrite = true) }
+            }
+        }
+        if (!File(rootfs, "etc").isDirectory) {
+            throw IllegalStateException("Rootfs structure is invalid")
+        }
+        if (!File(rootfs, "usr/bin/bash").exists()) {
+            throw IllegalStateException("Rootfs is missing bash")
+        }
     }
 
-    private fun stripFirstComponent(name: String): String? {
-        val cleaned = name.trimStart('/')
-        val index = cleaned.indexOf('/')
-        return if (index < 0) null else cleaned.substring(index + 1).takeIf { it.isNotBlank() }
+    private fun normalizeEntryName(name: String): String? {
+        var cleaned = name.replace('\\', '/')
+        while (cleaned.startsWith("./")) cleaned = cleaned.substring(2)
+        cleaned = cleaned.trimStart('/').trimEnd('/')
+        if (cleaned.isBlank() || cleaned == ".") return null
+        if (cleaned.split('/').any { it == ".." }) return null
+        return cleaned
     }
 
     private fun applyPermissions(target: File, entry: TarArchiveEntry) {
         val mode = entry.mode
-        if (mode and 64 != 0) target.setExecutable(true, false)
+        target.setReadable(true, false)
         if (mode and 128 != 0) target.setWritable(true, false)
-        target.setReadable(mode and 256 != 0, false)
+        if (mode and 64 != 0) target.setExecutable(true, false)
     }
 
     private fun finalizeRootfs(onProgress: (InstallPhase) -> Unit) {
         onProgress(InstallPhase.Finalizing)
         val rootfs = ProotConfig.rootfsDir(context)
+
         File(rootfs, "etc/resolv.conf").writeText(
-            "nameserver 8.8.8.8\nnameserver 8.8.4.4\n"
+            "nameserver 8.8.8.8\nnameserver 8.8.4.4\nnameserver 1.1.1.1\n"
         )
+
         File(rootfs, "etc/hosts").writeText(
             """
-            # IPv4.
             127.0.0.1   localhost.localdomain localhost
-
-            # IPv6.
             ::1         localhost.localdomain localhost ip6-localhost ip6-loopback
             fe00::0     ip6-localnet
             ff00::0     ip6-mcastprefix
@@ -211,7 +231,63 @@ class UbuntuInstaller(private val context: Context) {
             ff02::3     ip6-allhosts
             """.trimIndent() + "\n"
         )
-        ProotConfig.registerAndroidUser(context)
+
+        File(rootfs, "etc/hostname").writeText("localhost\n")
+
+        File(rootfs, "etc/environment").writeText(
+            """
+            PATH="/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+            LANG=C.UTF-8
+            TMPDIR=/tmp
+            DEBIAN_FRONTEND=noninteractive
+            """.trimIndent() + "\n"
+        )
+
+        File(rootfs, "etc/apt/apt.conf.d").mkdirs()
+        File(rootfs, "etc/apt/apt.conf.d/99editores").writeText(
+            """
+            APT::Sandbox::User "root";
+            Acquire::Retries "3";
+            Acquire::http::Pipeline-Depth "0";
+            Acquire::ForceIPv4 "true";
+            DPkg::Options {"--force-confdef";"--force-confold";};
+            """.trimIndent() + "\n"
+        )
+
+        File(rootfs, "etc/dpkg/dpkg.cfg.d").mkdirs()
+        File(rootfs, "etc/dpkg/dpkg.cfg.d/99editores").writeText(
+            "force-unsafe-io\nno-debsig\n"
+        )
+
+        File(rootfs, "root/.bashrc").let { bashrc ->
+            bashrc.parentFile?.mkdirs()
+            bashrc.writeText(
+                """
+                export PS1='\[\e[1;92m\]\u@ubuntu\[\e[0m\]:\[\e[1;36m\]\w\[\e[0m\]\$ '
+                export PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+                export LANG=C.UTF-8
+                export TMPDIR=/tmp
+                export DEBIAN_FRONTEND=noninteractive
+                alias ll='ls -alF'
+                """.trimIndent() + "\n"
+            )
+        }
+
+        File(rootfs, "root/.profile").writeText(
+            "[ -n \"\$BASH_VERSION\" ] && [ -f ~/.bashrc ] && . ~/.bashrc\n"
+        )
+
+        listOf("tmp", "root", "var/tmp", "var/cache/apt/archives/partial", "var/lib/apt/lists/partial")
+            .forEach { path ->
+                File(rootfs, path).apply {
+                    mkdirs()
+                    setWritable(true, false)
+                    setExecutable(true, false)
+                }
+            }
+
+        ProotConfig.registerAndroidIds(context)
+
         val proc = File(rootfs, "proc")
         proc.mkdirs()
         val fakeEntries = mapOf(
@@ -227,11 +303,16 @@ class UbuntuInstaller(private val context: Context) {
             context.assets.open("proot/$assetName").use { input ->
                 FileOutputStream(target).use { out -> input.copyTo(out) }
             }
+            target.setReadable(true, false)
         }
         proc.setExecutable(true, false)
         proc.setReadable(true, false)
         proc.setWritable(true, false)
-        File(rootfs, ProotConfig.InstallMarker).writeText("v4.0.2")
+
+        File(rootfs, "sys").mkdirs()
+        File(rootfs, "dev").mkdirs()
+
+        File(rootfs, ProotConfig.InstallMarker).writeText(ProotConfig.RootfsVersion)
         ProotConfig.tarballFile(context).delete()
     }
 }
