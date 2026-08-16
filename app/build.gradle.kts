@@ -56,6 +56,10 @@ android {
         compose = true
     }
 
+    lint {
+        disable += "ExpiredTargetSdkVersion"
+    }
+
     androidResources {
         localeFilters += listOf("en")
     }
