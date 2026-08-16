@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -42,7 +43,7 @@ import com.editor.es.ui.icons.FileTypeFolder
 import com.editor.es.ui.theme.EditorEsPalette
 import java.io.File
 
-private val SelectedBackground = Color(0x330A9396)
+private val SelectedBackground = Color(0x2902F5A1)
 private val ItemShape = RoundedCornerShape(12.dp)
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -89,7 +90,7 @@ fun OpenProjectSheet(
                         .padding(vertical = 32.dp)
                 )
             } else {
-                LazyColumn(modifier = Modifier.height(320.dp)) {
+                LazyColumn(modifier = Modifier.heightIn(max = 280.dp)) {
                     items(projects, key = { it.absolutePath }) { project ->
                         ProjectRow(
                             project = project,

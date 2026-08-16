@@ -38,7 +38,7 @@ import com.editor.es.ui.navigation.EditorEsRoute
 import com.editor.es.ui.theme.EditorEsPalette
 
 private val LogoBrush = Brush.linearGradient(
-    colors = listOf(EditorEsPalette.mint, EditorEsPalette.amber)
+    colors = listOf(EditorEsPalette.mint, EditorEsPalette.mint.copy(alpha = 0.45f))
 )
 
 @Composable

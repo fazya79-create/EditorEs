@@ -24,9 +24,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import io.github.rosemoe.sora.widget.CodeEditor
 
-private val SymbolBarBackground = Color(0xFF252526)
-private val SymbolForeground = Color(0xFFD4D4D4)
-private val SymbolDivider = Color(0xFF333333)
+private val SymbolBarBackground = Color(0xFF0A222B)
+private val SymbolForeground = Color(0xFFD9F3E6)
+private val SymbolDivider = Color(0x2E02F5A1)
 
 private data class SymbolKey(val label: String, val insert: String, val offset: Int)
 

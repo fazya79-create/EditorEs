@@ -29,11 +29,10 @@ import com.editor.es.ui.theme.EditorEsTheme
 import java.io.File
 
 private val RootBrush = Brush.linearGradient(
-    0f to Color(0xFF001219),
-    0.5f to Color(0xFF005F73),
-    0.78f to Color(0xFF0A9396),
-    0.94f to Color(0xFF94D2BD),
-    1f to Color(0xFFEE9B00),
+    0f to Color(0xFF07191E),
+    0.45f to Color(0xFF0A242C),
+    0.75f to Color(0xFF062B24),
+    1f to Color(0xFF02F5A1),
     start = Offset(0f, 0f),
     end = Offset(Float.POSITIVE_INFINITY, Float.POSITIVE_INFINITY)
 )

@@ -77,6 +77,7 @@ import com.editor.es.ui.explorer.NodeAction
 import com.editor.es.ui.explorer.NodeActionSheet
 import com.editor.es.ui.icons.FileTypeIcons
 import com.editor.es.ui.theme.EditorEsPalette
+import com.editor.es.ui.theme.SpringGreen
 import io.github.rosemoe.sora.text.Content
 import io.github.rosemoe.sora.text.ContentListener
 import io.github.rosemoe.sora.widget.CodeEditor
@@ -89,18 +90,18 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
 private val ErrorTint = Color(0xFFEF6767)
-private val SidebarBackground = Color(0xFF252526)
-private val TitleBarBackground = Color(0xFF3C3C3C)
-private val EditorBackground = Color(0xFF1E1E1E)
-private val TabBarBackground = Color(0xFF252526)
-private val TabActiveForeground = Color.White
-private val TabInactiveForeground = Color(0xFF969696)
-private val DirtyDot = Color(0xFFE8E8E8)
-private val AccentBlue = Color(0xFF007ACC)
-private val DrawerWidth = 300.dp
+private val SidebarBackground = Color(0xFF0A222B)
+private val TitleBarBackground = Color(0xFF0E2A33)
+private val EditorBackground = Color(0xFF0A2129)
+private val TabBarBackground = Color(0xFF0A222B)
+private val TabActiveForeground = Color(0xFFF2FFFA)
+private val TabInactiveForeground = Color(0xFF7FA898)
+private val DirtyDot = SpringGreen
+private val AccentGreen = SpringGreen
+private val DrawerWidth = 260.dp
 private val DrawerShape = RoundedCornerShape(topEnd = 24.dp, bottomEnd = 24.dp)
 private val HamburgerBrush = Brush.linearGradient(
-    colors = listOf(EditorEsPalette.mint, EditorEsPalette.amber)
+    colors = listOf(SpringGreen, SpringGreen.copy(alpha = 0.55f))
 )
 
 private data class TabItem(
@@ -311,7 +312,7 @@ fun EditorScreen(projectPath: String) {
                         tint = when (saveState) {
                             SaveState.Saved -> EditorEsPalette.mint
                             SaveState.Failed -> ErrorTint
-                            else -> Color(0xFFCCCCCC)
+                            else -> Color(0xFFE4F5EC)
                         },
                         modifier = Modifier.size(20.dp)
                     )
@@ -546,7 +547,7 @@ private fun TabChip(
             modifier = Modifier
                 .fillMaxWidth()
                 .height(1.dp)
-                .background(if (active) AccentBlue else Color.Transparent)
+                .background(if (active) AccentGreen else Color.Transparent)
         )
         Row(
             modifier = Modifier
@@ -557,7 +558,7 @@ private fun TabChip(
             Icon(
                 imageVector = Icons.Outlined.Close,
                 contentDescription = stringResource(R.string.close),
-                tint = if (active) Color(0xFFCCCCCC) else TabInactiveForeground,
+                tint = if (active) Color(0xFFE4F5EC) else TabInactiveForeground,
                 modifier = Modifier
                     .size(15.dp)
                     .clickable(onClick = onClose)

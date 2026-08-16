@@ -41,13 +41,13 @@ import com.editor.es.ui.icons.FileTypeFolder
 import com.editor.es.ui.icons.FileTypeIcons
 import java.io.File
 
-private val SidebarBackground = Color(0xFF252526)
-private val SectionForeground = Color(0xFFBBBBBB)
-private val ItemForeground = Color(0xFFCCCCCC)
-private val MutedForeground = Color(0xFF8B949E)
-private val ActiveRowBackground = Color(0xFF37373D)
-private val GuideColor = Color(0xFF3C3C3C)
-private val ChevronColor = Color(0xFFE8E8E8)
+private val SidebarBackground = Color(0xFF0A222B)
+private val SectionForeground = Color(0xFF6FD9AE)
+private val ItemForeground = Color(0xFFDDF5EA)
+private val MutedForeground = Color(0xFF6E9184)
+private val ActiveRowBackground = Color(0x2902F5A1)
+private val GuideColor = Color(0x2E02F5A1)
+private val ChevronColor = Color(0xFFB7E9D3)
 
 enum class NodeAction {
     NewFile,

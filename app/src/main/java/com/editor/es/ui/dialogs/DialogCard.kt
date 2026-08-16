@@ -39,7 +39,7 @@ fun DialogCard(modifier: Modifier = Modifier, content: @Composable ColumnScope.(
             .fillMaxWidth()
             .clip(CardShape)
             .background(EditorEsPalette.abyss)
-            .border(1.dp, Color(0x330A9396), CardShape)
+            .border(1.dp, Color(0x3302F5A1), CardShape)
             .padding(24.dp)
             .graphicsLayer {
                 alpha = entrance.value
