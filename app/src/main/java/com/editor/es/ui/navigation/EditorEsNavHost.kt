@@ -28,6 +28,9 @@ enum class EditorEsRoute(val path: String) {
 
 fun editorRoute(path: String): String = EditorEsRoute.Editor.path + "/" + Uri.encode(path)
 
+fun projectTerminalRoute(path: String): String =
+    EditorEsRoute.Terminal.path + "/" + Uri.encode(path)
+
 @Composable
 fun EditorEsNavHost(
     modifier: Modifier = Modifier,
@@ -61,11 +64,22 @@ fun EditorEsNavHost(
             val projectPath = backStackEntry.arguments?.getString("path").orEmpty()
             EditorScreen(
                 projectPath = projectPath,
-                onOpenSettings = { navController.navigate(EditorEsRoute.Settings.path) }
+                onOpenSettings = { navController.navigate(EditorEsRoute.Settings.path) },
+                onOpenTerminal = { navController.navigate(projectTerminalRoute(projectPath)) }
             )
         }
         composable(EditorEsRoute.Terminal.path) {
             TerminalScreen(onBack = { navController.popBackStack() })
+        }
+        composable(
+            route = EditorEsRoute.Terminal.path + "/{path}",
+            arguments = listOf(navArgument("path") { type = NavType.StringType })
+        ) { backStackEntry ->
+            val path = backStackEntry.arguments?.getString("path").orEmpty()
+            TerminalScreen(
+                onBack = { navController.popBackStack() },
+                projectDir = path.takeIf { it.isNotEmpty() }?.let { java.io.File(it) }
+            )
         }
         composable(EditorEsRoute.Settings.path) {
             SettingsScreen(onBack = { navController.popBackStack() })

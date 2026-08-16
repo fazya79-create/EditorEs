@@ -175,43 +175,62 @@ internal fun writeText(session: TerminalSession?, text: String) {
 private fun createTerminalSession(
     context: Context,
     view: TerminalView,
+    projectDir: File?,
     onShellExited: () -> Unit
 ): Pair<TerminalSession, Int> {
     val client = EditorEsSessionClient(context, view, onShellExited)
-    val existing = TermuxService.liveSession()
-    if (existing != null) {
-        existing.updateTerminalSessionClient(client)
-        return existing to TermuxService.currentSessionId()
+    val tag = projectDir?.let { "project:${it.absolutePath}" }
+    if (tag != null) {
+        TermuxService.taggedSession(tag)?.let { (id, existing) ->
+            existing.updateTerminalSessionClient(client)
+            return existing to id
+        }
+    } else {
+        TermuxService.liveSession()?.let { existing ->
+            existing.updateTerminalSessionClient(client)
+            return existing to TermuxService.currentSessionId()
+        }
     }
     val ubuntuReady = ProotConfig.isInstalled(context) && ProotConfig.isAvailable(context)
     val session = if (ubuntuReady) {
         ProotConfig.registerAndroidIds(context)
         ProotConfig.writeShellProfile(context)
         ProotConfig.prepareStorageMounts(context)
+        val cwd = projectDir?.absolutePath ?: "/root"
+        if (projectDir != null) {
+            runCatching {
+                File(ProotConfig.rootfsDir(context), cwd.trimStart('/')).mkdirs()
+            }
+        }
         TerminalSession(
             ProotConfig.prootBinary(context),
             context.filesDir.absolutePath,
-            ProotConfig.prootArgs(context),
+            ProotConfig.prootArgs(context, cwd),
             ProotConfig.prootEnv(context),
             null,
             client
         )
     } else {
+        val home = projectDir?.absolutePath ?: context.filesDir.absolutePath
         TerminalSession(
             "/system/bin/sh",
-            context.filesDir.absolutePath,
+            home,
             emptyArray(),
             buildShellEnv(context.filesDir.absolutePath),
             null,
             client
         )
     }
-    val sessionId = TermuxService.registerSession(context, session)
+    val sessionId = if (tag != null) {
+        TermuxService.registerTagged(context, tag, session)
+    } else {
+        TermuxService.registerSession(context, session)
+    }
     return session to sessionId
 }
 
 @Composable
-fun TerminalScreen(onBack: () -> Unit) {
+fun TerminalScreen(onBack: () -> Unit, projectDir: File? = null) {
     val context = LocalContext.current
     var ctrlArmed by remember { mutableStateOf(false) }
     var altArmed by remember { mutableStateOf(false) }
@@ -240,13 +259,23 @@ fun TerminalScreen(onBack: () -> Unit) {
         terminalView?.clearFocus()
     }
 
+    val sessionTag = remember(projectDir) { projectDir?.let { "project:${it.absolutePath}" } }
+
+    fun releaseSession() {
+        if (sessionTag != null) {
+            TermuxService.unregisterTagged(context, sessionTag)
+        } else {
+            previousSessionId?.let { TermuxService.unregisterSession(context, it) }
+        }
+    }
+
     fun leaveTerminal() {
         if (!isFinishing.value) {
             isFinishing.value = true
             hideKeyboard()
             if (!AppSettings.bool(PreferenceSettings.KeepTerminalAlive, true)) {
                 sessionRef?.finishIfRunning()
-                previousSessionId?.let { TermuxService.unregisterSession(context, it) }
+                releaseSession()
             }
             sessionRef = null
             previousSessionId = null
@@ -260,7 +289,7 @@ fun TerminalScreen(onBack: () -> Unit) {
             hideKeyboard()
             sessionRef?.finishIfRunning()
             sessionRef = null
-            previousSessionId?.let { TermuxService.unregisterSession(context, it) }
+            releaseSession()
             previousSessionId = null
             onBack()
         }
@@ -272,7 +301,8 @@ fun TerminalScreen(onBack: () -> Unit) {
     }
 
     fun startSession(view: TerminalView) {
-        val (session, sessionId) = createTerminalSession(context, view) { terminateTerminal() }
+        val (session, sessionId) =
+            createTerminalSession(context, view, projectDir) { terminateTerminal() }
         view.attachSession(session)
         sessionRef = session
         previousSessionId = sessionId
@@ -281,7 +311,7 @@ fun TerminalScreen(onBack: () -> Unit) {
     fun restartSession(view: TerminalView) {
         sessionRef?.finishIfRunning()
         sessionRef = null
-        previousSessionId?.let { TermuxService.unregisterSession(context, it) }
+        releaseSession()
         previousSessionId = null
         startSession(view)
     }
@@ -356,7 +386,8 @@ fun TerminalScreen(onBack: () -> Unit) {
                 )
             }
             Text(
-                text = stringResource(R.string.terminal).uppercase(),
+                text = projectDir?.name?.uppercase()
+                    ?: stringResource(R.string.terminal).uppercase(),
                 fontSize = 13.sp,
                 fontWeight = FontWeight.SemiBold,
                 letterSpacing = 1.2.sp,
