@@ -3,11 +3,6 @@ package com.editor.es.data
 import android.os.Environment
 import java.io.File
 
-enum class BuildSystem(val label: String) {
-    CMake("CMake"),
-    Ndk("NDK")
-}
-
 object ProjectCreator {
 
     const val MAIN_SOURCE_NAME = "main.cpp"
@@ -16,7 +11,7 @@ object ProjectCreator {
 
     fun baseDir(): File = File(Environment.getExternalStorageDirectory(), "EditorEs")
 
-    fun create(folderName: String, buildSystem: BuildSystem, libraryName: String): Result<String> = runCatching {
+    fun create(folderName: String, libraryName: String): Result<String> = runCatching {
         val folder = folderName.trim()
         val library = libraryName.trim()
         require(namePattern.matches(folder)) { "Folder name may only contain letters, numbers, - and _" }
@@ -25,10 +20,7 @@ object ProjectCreator {
         require(!projectDir.exists()) { "A folder named $folder already exists" }
         require(projectDir.mkdirs()) { "Unable to create the project folder" }
         File(projectDir, MAIN_SOURCE_NAME).writeText(mainCppTemplate)
-        when (buildSystem) {
-            BuildSystem.CMake -> File(projectDir, "CMakeLists.txt").writeText(cmakeTemplate(library))
-            BuildSystem.Ndk -> File(projectDir, "Android.mk").writeText(ndkTemplate(library))
-        }
+        File(projectDir, "CMakeLists.txt").writeText(cmakeTemplate(library))
         projectDir.absolutePath
     }
 
@@ -43,20 +35,6 @@ object ProjectCreator {
             appendLine("find_library(log-lib log)")
             appendLine()
             appendLine("target_link_libraries($library \${log-lib})")
-        }
-    }
-
-    private val ndkTemplate: (String) -> String = { library ->
-        buildString {
-            appendLine("LOCAL_PATH := \$(call my-dir)")
-            appendLine()
-            appendLine("include \$(CLEAR_VARS)")
-            appendLine()
-            appendLine("LOCAL_MODULE := $library")
-            appendLine("LOCAL_SRC_FILES := $MAIN_SOURCE_NAME")
-            appendLine("LOCAL_LDLIBS := -llog")
-            appendLine()
-            appendLine("include \$(BUILD_SHARED_LIBRARY)")
         }
     }
 

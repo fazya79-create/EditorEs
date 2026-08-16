@@ -14,7 +14,6 @@
     <string name="storage_message">EditorEs needs access to all files so it can create your C++ projects inside the EditorEs folder on your device.</string>
     <string name="grant_access">Grant Access</string>
     <string name="folder_name">Folder Name</string>
-    <string name="build_system">Build System</string>
     <string name="library_name">Library Name</string>
     <string name="create">Create</string>
     <string name="creating">Creating…</string>

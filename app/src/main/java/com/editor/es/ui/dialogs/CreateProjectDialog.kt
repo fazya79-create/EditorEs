@@ -16,7 +16,6 @@ import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -31,10 +30,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import com.editor.es.R
-import com.editor.es.data.BuildSystem
 import com.editor.es.data.ProjectCreator
 import com.editor.es.ui.components.EditorEsButton
-import com.editor.es.ui.components.EditorEsDropdown
 import com.editor.es.ui.theme.EditorEsPalette
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -45,7 +42,6 @@ private val ErrorColor = Color(0xFFEF6767)
 @Composable
 fun CreateProjectDialog(onClose: () -> Unit, onCreated: (String) -> Unit) {
     var folderName by remember { mutableStateOf("") }
-    var buildIndex by remember { mutableIntStateOf(0) }
     var libraryName by remember { mutableStateOf("") }
     var error by remember { mutableStateOf<String?>(null) }
     var creating by remember { mutableStateOf(false) }
@@ -77,17 +73,6 @@ fun CreateProjectDialog(onClose: () -> Unit, onCreated: (String) -> Unit) {
                 error = null
             }
             Spacer(modifier = Modifier.height(14.dp))
-            FieldLabel(text = stringResource(R.string.build_system))
-            Spacer(modifier = Modifier.height(8.dp))
-            EditorEsDropdown(
-                options = BuildSystem.entries.map { it.label },
-                selectedIndex = buildIndex,
-                onSelect = {
-                    buildIndex = it
-                    error = null
-                }
-            )
-            Spacer(modifier = Modifier.height(14.dp))
             FieldLabel(text = stringResource(R.string.library_name))
             Spacer(modifier = Modifier.height(8.dp))
             ProjectTextField(value = libraryName, isError = error != null) {
@@ -112,7 +97,6 @@ fun CreateProjectDialog(onClose: () -> Unit, onCreated: (String) -> Unit) {
                     val result = withContext(Dispatchers.IO) {
                         ProjectCreator.create(
                             folderName = folderName,
-                            buildSystem = BuildSystem.entries[buildIndex],
                             libraryName = libraryName
                         )
                     }

@@ -65,7 +65,6 @@ import androidx.compose.ui.unit.sp
 import com.editor.es.R
 import com.editor.es.build.BuildEvent
 import com.editor.es.build.BuildRunner
-import com.editor.es.build.BuildSystemDetector
 import com.editor.es.build.ToolchainKind
 import com.editor.es.build.ToolchainPaths
 import com.editor.es.data.FileOps
@@ -319,9 +318,8 @@ fun EditorScreen(projectPath: String) {
     }
 
     fun requestBuild() {
-        val usesNdkBuild = BuildSystemDetector.androidMk(projectDir) != null
-        val ready = ToolchainPaths.isInstalled(context, ToolchainKind.Ndk) &&
-            (usesNdkBuild || ToolchainPaths.isInstalled(context, ToolchainKind.CMake))
+        val ready = ToolchainPaths.isInstalled(context, ToolchainKind.CMake) &&
+            ToolchainPaths.isInstalled(context, ToolchainKind.Ndk)
         if (ready) startBuild() else showToolchainDialog = true
     }
 

@@ -48,6 +48,7 @@
         <provider
             android:name=".storage.EditorEsDocumentsProvider"
             android:authorities="com.editor.es.documents"
+            android:enabled="true"
             android:exported="true"
             android:grantUriPermissions="true"
             android:permission="android.permission.MANAGE_DOCUMENTS">

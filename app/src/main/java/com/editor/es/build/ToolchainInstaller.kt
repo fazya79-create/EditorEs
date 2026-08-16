@@ -175,7 +175,6 @@ class ToolchainInstaller(private val context: Context, private val kind: Toolcha
             ToolchainKind.Ndk -> listOf(
                 File(root, "toolchains/llvm/prebuilt/linux-arm64/bin"),
                 File(root, "prebuilt/linux-arm64/bin"),
-                File(root, "toolchains/llvm/prebuilt/linux-arm64/python3/bin"),
                 File(root, "toolchains/llvm/prebuilt/linux-arm64/lib/clang/21/bin")
             )
             ToolchainKind.CMake -> listOf(File(root, "bin"))
@@ -184,12 +183,6 @@ class ToolchainInstaller(private val context: Context, private val kind: Toolcha
             val children = dir.listFiles() ?: continue
             for (file in children) {
                 if (file.isFile) file.setExecutable(true, false)
-            }
-        }
-        if (kind == ToolchainKind.Ndk) {
-            File(root, "ndk-build").setExecutable(true, false)
-            File(root, "build/tools").listFiles()?.forEach { file ->
-                if (file.isFile && file.name.endsWith(".sh")) file.setExecutable(true, false)
             }
         }
     }
