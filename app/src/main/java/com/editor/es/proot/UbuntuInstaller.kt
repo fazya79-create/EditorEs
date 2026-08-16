@@ -33,6 +33,7 @@ class UbuntuInstaller(private val context: Context) {
 
     suspend fun install(onProgress: (InstallPhase) -> Unit): Unit = withContext(Dispatchers.IO) {
         try {
+            com.editor.es.build.ToolchainPaths.migrateLegacyLayout(context)
             if (ProotConfig.isInstalled(context)) {
                 onProgress(InstallPhase.Done)
                 return@withContext

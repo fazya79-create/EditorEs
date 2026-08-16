@@ -17,8 +17,12 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.foundation.clickable
 import androidx.compose.material.icons.outlined.Close
+import androidx.compose.material.icons.outlined.CloseFullscreen
+import androidx.compose.material.icons.outlined.ContentCopy
 import androidx.compose.material.icons.outlined.DeleteSweep
+import androidx.compose.material.icons.outlined.OpenInFull
 import androidx.compose.material.icons.outlined.Stop
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -35,6 +39,7 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.foundation.text.selection.SelectionContainer
 import com.editor.es.ui.theme.SpringGreen
 
 private val ConsoleBackground = Color(0xFF071A20)
@@ -53,19 +58,32 @@ enum class ConsoleLineKind {
     Success
 }
 
+enum class ConsoleTab {
+    Build,
+    Terminal
+}
+
 @Composable
 fun BuildConsole(
     lines: List<ConsoleLine>,
     running: Boolean,
+    tab: ConsoleTab,
+    maximized: Boolean,
+    onSelectTab: (ConsoleTab) -> Unit,
+    onToggleMaximize: () -> Unit,
+    onCopy: () -> Unit,
     onStop: () -> Unit,
     onClear: () -> Unit,
     onClose: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    terminalContent: @Composable () -> Unit
 ) {
     val listState = rememberLazyListState()
 
-    LaunchedEffect(lines.size) {
-        if (lines.isNotEmpty()) listState.animateScrollToItem(lines.lastIndex)
+    LaunchedEffect(lines.size, tab) {
+        if (tab == ConsoleTab.Build && lines.isNotEmpty()) {
+            listState.animateScrollToItem(lines.lastIndex)
+        }
     }
 
     Column(
@@ -82,21 +100,19 @@ fun BuildConsole(
                 .padding(horizontal = 12.dp, vertical = 6.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Text(
-                text = "BUILD",
-                fontSize = 12.sp,
-                fontWeight = FontWeight.SemiBold,
-                letterSpacing = 1.2.sp,
-                color = SpringGreen,
-                modifier = Modifier.width(58.dp)
+            TabLabel(
+                label = "BUILD",
+                active = tab == ConsoleTab.Build,
+                onClick = { onSelectTab(ConsoleTab.Build) }
             )
-            Text(
-                text = if (running) "running" else "idle",
-                fontSize = 11.sp,
-                color = ConsoleForeground.copy(alpha = 0.7f),
-                modifier = Modifier.weight(1f)
+            Spacer(modifier = Modifier.width(4.dp))
+            TabLabel(
+                label = "TERMINAL",
+                active = tab == ConsoleTab.Terminal,
+                onClick = { onSelectTab(ConsoleTab.Terminal) }
             )
-            if (running) {
+            Spacer(modifier = Modifier.weight(1f))
+            if (running && tab == ConsoleTab.Build) {
                 IconButton(onClick = onStop, modifier = Modifier.size(30.dp)) {
                     Icon(
                         imageVector = Icons.Outlined.Stop,
@@ -106,12 +122,34 @@ fun BuildConsole(
                     )
                 }
             }
-            IconButton(onClick = onClear, modifier = Modifier.size(30.dp)) {
+            if (tab == ConsoleTab.Build) {
+                IconButton(onClick = onCopy, modifier = Modifier.size(30.dp)) {
+                    Icon(
+                        imageVector = Icons.Outlined.ContentCopy,
+                        contentDescription = "Copy output",
+                        tint = ConsoleForeground,
+                        modifier = Modifier.size(16.dp)
+                    )
+                }
+                IconButton(onClick = onClear, modifier = Modifier.size(30.dp)) {
+                    Icon(
+                        imageVector = Icons.Outlined.DeleteSweep,
+                        contentDescription = "Clear console",
+                        tint = ConsoleForeground,
+                        modifier = Modifier.size(17.dp)
+                    )
+                }
+            }
+            IconButton(onClick = onToggleMaximize, modifier = Modifier.size(30.dp)) {
                 Icon(
-                    imageVector = Icons.Outlined.DeleteSweep,
-                    contentDescription = "Clear console",
+                    imageVector = if (maximized) {
+                        Icons.Outlined.CloseFullscreen
+                    } else {
+                        Icons.Outlined.OpenInFull
+                    },
+                    contentDescription = "Toggle size",
                     tint = ConsoleForeground,
-                    modifier = Modifier.size(17.dp)
+                    modifier = Modifier.size(16.dp)
                 )
             }
             IconButton(onClick = onClose, modifier = Modifier.size(30.dp)) {
@@ -124,7 +162,7 @@ fun BuildConsole(
             }
         }
 
-        if (running) {
+        if (running && tab == ConsoleTab.Build) {
             LinearProgressIndicator(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -135,39 +173,70 @@ fun BuildConsole(
         }
 
         Box(modifier = Modifier.weight(1f)) {
-            if (lines.isEmpty()) {
-                Text(
-                    text = "no output yet",
-                    fontSize = 12.sp,
-                    fontFamily = FontFamily.Monospace,
-                    color = ConsoleForeground.copy(alpha = 0.45f),
-                    modifier = Modifier.padding(14.dp)
-                )
-            } else {
-                LazyColumn(
-                    state = listState,
-                    verticalArrangement = Arrangement.spacedBy(1.dp),
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 12.dp, vertical = 8.dp)
-                ) {
-                    items(lines) { line ->
+            when (tab) {
+                ConsoleTab.Terminal -> terminalContent()
+                ConsoleTab.Build -> {
+                    if (lines.isEmpty()) {
                         Text(
-                            text = line.text,
-                            fontSize = 11.sp,
-                            lineHeight = 15.sp,
+                            text = "no output yet",
+                            fontSize = 12.sp,
                             fontFamily = FontFamily.Monospace,
-                            color = when (line.kind) {
-                                ConsoleLineKind.Error -> ErrorForeground
-                                ConsoleLineKind.Success -> SuccessForeground
-                                ConsoleLineKind.Normal -> ConsoleForeground
-                            }
+                            color = ConsoleForeground.copy(alpha = 0.45f),
+                            modifier = Modifier.padding(14.dp)
                         )
+                    } else {
+                        LazyColumn(
+                            state = listState,
+                            verticalArrangement = Arrangement.spacedBy(1.dp),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 12.dp, vertical = 8.dp)
+                        ) {
+                            items(lines) { line ->
+                                SelectionContainer {
+                                    Text(
+                                        text = line.text,
+                                        fontSize = 11.sp,
+                                        lineHeight = 15.sp,
+                                        fontFamily = FontFamily.Monospace,
+                                        color = when (line.kind) {
+                                            ConsoleLineKind.Error -> ErrorForeground
+                                            ConsoleLineKind.Success -> SuccessForeground
+                                            ConsoleLineKind.Normal -> ConsoleForeground
+                                        }
+                                    )
+                                }
+                            }
+                        }
                     }
                 }
             }
         }
 
         Spacer(modifier = Modifier.height(2.dp))
+    }
+}
+
+@Composable
+private fun TabLabel(label: String, active: Boolean, onClick: () -> Unit) {
+    Column(
+        modifier = Modifier
+            .clickable(onClick = onClick)
+            .padding(horizontal = 6.dp)
+    ) {
+        Text(
+            text = label,
+            fontSize = 11.sp,
+            fontWeight = if (active) FontWeight.Bold else FontWeight.Normal,
+            letterSpacing = 1.1.sp,
+            color = if (active) SpringGreen else ConsoleForeground.copy(alpha = 0.55f)
+        )
+        Spacer(modifier = Modifier.height(3.dp))
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(2.dp)
+                .background(if (active) SpringGreen else Color.Transparent)
+        )
     }
 }

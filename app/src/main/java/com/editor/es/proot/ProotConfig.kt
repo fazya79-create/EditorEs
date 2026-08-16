@@ -45,7 +45,14 @@ object ProotConfig {
         runCatching {
             File(rootfs, "storage/emulated/0").mkdirs()
             File(rootfs, "sdcard").mkdirs()
+            File(rootfs, "opt").mkdirs()
         }
+    }
+
+    private fun toolchainBind(context: Context): String? {
+        val host = com.editor.es.build.ToolchainPaths.toolchainRoot(context)
+        if (!host.isDirectory) return null
+        return "${host.absolutePath}:/opt"
     }
 
     private val ToolchainPath = "$GuestCMakeBin:$GuestNdkBin"
@@ -84,8 +91,10 @@ object ProotConfig {
 
     fun tmpDir(context: Context): File = File(context.cacheDir, "proot-tmp").apply { mkdirs() }
 
-    fun prootArgs(context: Context): Array<String> {
+    fun prootArgs(context: Context, cwd: String = "/root"): Array<String> {
         val rootfs = rootfsDir(context).absolutePath
+        val extraBinds = (StorageBinds + listOfNotNull(toolchainBind(context)))
+            .map { "--bind=$it" }
         return arrayOf(
             "proot",
             "-L",
@@ -95,7 +104,7 @@ object ProotConfig {
             "--kill-on-exit",
             "--rootfs=$rootfs",
             "--change-id=0:0",
-            "--cwd=/root",
+            "--cwd=$cwd",
             "--bind=/dev",
             "--bind=/dev/urandom:/dev/random",
             "--bind=/proc",
@@ -110,7 +119,7 @@ object ProotConfig {
             "--bind=$rootfs/proc/.version:/proc/version",
             "--bind=$rootfs/proc/.vmstat:/proc/vmstat",
             "--bind=$rootfs/proc/.sysctl_entry_cap_last_cap:/proc/sys/kernel/cap_last_cap",
-            *StorageBinds.map { "--bind=$it" }.toTypedArray(),
+            *extraBinds.toTypedArray(),
             "/usr/bin/env",
             "-i",
             "HOME=/root",
@@ -176,6 +185,7 @@ object ProotConfig {
             "--bind=$rootfs/proc/.sysctl_entry_cap_last_cap:/proc/sys/kernel/cap_last_cap"
         )
         StorageBinds.forEach { args += "--bind=$it" }
+        toolchainBind(context)?.let { args += "--bind=$it" }
         binds.forEach { args += "--bind=$it" }
         args += listOf(
             "/usr/bin/env",
@@ -232,6 +242,7 @@ object ProotConfig {
             "--bind=$rootfs/proc/.sysctl_entry_cap_last_cap:/proc/sys/kernel/cap_last_cap"
         )
         StorageBinds.forEach { args += "--bind=$it" }
+        toolchainBind(context)?.let { args += "--bind=$it" }
         binds.forEach { args += "--bind=$it" }
         args += listOf(
             "/usr/bin/env",

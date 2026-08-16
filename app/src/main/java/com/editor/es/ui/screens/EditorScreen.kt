@@ -90,6 +90,7 @@ import com.editor.es.editor.EditorSearch
 import com.editor.es.editor.EditorLanguageResolver
 import com.editor.es.editor.EditorPane
 import com.editor.es.ui.build.BuildConsole
+import com.editor.es.ui.build.ConsoleTab
 import com.editor.es.ui.build.RunMenu
 import com.editor.es.ui.build.ConsoleLine
 import com.editor.es.ui.build.ConsoleLineKind
@@ -98,6 +99,7 @@ import com.editor.es.ui.dialogs.ConfirmDialog
 import com.editor.es.ui.dialogs.NameInputDialog
 import com.editor.es.ui.dialogs.UnsavedChangesDialog
 import com.editor.es.ui.editor.FindReplaceBar
+import com.editor.es.ui.terminal.TerminalPane
 import com.editor.es.ui.editor.FindState
 import com.editor.es.ui.editor.SymbolBar
 import com.editor.es.ui.editor.EditorToolsMenu
@@ -174,7 +176,7 @@ private class DirtyMarker(private val onDirty: () -> Unit) : ContentListener {
 }
 
 @Composable
-fun EditorScreen(projectPath: String) {
+fun EditorScreen(projectPath: String, onOpenSettings: () -> Unit) {
     val scope = rememberCoroutineScope()
     val drawerAnim = remember { Animatable(0f) }
     val density = LocalDensity.current
@@ -205,6 +207,8 @@ fun EditorScreen(projectPath: String) {
         RunConfigurations(context, projectDir, buildRunner)
     }
     var menuExpanded by remember { mutableStateOf(false) }
+    var consoleTab by remember { mutableStateOf(ConsoleTab.Build) }
+    var consoleMaximized by remember { mutableStateOf(false) }
     var toolsExpanded by remember { mutableStateOf(false) }
     var findState by remember { mutableStateOf(FindState()) }
     var findVisible by remember { mutableStateOf(false) }
@@ -500,6 +504,19 @@ fun EditorScreen(projectPath: String) {
         }
     }
 
+    fun copyConsoleOutput() {
+        if (consoleLines.isEmpty()) return
+        val text = consoleLines.joinToString("\n") { it.text }
+        val clipboard = context.getSystemService(ClipboardManager::class.java)
+        clipboard?.setPrimaryClip(ClipData.newPlainText("build output", text))
+        lspStatus = "copied ${consoleLines.size} lines"
+    }
+
+    fun openProjectTerminal() {
+        consoleTab = ConsoleTab.Terminal
+        consoleVisible = true
+    }
+
     fun runBuild(clean: Boolean) {
         scope.launch {
             if (!runConfigurations.hasPresets()) {
@@ -585,7 +602,11 @@ fun EditorScreen(projectPath: String) {
         locationPanel = null
     }
 
-    BackHandler(enabled = drawerProgress == 0f && consoleVisible) {
+    BackHandler(enabled = drawerProgress == 0f && consoleVisible && consoleMaximized) {
+        consoleMaximized = false
+    }
+
+    BackHandler(enabled = drawerProgress == 0f && consoleVisible && !consoleMaximized) {
         consoleVisible = false
     }
 
@@ -851,17 +872,36 @@ fun EditorScreen(projectPath: String) {
                 BuildConsole(
                     lines = consoleLines,
                     running = building,
+                    tab = consoleTab,
+                    maximized = consoleMaximized,
+                    onSelectTab = { consoleTab = it },
+                    onToggleMaximize = { consoleMaximized = !consoleMaximized },
+                    onCopy = { copyConsoleOutput() },
                     onStop = {
                         buildRunner.stop()
                         building = false
                         appendConsole("> build stopped", ConsoleLineKind.Error)
                     },
                     onClear = { consoleLines.clear() },
-                    onClose = { consoleVisible = false },
+                    onClose = {
+                        consoleVisible = false
+                        consoleMaximized = false
+                    },
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(ConsoleHeight)
-                )
+                        .then(
+                            if (consoleMaximized) {
+                                Modifier.weight(1f)
+                            } else {
+                                Modifier.height(ConsoleHeight)
+                            }
+                        )
+                ) {
+                    TerminalPane(
+                        projectDir = projectDir,
+                        modifier = Modifier.fillMaxSize()
+                    )
+                }
             }
 
             lspStatus?.let { status ->
@@ -922,6 +962,14 @@ fun EditorScreen(projectPath: String) {
                     onMenuRequested = { dialog = ExplorerDialog.Menu(it) },
                     onQuickAction = { action, parent ->
                         dialog = ExplorerDialog.Input(initial = "", parent = parent, kind = action)
+                    },
+                    onOpenSettings = {
+                        closeDrawer()
+                        onOpenSettings()
+                    },
+                    onOpenTerminal = {
+                        closeDrawer()
+                        openProjectTerminal()
                     }
                 )
             }

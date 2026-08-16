@@ -59,7 +59,10 @@ fun EditorEsNavHost(
             arguments = listOf(navArgument("path") { type = NavType.StringType })
         ) { backStackEntry ->
             val projectPath = backStackEntry.arguments?.getString("path").orEmpty()
-            EditorScreen(projectPath = projectPath)
+            EditorScreen(
+                projectPath = projectPath,
+                onOpenSettings = { navController.navigate(EditorEsRoute.Settings.path) }
+            )
         }
         composable(EditorEsRoute.Terminal.path) {
             TerminalScreen(onBack = { navController.popBackStack() })

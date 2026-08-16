@@ -102,7 +102,7 @@ private const val MaxTerminalTextSize = 24
 private const val HoldDelayMs = 350L
 private const val RepeatIntervalMs = 60L
 
-private enum class ModifierKey {
+internal enum class ModifierKey {
     Ctrl,
     Alt
 }
@@ -114,14 +114,14 @@ private sealed class TerminalFlow {
     data object AskNotification : TerminalFlow()
 }
 
-private data class TerminalKey(
+internal data class TerminalKey(
     val label: String,
     val payload: String? = null,
     val modifier: ModifierKey? = null,
     val repeatable: Boolean = false
 )
 
-private val FirstRow = listOf(
+internal val FirstRow = listOf(
     TerminalKey("ESC", "\u001b"),
     TerminalKey("/", "/"),
     TerminalKey("-", "-"),
@@ -131,7 +131,7 @@ private val FirstRow = listOf(
     TerminalKey("PGUP", "\u001b[5~", repeatable = true)
 )
 
-private val SecondRow = listOf(
+internal val SecondRow = listOf(
     TerminalKey("TAB", "\t"),
     TerminalKey("CTRL", modifier = ModifierKey.Ctrl),
     TerminalKey("ALT", modifier = ModifierKey.Alt),
@@ -141,7 +141,7 @@ private val SecondRow = listOf(
     TerminalKey("PGDN", "\u001b[6~", repeatable = true)
 )
 
-private fun buildShellEnv(home: String): Array<String> = arrayOf(
+internal fun buildShellEnv(home: String): Array<String> = arrayOf(
     "TERM=xterm-256color",
     "HOME=$home",
     "PATH=/system/bin:/system/xbin:/vendor/bin",
@@ -149,7 +149,7 @@ private fun buildShellEnv(home: String): Array<String> = arrayOf(
     "ENV=$home/.editor-es-shrc"
 )
 
-private fun installShellProfile(context: Context) {
+internal fun installShellProfile(context: Context) {
     val profile = File(context.filesDir, ".editor-es-shrc")
     val content = "clear() { printf '\\033[2J\\033[3J\\033[H'; }\n"
     if (!profile.exists() || profile.readText() != content) {
@@ -157,7 +157,7 @@ private fun installShellProfile(context: Context) {
     }
 }
 
-private fun applyColorScheme() {
+internal fun applyColorScheme() {
     runCatching {
         val colors = TerminalColors.COLOR_SCHEME.mDefaultColors
         colors[TextStyle.COLOR_INDEX_FOREGROUND] = 0xFFDDF5EA.toInt()
@@ -166,7 +166,7 @@ private fun applyColorScheme() {
     }
 }
 
-private fun writeText(session: TerminalSession?, text: String) {
+internal fun writeText(session: TerminalSession?, text: String) {
     if (session == null) return
     val bytes = text.toByteArray(Charsets.UTF_8)
     session.write(bytes, 0, bytes.size)
@@ -720,7 +720,7 @@ private fun NotificationPermissionGate(onDismiss: () -> Unit) {
 }
 
 @Composable
-private fun TerminalKeyChip(
+internal fun TerminalKeyChip(
     key: TerminalKey,
     armed: Boolean,
     onTap: () -> Unit,

@@ -25,6 +25,7 @@ class TermuxService : Service() {
 
         private val sessions = LinkedHashMap<Int, TerminalSession>()
         private val sessionCounter = AtomicInteger(0)
+        private val tagged = LinkedHashMap<String, Pair<Int, TerminalSession>>()
         var onExitRequested: (() -> Unit)? = null
 
         var activeSession: TerminalSession? = null
@@ -35,6 +36,25 @@ class TermuxService : Service() {
         fun currentSessionId(): Int = activeSessionId ?: 0
 
         fun liveSession(): TerminalSession? = activeSession?.takeIf { it.isRunning }
+
+        fun taggedSession(tag: String): Pair<Int, TerminalSession>? =
+            tagged[tag]?.takeIf { it.second.isRunning }
+
+        fun registerTagged(context: Context, tag: String, session: TerminalSession): Int {
+            val id = sessionCounter.incrementAndGet()
+            sessions[id] = session
+            tagged[tag] = id to session
+            context.startForegroundService(Intent(context, TermuxService::class.java))
+            return id
+        }
+
+        fun unregisterTagged(context: Context, tag: String) {
+            val entry = tagged.remove(tag) ?: return
+            sessions.remove(entry.first)
+            if (sessions.isEmpty()) {
+                context.stopService(Intent(context, TermuxService::class.java))
+            }
+        }
 
         fun registerSession(context: Context, session: TerminalSession): Int {
             val id = sessionCounter.incrementAndGet()
@@ -90,6 +110,7 @@ class TermuxService : Service() {
     private fun killAllSessions() {
         sessions.values.forEach { runCatching { it.finishIfRunning() } }
         sessions.clear()
+        tagged.clear()
         activeSession = null
         activeSessionId = null
     }

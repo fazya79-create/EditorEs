@@ -31,18 +31,38 @@ object ToolchainPaths {
     private const val CMakeDirName = "cmake"
     private const val MarkerName = ".version"
 
-    fun optDir(context: Context): File =
+    fun toolchainRoot(context: Context): File =
+        File(context.filesDir, "toolchains").apply { mkdirs() }
+
+    private fun legacyOptDir(context: Context): File =
         File(context.filesDir, "${com.editor.es.proot.ProotConfig.RootfsName}/$OptDirName")
 
+    fun migrateLegacyLayout(context: Context) {
+        val legacy = legacyOptDir(context)
+        if (!legacy.isDirectory) return
+        val root = toolchainRoot(context)
+        for (name in listOf(NdkDirName, CMakeDirName)) {
+            val from = File(legacy, name)
+            val to = File(root, name)
+            if (!from.isDirectory || to.isDirectory) continue
+            if (!from.renameTo(to)) {
+                runCatching { from.copyRecursively(to, overwrite = true) }
+                    .onSuccess { from.deleteRecursively() }
+            }
+        }
+    }
+
     fun hostDir(context: Context, kind: ToolchainKind): File = when (kind) {
-        ToolchainKind.Ndk -> File(optDir(context), NdkDirName)
-        ToolchainKind.CMake -> File(optDir(context), CMakeDirName)
+        ToolchainKind.Ndk -> File(toolchainRoot(context), NdkDirName)
+        ToolchainKind.CMake -> File(toolchainRoot(context), CMakeDirName)
     }
 
     fun guestDir(kind: ToolchainKind): String = when (kind) {
         ToolchainKind.Ndk -> "/$OptDirName/$NdkDirName"
         ToolchainKind.CMake -> "/$OptDirName/$CMakeDirName"
     }
+
+    fun guestOptDir(): String = "/$OptDirName"
 
     fun markerFile(context: Context, kind: ToolchainKind): File =
         File(hostDir(context, kind), MarkerName)
