@@ -1,7 +1,8 @@
 package com.editor.es.build
 
 import android.content.Context
-import com.editor.es.proot.InstallCancelledException
+import com.editor.es.net.DownloadCancelledException
+import com.editor.es.net.ResumableDownload
 import com.editor.es.proot.deleteRecursivelySafe
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -11,16 +12,16 @@ import org.apache.commons.compress.compressors.xz.XZCompressorInputStream
 import java.io.BufferedInputStream
 import java.io.File
 import java.io.FileOutputStream
-import java.net.HttpURLConnection
-import java.net.URL
 import java.util.concurrent.atomic.AtomicBoolean
 
 sealed class ToolchainPhase {
     data object Idle : ToolchainPhase()
     data class Downloading(val percent: Int, val receivedMb: Double, val totalMb: Double) : ToolchainPhase()
+    data class Retrying(val attempt: Int, val reason: String, val receivedMb: Double) : ToolchainPhase()
     data class Extracting(val entry: String, val count: Int) : ToolchainPhase()
     data object Done : ToolchainPhase()
     data class Failed(val message: String) : ToolchainPhase()
+    data object Cancelled : ToolchainPhase()
 }
 
 class ToolchainInstaller(private val context: Context, private val kind: ToolchainKind) {
@@ -39,13 +40,14 @@ class ToolchainInstaller(private val context: Context, private val kind: Toolcha
         try {
             download(release, archive, onProgress)
             extract(archive, release, onProgress)
+            archive.delete()
             onProgress(ToolchainPhase.Done)
+        } catch (e: DownloadCancelledException) {
+            onProgress(ToolchainPhase.Cancelled)
         } catch (e: Exception) {
             archive.delete()
             ToolchainPaths.hostDir(context, kind).deleteRecursivelySafe()
             onProgress(ToolchainPhase.Failed(e.message ?: "Installation failed"))
-        } finally {
-            archive.delete()
         }
     }
 
@@ -54,66 +56,32 @@ class ToolchainInstaller(private val context: Context, private val kind: Toolcha
         target: File,
         onProgress: (ToolchainPhase) -> Unit
     ) {
-        target.delete()
-        val connection = open(URL(release.downloadUrl))
-        val total = if (connection.contentLengthLong > 0) {
-            connection.contentLengthLong
-        } else {
-            release.sizeBytes
-        }
-        FileOutputStream(target).use { out ->
-            connection.inputStream.use { input ->
-                val buffer = ByteArray(128 * 1024)
-                var received = 0L
-                var lastPercent = -1
-                while (true) {
-                    if (cancelled.get()) throw InstallCancelledException()
-                    val read = input.read(buffer)
-                    if (read == -1) break
-                    out.write(buffer, 0, read)
-                    received += read
-                    if (total > 0) {
-                        val percent = ((received * 100) / total).toInt().coerceIn(0, 100)
-                        if (percent != lastPercent) {
-                            lastPercent = percent
-                            onProgress(
-                                ToolchainPhase.Downloading(
-                                    percent = percent,
-                                    receivedMb = received / (1024.0 * 1024.0),
-                                    totalMb = total / (1024.0 * 1024.0)
-                                )
+        var lastPercent = -1
+        ResumableDownload.fetch(
+            url = release.downloadUrl,
+            target = target,
+            fallbackTotal = release.sizeBytes,
+            cancelled = cancelled,
+            onProgress = { received, total ->
+                if (total > 0) {
+                    val percent = ((received * 100) / total).toInt().coerceIn(0, 100)
+                    if (percent != lastPercent) {
+                        lastPercent = percent
+                        onProgress(
+                            ToolchainPhase.Downloading(
+                                percent = percent,
+                                receivedMb = received / (1024.0 * 1024.0),
+                                totalMb = total / (1024.0 * 1024.0)
                             )
-                        }
+                        )
                     }
                 }
+            },
+            onRetry = { attempt, reason ->
+                val received = ResumableDownload.partFile(target).length() / (1024.0 * 1024.0)
+                onProgress(ToolchainPhase.Retrying(attempt, reason, received))
             }
-        }
-        connection.disconnect()
-    }
-
-    private fun open(url: URL): HttpURLConnection {
-        var current = url
-        repeat(5) {
-            val connection = current.openConnection() as HttpURLConnection
-            connection.connectTimeout = 30000
-            connection.readTimeout = 60000
-            connection.instanceFollowRedirects = true
-            connection.setRequestProperty("User-Agent", "EditorEs/1.0")
-            val status = connection.responseCode
-            if (status in 301..303 || status == 307 || status == 308) {
-                val location = connection.getHeaderField("Location")
-                connection.disconnect()
-                if (location == null) throw IllegalStateException("Redirect without location")
-                current = URL(current, location)
-                return@repeat
-            }
-            if (status != 200) {
-                connection.disconnect()
-                throw IllegalStateException("Download failed with HTTP $status")
-            }
-            return connection
-        }
-        throw IllegalStateException("Too many redirects")
+        )
     }
 
     private fun extract(
@@ -130,7 +98,7 @@ class ToolchainInstaller(private val context: Context, private val kind: Toolcha
             XZCompressorInputStream(BufferedInputStream(archive.inputStream(), 512 * 1024))
         ).use { tar ->
             while (true) {
-                if (cancelled.get()) throw InstallCancelledException()
+                if (cancelled.get()) throw DownloadCancelledException()
                 val entry = tar.nextEntry ?: break
                 val relative = stripTopLevel(entry.name) ?: continue
                 if (!ToolchainPruner.keep(kind, relative)) continue

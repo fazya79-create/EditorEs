@@ -54,6 +54,7 @@ import com.editor.es.build.ToolchainPaths
 import com.editor.es.build.ToolchainPhase
 import com.editor.es.build.ToolchainRelease
 import com.editor.es.build.ToolchainRepository
+import com.editor.es.net.ResumableDownload
 import com.editor.es.ui.theme.SpringGreen
 import androidx.compose.runtime.rememberCoroutineScope
 import kotlinx.coroutines.launch
@@ -64,6 +65,7 @@ private val FieldSurface = Color(0xFF0F2830)
 private val Foreground = Color(0xFFD9F3E6)
 private val Muted = Color(0xFF7FA898)
 private val ErrorTint = Color(0xFFFF8A80)
+private val WarnTint = Color(0xFFFFC46B)
 private val CardShape = RoundedCornerShape(18.dp)
 private val FieldShape = RoundedCornerShape(10.dp)
 
@@ -163,7 +165,14 @@ private fun ToolchainSection(
             .onFailure { loadError = it.message ?: "Unable to load versions" }
     }
 
-    val busy = phase is ToolchainPhase.Downloading || phase is ToolchainPhase.Extracting
+    var installer by remember { mutableStateOf<ToolchainInstaller?>(null) }
+    val busy = phase is ToolchainPhase.Downloading ||
+        phase is ToolchainPhase.Extracting ||
+        phase is ToolchainPhase.Retrying
+    val partialMb = remember(phase, selected) {
+        val part = ResumableDownload.partFile(ToolchainPaths.downloadCache(context, kind))
+        if (part.isFile) part.length() / (1024.0 * 1024.0) else 0.0
+    }
 
     Column(modifier = Modifier.fillMaxWidth()) {
         Row(verticalAlignment = Alignment.CenterVertically) {
@@ -263,42 +272,58 @@ private fun ToolchainSection(
 
         Spacer(modifier = Modifier.height(8.dp))
 
-        Button(
-            onClick = {
-                val release = selected ?: return@Button
-                val installer = ToolchainInstaller(context, kind)
-                phase = ToolchainPhase.Downloading(0, 0.0, release.sizeMb)
-                scope.launch {
-                    installer.install(release) { newPhase ->
-                        phase = newPhase
-                        if (newPhase is ToolchainPhase.Done) onInstalled()
+        if (busy) {
+            OutlinedButton(
+                onClick = { installer?.cancel() },
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text("Cancel", fontSize = 12.sp)
+            }
+        } else {
+            Button(
+                onClick = {
+                    val release = selected ?: return@Button
+                    val runner = ToolchainInstaller(context, kind)
+                    installer = runner
+                    phase = ToolchainPhase.Downloading(0, 0.0, release.sizeMb)
+                    scope.launch {
+                        runner.install(release) { newPhase ->
+                            phase = newPhase
+                            if (newPhase is ToolchainPhase.Done) onInstalled()
+                        }
                     }
-                }
-            },
-            enabled = selected != null && !busy,
-            colors = ButtonDefaults.buttonColors(
-                containerColor = SpringGreen,
-                contentColor = Color(0xFF07191E)
-            ),
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            Icon(
-                imageVector = Icons.Outlined.Download,
-                contentDescription = null,
-                modifier = Modifier.size(16.dp)
-            )
-            Spacer(modifier = Modifier.width(8.dp))
-            Text(
-                text = if (installed) "Reinstall" else "Download",
-                fontSize = 12.sp,
-                fontWeight = FontWeight.Bold
-            )
+                },
+                enabled = selected != null,
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = SpringGreen,
+                    contentColor = Color(0xFF07191E)
+                ),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Icon(
+                    imageVector = Icons.Outlined.Download,
+                    contentDescription = null,
+                    modifier = Modifier.size(16.dp)
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(
+                    text = downloadLabel(installed, partialMb),
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.Bold
+                )
+            }
         }
 
         Spacer(modifier = Modifier.height(8.dp))
 
         PhaseIndicator(phase)
     }
+}
+
+private fun downloadLabel(installed: Boolean, partialMb: Double): String = when {
+    partialMb >= 1.0 -> "Resume (${"%.0f".format(partialMb)} MB done)"
+    installed -> "Reinstall"
+    else -> "Download"
 }
 
 @Composable
@@ -366,6 +391,37 @@ private fun PhaseIndicator(phase: ToolchainPhase) {
             )
             Spacer(modifier = Modifier.height(5.dp))
             Text(text = "installed", fontSize = 11.sp, color = SpringGreen)
+        }
+        is ToolchainPhase.Retrying -> {
+            LinearProgressIndicator(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(5.dp),
+                color = WarnTint,
+                strokeCap = StrokeCap.Round
+            )
+            Spacer(modifier = Modifier.height(5.dp))
+            Text(
+                text = "retry ${phase.attempt} · ${phase.reason}",
+                fontSize = 10.sp,
+                fontFamily = FontFamily.Monospace,
+                color = WarnTint,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+            Text(
+                text = "keeping ${"%.1f".format(phase.receivedMb)} MB already downloaded",
+                fontSize = 10.sp,
+                fontFamily = FontFamily.Monospace,
+                color = Muted
+            )
+        }
+        ToolchainPhase.Cancelled -> {
+            Text(
+                text = "cancelled · progress kept, press resume",
+                fontSize = 11.sp,
+                color = WarnTint
+            )
         }
         is ToolchainPhase.Failed -> {
             Text(text = phase.message, fontSize = 11.sp, color = ErrorTint)
