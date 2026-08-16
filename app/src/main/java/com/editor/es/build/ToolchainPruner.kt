@@ -9,7 +9,6 @@ object ToolchainPruner {
         "clang-tidy",
         "clang-format",
         "clang-scan-deps",
-        "clangd",
         "clang-repl",
         "clang-refactor",
         "clang-apply-replacements",

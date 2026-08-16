@@ -86,6 +86,8 @@ dependencies {
     coreLibraryDesugaring(libs.androidx.desugar.jdk.libs)
     implementation("io.github.rosemoe:editor")
     implementation("io.github.rosemoe:language-textmate")
+    implementation("io.github.rosemoe:editor-lsp")
+    implementation("org.eclipse.lsp4j:org.eclipse.lsp4j:1.0.0")
     implementation(project(":terminal-view"))
     implementation("org.apache.commons:commons-compress:1.28.0")
     implementation("org.tukaani:xz:1.12")

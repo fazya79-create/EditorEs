@@ -171,6 +171,58 @@ object ProotConfig {
         return args
     }
 
+    fun rawArgs(
+        context: Context,
+        command: List<String>,
+        guestCwd: String,
+        binds: List<String> = emptyList(),
+        extraPath: List<String> = emptyList(),
+        extraEnv: List<String> = emptyList()
+    ): List<String> {
+        val rootfs = rootfsDir(context).absolutePath
+        val path = (extraPath + GuestPath.split(':')).joinToString(":")
+        val args = mutableListOf(
+            prootBinary(context),
+            "-L",
+            "--kernel-release=$FakeKernelVersion",
+            "--link2symlink",
+            "--sysvipc",
+            "--kill-on-exit",
+            "--rootfs=$rootfs",
+            "--change-id=0:0",
+            "--cwd=$guestCwd",
+            "--bind=/dev",
+            "--bind=/dev/urandom:/dev/random",
+            "--bind=/proc",
+            "--bind=/proc/self/fd:/dev/fd",
+            "--bind=/proc/self/fd/0:/dev/stdin",
+            "--bind=/proc/self/fd/1:/dev/stdout",
+            "--bind=/proc/self/fd/2:/dev/stderr",
+            "--bind=/sys",
+            "--bind=$rootfs/proc/.loadavg:/proc/loadavg",
+            "--bind=$rootfs/proc/.stat:/proc/stat",
+            "--bind=$rootfs/proc/.uptime:/proc/uptime",
+            "--bind=$rootfs/proc/.version:/proc/version",
+            "--bind=$rootfs/proc/.vmstat:/proc/vmstat",
+            "--bind=$rootfs/proc/.sysctl_entry_cap_last_cap:/proc/sys/kernel/cap_last_cap"
+        )
+        binds.forEach { args += "--bind=$it" }
+        args += listOf(
+            "/usr/bin/env",
+            "-i",
+            "HOME=/root",
+            "USER=root",
+            "LOGNAME=root",
+            "LANG=C.UTF-8",
+            "PATH=$path",
+            "TERM=dumb",
+            "TMPDIR=/tmp"
+        )
+        args += extraEnv
+        args += command
+        return args
+    }
+
     fun writeShellProfile(context: Context) {
         val rootfs = rootfsDir(context)
         if (!File(rootfs, "etc").isDirectory) return

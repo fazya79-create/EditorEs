@@ -22,6 +22,9 @@
     <string name="undo">Undo</string>
     <string name="redo">Redo</string>
     <string name="run_build">Run build</string>
+    <string name="lsp_toggle">Code intelligence</string>
+    <string name="lsp_on_hint">clangd active, uses more memory</string>
+    <string name="lsp_off_hint">Off, syntax highlight only</string>
     <string name="explorer">Explorer</string>
     <string name="new_file">New file</string>
     <string name="new_folder">New folder</string>

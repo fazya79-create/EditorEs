@@ -10,4 +10,13 @@
 -keep class com.termux.terminal.** { *; }
 -keep class com.editor.es.service.TermuxService { *; }
 -keep class com.editor.es.storage.EditorEsDocumentsProvider { *; }
+-keep class org.eclipse.lsp4j.** { *; }
+-keep class io.github.rosemoe.sora.lsp.** { *; }
+-keepattributes Signature,InnerClasses,EnclosingMethod
+-keepclassmembers enum org.eclipse.lsp4j.** {
+    public static **[] values();
+    public static ** valueOf(java.lang.String);
+}
+-dontwarn org.eclipse.lsp4j.**
+-dontwarn com.google.gson.**
 -keep class com.termux.view.** { *; }

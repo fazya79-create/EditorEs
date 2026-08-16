@@ -54,12 +54,15 @@ class BuildRunner(private val context: Context) {
                     return@withContext
                 }
 
-                val guestProject = "/project"
+                val guestProject = projectDir.absolutePath
+                runCatching {
+                    File(ProotConfig.rootfsDir(context), guestProject.trimStart('/')).mkdirs()
+                }
                 val args = ProotConfig.commandArgs(
                     context = context,
                     script = buildScript(),
                     guestCwd = guestProject,
-                    binds = listOf("${projectDir.absolutePath}:$guestProject"),
+                    binds = listOf("$guestProject:$guestProject"),
                     extraPath = listOf(ToolchainPaths.guestCMakeBin())
                 )
 
@@ -96,6 +99,7 @@ class BuildRunner(private val context: Context) {
             "$cmake -S . -B build -G Ninja" +
                 " -DCMAKE_MAKE_PROGRAM=$ninja" +
                 " -DCMAKE_TOOLCHAIN_FILE=$toolchain" +
+                " -DCMAKE_EXPORT_COMPILE_COMMANDS=ON" +
                 " -DANDROID_ABI=arm64-v8a" +
                 " -DANDROID_PLATFORM=android-24" +
                 " -DCMAKE_BUILD_TYPE=Release",

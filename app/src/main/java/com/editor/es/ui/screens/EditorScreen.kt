@@ -58,6 +58,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
@@ -65,6 +66,8 @@ import androidx.compose.ui.unit.sp
 import com.editor.es.R
 import com.editor.es.build.BuildEvent
 import com.editor.es.build.BuildRunner
+import com.editor.es.data.AppSettings
+import com.editor.es.lsp.LspManager
 import com.editor.es.build.ToolchainKind
 import com.editor.es.build.ToolchainPaths
 import com.editor.es.data.FileOps
@@ -91,7 +94,9 @@ import io.github.rosemoe.sora.text.ContentListener
 import io.github.rosemoe.sora.widget.CodeEditor
 import java.io.File
 import kotlin.math.roundToInt
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -106,6 +111,8 @@ private val TabActiveForeground = Color(0xFFF2FFFA)
 private val TabInactiveForeground = Color(0xFF7FA898)
 private val DirtyDot = SpringGreen
 private val AccentGreen = SpringGreen
+private val LspStatusColor = Color(0xFF6FD9AE)
+private val LspStatusBackground = Color(0xFF08202A)
 private val DrawerWidth = 220.dp
 private val ConsoleHeight = 260.dp
 private val DrawerShape = RoundedCornerShape(topEnd = 24.dp, bottomEnd = 24.dp)
@@ -165,6 +172,11 @@ fun EditorScreen(projectPath: String) {
     }
     var activePath by remember { mutableStateOf(tabs.firstOrNull()?.path) }
     var editorRef by remember { mutableStateOf<CodeEditor?>(null) }
+    val settings = remember { AppSettings(context) }
+    val lspManager = remember(projectDir) { LspManager(context, projectDir) }
+    val lspScope = remember { CoroutineScope(SupervisorJob() + Dispatchers.IO) }
+    var lspEnabled by remember { mutableStateOf(settings.lspEnabled) }
+    var lspStatus by remember { mutableStateOf<String?>(null) }
     var saveState by remember { mutableStateOf<SaveState>(SaveState.Idle) }
     var dialog by remember { mutableStateOf<ExplorerDialog?>(null) }
 
@@ -200,6 +212,11 @@ fun EditorScreen(projectPath: String) {
         editor.setEditorLanguage(EditorLanguageResolver.resolve(tab.name))
         editor.text.addContentListener(dirtyMarker)
         dirtyMarker.enabled = true
+        if (lspEnabled) {
+            scope.launch {
+                lspManager.attach(editor, File(tab.path)) { lspStatus = it }
+            }
+        }
     }
 
     fun captureActiveText() {
@@ -232,6 +249,7 @@ fun EditorScreen(projectPath: String) {
     fun removeTab(path: String) {
         val index = tabs.indexOfFirst { it.path == path }
         if (index < 0) return
+        scope.launch { lspManager.detach(path) }
         if (path == activePath) {
             val next = tabs.getOrNull(index - 1)?.path ?: tabs.getOrNull(index + 1)?.path
             tabs.removeAt(index)
@@ -259,6 +277,7 @@ fun EditorScreen(projectPath: String) {
             if (saved && index >= 0) {
                 tabs[index] = tabs[index].copy(dirty = false, text = text)
             }
+            if (saved) lspManager.notifySaved(current)
             saveState = if (saved) SaveState.Saved else SaveState.Failed
         }
     }
@@ -363,7 +382,10 @@ fun EditorScreen(projectPath: String) {
     }
 
     DisposableEffect(Unit) {
-        onDispose { buildRunner.stop() }
+        onDispose {
+            buildRunner.stop()
+            lspScope.launch { lspManager.shutdown() }
+        }
     }
 
     Box(modifier = Modifier.fillMaxSize()) {
@@ -497,6 +519,21 @@ fun EditorScreen(projectPath: String) {
                 )
             }
 
+            lspStatus?.let { status ->
+                Text(
+                    text = status,
+                    fontSize = 10.sp,
+                    fontFamily = FontFamily.Monospace,
+                    color = LspStatusColor,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .background(LspStatusBackground)
+                        .padding(horizontal = 12.dp, vertical = 4.dp)
+                )
+            }
+
             SymbolBar(editor = editorRef)
         }
 
@@ -540,6 +577,28 @@ fun EditorScreen(projectPath: String) {
                     onMenuRequested = { dialog = ExplorerDialog.Menu(it) },
                     onQuickAction = { action, parent ->
                         dialog = ExplorerDialog.Input(initial = "", parent = parent, kind = action)
+                    },
+                    lspEnabled = lspEnabled,
+                    onLspToggle = { enabled ->
+                        lspEnabled = enabled
+                        settings.lspEnabled = enabled
+                        scope.launch {
+                            if (enabled) {
+                                val editor = editorRef
+                                val current = activePath
+                                if (editor != null && current != null) {
+                                    lspManager.attach(editor, File(current)) { lspStatus = it }
+                                }
+                            } else {
+                                lspManager.shutdown()
+                                lspStatus = null
+                                val editor = editorRef
+                                val tab = activePath?.let { p -> tabs.firstOrNull { it.path == p } }
+                                if (editor != null && tab != null) {
+                                    editor.setEditorLanguage(EditorLanguageResolver.resolve(tab.name))
+                                }
+                            }
+                        }
                     }
                 )
             }
@@ -550,6 +609,13 @@ fun EditorScreen(projectPath: String) {
         if (saveState is SaveState.Saved || saveState is SaveState.Failed) {
             delay(1600)
             saveState = SaveState.Idle
+        }
+    }
+
+    LaunchedEffect(lspStatus) {
+        if (lspStatus != null) {
+            delay(2600)
+            lspStatus = null
         }
     }
 

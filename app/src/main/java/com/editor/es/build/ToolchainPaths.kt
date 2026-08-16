@@ -67,6 +67,18 @@ object ToolchainPaths {
     fun cmakeBinary(context: Context): File =
         File(hostDir(context, ToolchainKind.CMake), "bin/cmake")
 
+    fun clangdBinary(context: Context): File =
+        File(
+            hostDir(context, ToolchainKind.Ndk),
+            "toolchains/llvm/prebuilt/linux-arm64/bin/clangd"
+        )
+
+    fun guestClangd(): String =
+        "${guestDir(ToolchainKind.Ndk)}/toolchains/llvm/prebuilt/linux-arm64/bin/clangd"
+
+    fun guestNdkBin(): String =
+        "${guestDir(ToolchainKind.Ndk)}/toolchains/llvm/prebuilt/linux-arm64/bin"
+
     fun guestNdkToolchainFile(): String =
         "${guestDir(ToolchainKind.Ndk)}/build/cmake/android.toolchain.cmake"
 
