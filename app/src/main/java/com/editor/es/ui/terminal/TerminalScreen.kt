@@ -184,6 +184,7 @@ private fun createTerminalSession(
     val ubuntuReady = ProotConfig.isInstalled(context) && ProotConfig.isAvailable(context)
     val session = if (ubuntuReady) {
         ProotConfig.registerAndroidIds(context)
+        ProotConfig.writeShellProfile(context)
         TerminalSession(
             ProotConfig.prootBinary(context),
             context.filesDir.absolutePath,

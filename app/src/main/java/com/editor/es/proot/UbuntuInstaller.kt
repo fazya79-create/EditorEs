@@ -259,23 +259,7 @@ class UbuntuInstaller(private val context: Context) {
             "force-unsafe-io\nno-debsig\n"
         )
 
-        File(rootfs, "root/.bashrc").let { bashrc ->
-            bashrc.parentFile?.mkdirs()
-            bashrc.writeText(
-                """
-                export PS1='\[\e[1;92m\]\u@ubuntu\[\e[0m\]:\[\e[1;36m\]\w\[\e[0m\]\$ '
-                export PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
-                export LANG=C.UTF-8
-                export TMPDIR=/tmp
-                export DEBIAN_FRONTEND=noninteractive
-                alias ll='ls -alF'
-                """.trimIndent() + "\n"
-            )
-        }
-
-        File(rootfs, "root/.profile").writeText(
-            "[ -n \"\$BASH_VERSION\" ] && [ -f ~/.bashrc ] && . ~/.bashrc\n"
-        )
+        ProotConfig.writeShellProfile(context)
 
         listOf("tmp", "root", "var/tmp", "var/cache/apt/archives/partial", "var/lib/apt/lists/partial")
             .forEach { path ->

@@ -23,6 +23,14 @@ object ProotConfig {
     private const val GuestPath =
         "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
 
+    private const val GuestCMakeBin = "/opt/cmake/bin"
+    private const val GuestNdkBin = "/opt/ndk/toolchains/llvm/prebuilt/linux-arm64/bin"
+    private const val GuestNdkRoot = "/opt/ndk"
+
+    private val ToolchainPath = "$GuestCMakeBin:$GuestNdkBin"
+
+    private val FullGuestPath = "$ToolchainPath:$GuestPath"
+
     fun rootfsDir(context: Context): File = File(context.filesDir, RootfsName)
 
     fun isInstalled(context: Context): Boolean {
@@ -87,7 +95,9 @@ object ProotConfig {
             "USER=root",
             "LOGNAME=root",
             "LANG=C.UTF-8",
-            "PATH=$GuestPath",
+            "PATH=$FullGuestPath",
+            "ANDROID_NDK_ROOT=$GuestNdkRoot",
+            "ANDROID_NDK_HOME=$GuestNdkRoot",
             "TERM=xterm-256color",
             "TMPDIR=/tmp",
             "/usr/bin/bash",
@@ -159,6 +169,41 @@ object ProotConfig {
             script
         )
         return args
+    }
+
+    fun writeShellProfile(context: Context) {
+        val rootfs = rootfsDir(context)
+        if (!File(rootfs, "etc").isDirectory) return
+        runCatching {
+            File(rootfs, "etc/profile.d").mkdirs()
+            File(rootfs, "etc/profile.d/00-editores.sh").writeText(
+                """
+                export PATH=$ToolchainPath:${'$'}PATH
+                export ANDROID_NDK_ROOT=$GuestNdkRoot
+                export ANDROID_NDK_HOME=$GuestNdkRoot
+                export LANG=C.UTF-8
+                export TMPDIR=/tmp
+                export DEBIAN_FRONTEND=noninteractive
+                """.trimIndent() + "\n"
+            )
+            val bashrc = File(rootfs, "root/.bashrc")
+            bashrc.parentFile?.mkdirs()
+            bashrc.writeText(
+                """
+                export PS1='\[\e[1;92m\]\u@ubuntu\[\e[0m\]:\[\e[1;36m\]\w\[\e[0m\]\${'$'} '
+                export PATH=$ToolchainPath:$GuestPath
+                export ANDROID_NDK_ROOT=$GuestNdkRoot
+                export ANDROID_NDK_HOME=$GuestNdkRoot
+                export LANG=C.UTF-8
+                export TMPDIR=/tmp
+                export DEBIAN_FRONTEND=noninteractive
+                alias ll='ls -alF'
+                """.trimIndent() + "\n"
+            )
+            File(rootfs, "root/.profile").writeText(
+                "[ -n \"\$BASH_VERSION\" ] && [ -f ~/.bashrc ] && . ~/.bashrc\n"
+            )
+        }
     }
 
     fun registerAndroidIds(context: Context) {
