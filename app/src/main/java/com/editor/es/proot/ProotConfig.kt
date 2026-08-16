@@ -102,6 +102,65 @@ object ProotConfig {
         "PROOT_TMP_DIR=${tmpDir(context).absolutePath}"
     )
 
+    fun prootEnvMap(context: Context): Map<String, String> = mapOf(
+        "TERM" to "xterm-256color",
+        "HOME" to context.filesDir.absolutePath,
+        "PROOT_LOADER" to loaderBinary(context),
+        "PROOT_TMP_DIR" to tmpDir(context).absolutePath
+    )
+
+    fun commandArgs(
+        context: Context,
+        script: String,
+        guestCwd: String,
+        binds: List<String> = emptyList(),
+        extraPath: List<String> = emptyList()
+    ): List<String> {
+        val rootfs = rootfsDir(context).absolutePath
+        val path = (extraPath + GuestPath.split(':')).joinToString(":")
+        val args = mutableListOf(
+            prootBinary(context),
+            "-L",
+            "--kernel-release=$FakeKernelVersion",
+            "--link2symlink",
+            "--sysvipc",
+            "--kill-on-exit",
+            "--rootfs=$rootfs",
+            "--change-id=0:0",
+            "--cwd=$guestCwd",
+            "--bind=/dev",
+            "--bind=/dev/urandom:/dev/random",
+            "--bind=/proc",
+            "--bind=/proc/self/fd:/dev/fd",
+            "--bind=/proc/self/fd/0:/dev/stdin",
+            "--bind=/proc/self/fd/1:/dev/stdout",
+            "--bind=/proc/self/fd/2:/dev/stderr",
+            "--bind=/sys",
+            "--bind=$rootfs/proc/.loadavg:/proc/loadavg",
+            "--bind=$rootfs/proc/.stat:/proc/stat",
+            "--bind=$rootfs/proc/.uptime:/proc/uptime",
+            "--bind=$rootfs/proc/.version:/proc/version",
+            "--bind=$rootfs/proc/.vmstat:/proc/vmstat",
+            "--bind=$rootfs/proc/.sysctl_entry_cap_last_cap:/proc/sys/kernel/cap_last_cap"
+        )
+        binds.forEach { args += "--bind=$it" }
+        args += listOf(
+            "/usr/bin/env",
+            "-i",
+            "HOME=/root",
+            "USER=root",
+            "LOGNAME=root",
+            "LANG=C.UTF-8",
+            "PATH=$path",
+            "TERM=dumb",
+            "TMPDIR=/tmp",
+            "/usr/bin/bash",
+            "-lc",
+            script
+        )
+        return args
+    }
+
     fun registerAndroidIds(context: Context) {
         val rootfs = rootfsDir(context)
         val uid = Process.myUid()

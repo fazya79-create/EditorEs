@@ -27,14 +27,18 @@ import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.outlined.Redo
+import androidx.compose.material.icons.automirrored.outlined.Undo
 import androidx.compose.material.icons.outlined.Check
 import androidx.compose.material.icons.outlined.Close
 import androidx.compose.material.icons.outlined.InsertDriveFile
+import androidx.compose.material.icons.outlined.PlayArrow
 import androidx.compose.material.icons.outlined.Save
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
@@ -50,6 +54,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -58,10 +63,18 @@ import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.editor.es.R
+import com.editor.es.build.BuildEvent
+import com.editor.es.build.BuildRunner
+import com.editor.es.build.ToolchainKind
+import com.editor.es.build.ToolchainPaths
 import com.editor.es.data.FileOps
 import com.editor.es.data.ProjectCreator
 import com.editor.es.editor.EditorLanguageResolver
 import com.editor.es.editor.EditorPane
+import com.editor.es.ui.build.BuildConsole
+import com.editor.es.ui.build.ConsoleLine
+import com.editor.es.ui.build.ConsoleLineKind
+import com.editor.es.ui.build.ToolchainInstallDialog
 import com.editor.es.ui.dialogs.ConfirmDialog
 import com.editor.es.ui.dialogs.NameInputDialog
 import com.editor.es.ui.dialogs.UnsavedChangesDialog
@@ -84,6 +97,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
 private val ErrorTint = Color(0xFFEF6767)
+private val DisabledTint = Color(0xFF3F5F58)
 private val SidebarBackground = Color(0xFF0A222B)
 private val TitleBarBackground = Color(0xFF0E2A33)
 private val EditorBackground = Color(0xFF0A2129)
@@ -93,6 +107,7 @@ private val TabInactiveForeground = Color(0xFF7FA898)
 private val DirtyDot = SpringGreen
 private val AccentGreen = SpringGreen
 private val DrawerWidth = 220.dp
+private val ConsoleHeight = 260.dp
 private val DrawerShape = RoundedCornerShape(topEnd = 24.dp, bottomEnd = 24.dp)
 private val HamburgerBrush = Brush.linearGradient(
     colors = listOf(SpringGreen, SpringGreen.copy(alpha = 0.55f))
@@ -153,8 +168,17 @@ fun EditorScreen(projectPath: String) {
     var saveState by remember { mutableStateOf<SaveState>(SaveState.Idle) }
     var dialog by remember { mutableStateOf<ExplorerDialog?>(null) }
 
+    val context = LocalContext.current
+    val buildRunner = remember { BuildRunner(context) }
+    val consoleLines = remember { mutableStateListOf<ConsoleLine>() }
+    var consoleVisible by remember { mutableStateOf(false) }
+    var building by remember { mutableStateOf(false) }
+    var showToolchainDialog by remember { mutableStateOf(false) }
+    var historyRevision by remember { mutableStateOf(0) }
+
     val dirtyMarker = remember {
         DirtyMarker {
+            historyRevision++
             val current = activePath
             if (current != null) {
                 val index = tabs.indexOfFirst { it.path == current }
@@ -239,6 +263,59 @@ fun EditorScreen(projectPath: String) {
         }
     }
 
+    fun appendConsole(text: String, kind: ConsoleLineKind = ConsoleLineKind.Normal) {
+        consoleLines.add(ConsoleLine(text, kind))
+        if (consoleLines.size > 2000) consoleLines.removeRange(0, consoleLines.size - 2000)
+    }
+
+    fun startBuild() {
+        if (building) return
+        consoleVisible = true
+        building = true
+        appendConsole("> building ${projectDir.name}")
+        scope.launch {
+            buildRunner.run(projectDir) { event ->
+                when (event) {
+                    is BuildEvent.Line -> appendConsole(event.text)
+                    is BuildEvent.Finished -> {
+                        building = false
+                        if (event.exitCode == 0) {
+                            appendConsole("> build succeeded", ConsoleLineKind.Success)
+                        } else {
+                            appendConsole("> build failed with exit code ${event.exitCode}", ConsoleLineKind.Error)
+                        }
+                    }
+                    is BuildEvent.Failed -> {
+                        building = false
+                        appendConsole("> ${event.message}", ConsoleLineKind.Error)
+                    }
+                }
+            }
+        }
+    }
+
+    fun requestBuild() {
+        val ready = ToolchainPaths.isInstalled(context, ToolchainKind.CMake) &&
+            ToolchainPaths.isInstalled(context, ToolchainKind.Ndk)
+        if (ready) startBuild() else showToolchainDialog = true
+    }
+
+    fun undo() {
+        val editor = editorRef ?: return
+        if (editor.canUndo()) {
+            editor.undo()
+            historyRevision++
+        }
+    }
+
+    fun redo() {
+        val editor = editorRef ?: return
+        if (editor.canRedo()) {
+            editor.redo()
+            historyRevision++
+        }
+    }
+
     fun openDrawer() {
         scope.launch { drawerAnim.animateTo(1f, spring(stiffness = 320f, dampingRatio = 0.8f)) }
     }
@@ -256,6 +333,14 @@ fun EditorScreen(projectPath: String) {
 
     BackHandler(enabled = drawerProgress > 0f) {
         closeDrawer()
+    }
+
+    BackHandler(enabled = drawerProgress == 0f && consoleVisible) {
+        consoleVisible = false
+    }
+
+    DisposableEffect(Unit) {
+        onDispose { buildRunner.stop() }
     }
 
     Box(modifier = Modifier.fillMaxSize()) {
@@ -285,6 +370,31 @@ fun EditorScreen(projectPath: String) {
                     overflow = TextOverflow.Ellipsis,
                     modifier = Modifier.weight(1f)
                 )
+                val canUndo = remember(historyRevision, editorRef) {
+                    editorRef?.canUndo() == true
+                }
+                val canRedo = remember(historyRevision, editorRef) {
+                    editorRef?.canRedo() == true
+                }
+
+                IconButton(onClick = { undo() }, enabled = canUndo) {
+                    Icon(
+                        imageVector = Icons.AutoMirrored.Outlined.Undo,
+                        contentDescription = stringResource(R.string.undo),
+                        tint = if (canUndo) Color(0xFFE4F5EC) else DisabledTint,
+                        modifier = Modifier.size(20.dp)
+                    )
+                }
+
+                IconButton(onClick = { redo() }, enabled = canRedo) {
+                    Icon(
+                        imageVector = Icons.AutoMirrored.Outlined.Redo,
+                        contentDescription = stringResource(R.string.redo),
+                        tint = if (canRedo) Color(0xFFE4F5EC) else DisabledTint,
+                        modifier = Modifier.size(20.dp)
+                    )
+                }
+
                 IconButton(onClick = { saveActive() }) {
                     Icon(
                         imageVector = if (saveState is SaveState.Saved) Icons.Outlined.Check else Icons.Outlined.Save,
@@ -295,6 +405,15 @@ fun EditorScreen(projectPath: String) {
                             else -> Color(0xFFE4F5EC)
                         },
                         modifier = Modifier.size(20.dp)
+                    )
+                }
+
+                IconButton(onClick = { requestBuild() }, enabled = !building) {
+                    Icon(
+                        imageVector = Icons.Outlined.PlayArrow,
+                        contentDescription = stringResource(R.string.run_build),
+                        tint = if (building) DisabledTint else AccentGreen,
+                        modifier = Modifier.size(22.dp)
                     )
                 }
             }
@@ -338,6 +457,23 @@ fun EditorScreen(projectPath: String) {
                     }
                 }
             }
+            if (consoleVisible) {
+                BuildConsole(
+                    lines = consoleLines,
+                    running = building,
+                    onStop = {
+                        buildRunner.stop()
+                        building = false
+                        appendConsole("> build stopped", ConsoleLineKind.Error)
+                    },
+                    onClear = { consoleLines.clear() },
+                    onClose = { consoleVisible = false },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(ConsoleHeight)
+                )
+            }
+
             SymbolBar(editor = editorRef)
         }
 
@@ -392,6 +528,16 @@ fun EditorScreen(projectPath: String) {
             delay(1600)
             saveState = SaveState.Idle
         }
+    }
+
+    if (showToolchainDialog) {
+        ToolchainInstallDialog(
+            onDismiss = { showToolchainDialog = false },
+            onReady = {
+                showToolchainDialog = false
+                startBuild()
+            }
+        )
     }
 
     when (val current = dialog) {

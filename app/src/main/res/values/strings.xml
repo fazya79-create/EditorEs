@@ -20,6 +20,9 @@
     <string name="creating">Creating…</string>
     <string name="close">Close</string>
     <string name="save">Save</string>
+    <string name="undo">Undo</string>
+    <string name="redo">Redo</string>
+    <string name="run_build">Run build</string>
     <string name="explorer">Explorer</string>
     <string name="new_file">New file</string>
     <string name="new_folder">New folder</string>
