@@ -135,6 +135,10 @@ class LspManager(private val context: Context, private val projectDir: File) {
         runCatching { lspEditor.saveDocument() }
     }
 
+    fun attachedEditor(path: String): LspEditor? = attached[path]
+
+    fun isAttached(path: String): Boolean = attached[path]?.isConnected == true
+
     suspend fun shutdown() = withContext(Dispatchers.IO) {
         attached.clear()
         val current = project ?: return@withContext

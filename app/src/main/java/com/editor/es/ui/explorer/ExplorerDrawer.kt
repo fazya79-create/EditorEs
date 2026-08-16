@@ -63,7 +63,8 @@ fun ExplorerDrawerContent(
     activeFilePath: String?,
     onFileClick: (File) -> Unit,
     onMenuRequested: (File) -> Unit,
-    onQuickAction: (NodeAction, File) -> Unit
+    onQuickAction: (NodeAction, File) -> Unit,
+    onCopyPath: (File) -> Unit
 ) {
     Column(
         modifier = Modifier
@@ -156,6 +157,7 @@ fun ExplorerDrawerContent(
                     onClick = {
                         if (row.isDirectory) explorer.toggle(row.file) else onFileClick(row.file)
                     },
+                    onLongPress = { onCopyPath(row.file) },
                     onMenu = { onMenuRequested(row.file) }
                 )
             }
@@ -170,6 +172,7 @@ private fun TreeRowItem(
     expanded: Boolean,
     isActive: Boolean,
     onClick: () -> Unit,
+    onLongPress: () -> Unit,
     onMenu: () -> Unit
 ) {
     val chevronRotation by animateFloatAsState(
@@ -182,7 +185,7 @@ private fun TreeRowItem(
             .fillMaxWidth()
             .height(34.dp)
             .background(if (isActive) ActiveRowBackground else Color.Transparent)
-            .combinedClickable(onClick = onClick, onLongClick = onMenu)
+            .combinedClickable(onClick = onClick, onLongClick = onLongPress)
             .padding(start = 8.dp, end = 2.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {

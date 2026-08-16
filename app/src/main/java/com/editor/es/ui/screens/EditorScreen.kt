@@ -1,5 +1,7 @@
 package com.editor.es.ui.screens
 
+import android.content.ClipData
+import android.content.ClipboardManager
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.spring
@@ -32,7 +34,9 @@ import androidx.compose.material.icons.automirrored.outlined.Undo
 import androidx.compose.material.icons.outlined.Check
 import androidx.compose.material.icons.outlined.Close
 import androidx.compose.material.icons.outlined.InsertDriveFile
+import androidx.compose.material.icons.outlined.MoreVert
 import androidx.compose.material.icons.outlined.PlayArrow
+import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material.icons.outlined.Save
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -72,12 +76,16 @@ import com.editor.es.build.RunConfigurations
 import com.editor.es.build.RunMenuState
 import com.editor.es.data.AppSettings
 import com.editor.es.data.PreferenceSettings
+import com.editor.es.lsp.LocationEntry
 import com.editor.es.lsp.LspManager
+import com.editor.es.lsp.LspNavigation
+import com.editor.es.lsp.SymbolEntry
 import com.editor.es.build.ToolchainKind
 import com.editor.es.build.ToolchainPaths
 import com.editor.es.data.FileOps
 import com.editor.es.data.ProjectCreator
 import com.editor.es.editor.EditorConfigurator
+import com.editor.es.editor.EditorSearch
 import com.editor.es.editor.EditorLanguageResolver
 import com.editor.es.editor.EditorPane
 import com.editor.es.ui.build.BuildConsole
@@ -89,7 +97,12 @@ import com.editor.es.ui.build.ToolchainInstallDialog
 import com.editor.es.ui.dialogs.ConfirmDialog
 import com.editor.es.ui.dialogs.NameInputDialog
 import com.editor.es.ui.dialogs.UnsavedChangesDialog
+import com.editor.es.ui.editor.FindReplaceBar
+import com.editor.es.ui.editor.FindState
 import com.editor.es.ui.editor.SymbolBar
+import com.editor.es.ui.editor.EditorToolsMenu
+import com.editor.es.ui.lsp.LocationListPanel
+import com.editor.es.ui.lsp.SymbolListPanel
 import com.editor.es.ui.explorer.ExplorerDrawerContent
 import com.editor.es.ui.explorer.ExplorerState
 import com.editor.es.ui.explorer.NodeAction
@@ -194,6 +207,11 @@ fun EditorScreen(projectPath: String) {
     var runMenu by remember { mutableStateOf<RunMenuState?>(null) }
     var menuExpanded by remember { mutableStateOf(false) }
     var showNewCommand by remember { mutableStateOf(false) }
+    var toolsExpanded by remember { mutableStateOf(false) }
+    var findState by remember { mutableStateOf(FindState()) }
+    var findVisible by remember { mutableStateOf(false) }
+    var symbolPanel by remember { mutableStateOf<List<SymbolEntry>?>(null) }
+    var locationPanel by remember { mutableStateOf<Pair<String, List<LocationEntry>>?>(null) }
     val consoleLines = remember { mutableStateListOf<ConsoleLine>() }
     var consoleVisible by remember { mutableStateOf(false) }
     var building by remember { mutableStateOf(false) }
@@ -349,6 +367,140 @@ fun EditorScreen(projectPath: String) {
         }
     }
 
+    fun copyProjectPath(file: File) {
+        val root = projectDir.absolutePath.trimEnd('/')
+        val path = file.absolutePath
+        val relative = if (path.startsWith("$root/")) {
+            path.removePrefix("$root/")
+        } else {
+            file.name
+        }
+        val clipboard = context.getSystemService(ClipboardManager::class.java)
+        clipboard?.setPrimaryClip(ClipData.newPlainText(file.name, relative))
+        lspStatus = "copied $relative"
+    }
+
+    fun runSearch(state: FindState) {
+        val editor = editorRef ?: return
+        if (state.query.isEmpty()) {
+            EditorSearch.stop(editor)
+            findState = state.copy(current = 0, total = 0)
+            return
+        }
+        EditorSearch.search(
+            editor = editor,
+            query = state.query,
+            caseSensitive = state.caseSensitive,
+            wholeWord = state.wholeWord,
+            regex = state.regex
+        )
+        findState = state.copy(
+            total = EditorSearch.matchCount(editor),
+            current = EditorSearch.currentIndex(editor)
+        )
+    }
+
+    fun syncSearchCounter() {
+        val editor = editorRef ?: return
+        findState = findState.copy(
+            total = EditorSearch.matchCount(editor),
+            current = EditorSearch.currentIndex(editor)
+        )
+    }
+
+    fun closeFind() {
+        editorRef?.let { EditorSearch.stop(it) }
+        findVisible = false
+        findState = FindState()
+    }
+
+    fun formatCode() {
+        val editor = editorRef ?: return
+        if (!EditorSearch.format(editor)) {
+            lspStatus = "formatter not available"
+        }
+    }
+
+    fun jumpTo(line: Int, column: Int) {
+        val editor = editorRef ?: return
+        val safeLine = line.coerceIn(0, (editor.text.lineCount - 1).coerceAtLeast(0))
+        val safeColumn = column.coerceIn(0, editor.text.getColumnCount(safeLine))
+        editor.setSelection(safeLine, safeColumn)
+    }
+
+    fun openLocation(entry: LocationEntry) {
+        if (entry.file.absolutePath == activePath) {
+            jumpTo(entry.line, entry.column)
+            return
+        }
+        openFile(entry.file)
+        scope.launch {
+            withContext(Dispatchers.Main) { jumpTo(entry.line, entry.column) }
+        }
+    }
+
+    fun currentLspEditor(): io.github.rosemoe.sora.lsp.editor.LspEditor? {
+        val current = activePath ?: return null
+        return lspManager.attachedEditor(current)
+    }
+
+    fun showSymbols() {
+        val lspEditor = currentLspEditor()
+        if (lspEditor == null) {
+            lspStatus = "clangd is not attached to this file"
+            return
+        }
+        scope.launch {
+            val symbols = LspNavigation.documentSymbols(lspEditor)
+            if (symbols.isEmpty()) {
+                lspStatus = "no symbols found"
+            } else {
+                locationPanel = null
+                symbolPanel = symbols
+            }
+        }
+    }
+
+    fun goToDefinition() {
+        val editor = editorRef ?: return
+        val lspEditor = currentLspEditor()
+        if (lspEditor == null) {
+            lspStatus = "clangd is not attached to this file"
+            return
+        }
+        val position = editor.cursor.left()
+        scope.launch {
+            val results = LspNavigation.definition(lspEditor, position)
+            when {
+                results.isEmpty() -> lspStatus = "no definition found"
+                results.size == 1 -> openLocation(results.first())
+                else -> {
+                    symbolPanel = null
+                    locationPanel = "Definition" to results
+                }
+            }
+        }
+    }
+
+    fun findReferences() {
+        val editor = editorRef ?: return
+        val lspEditor = currentLspEditor()
+        if (lspEditor == null) {
+            lspStatus = "clangd is not attached to this file"
+            return
+        }
+        val position = editor.cursor.left()
+        scope.launch {
+            val results = LspNavigation.references(lspEditor, position)
+            if (results.isEmpty()) {
+                lspStatus = "no references found"
+            } else {
+                symbolPanel = null
+                locationPanel = "References" to results
+            }
+        }
+    }
+
     fun refreshRunMenu() {
         scope.launch { runMenu = runConfigurations.load() }
     }
@@ -415,6 +567,18 @@ fun EditorScreen(projectPath: String) {
         closeDrawer()
     }
 
+    BackHandler(enabled = drawerProgress == 0f && findVisible) {
+        closeFind()
+    }
+
+    BackHandler(enabled = drawerProgress == 0f && !findVisible && symbolPanel != null) {
+        symbolPanel = null
+    }
+
+    BackHandler(enabled = drawerProgress == 0f && !findVisible && locationPanel != null) {
+        locationPanel = null
+    }
+
     BackHandler(enabled = drawerProgress == 0f && consoleVisible) {
         consoleVisible = false
     }
@@ -479,6 +643,49 @@ fun EditorScreen(projectPath: String) {
                         contentDescription = stringResource(R.string.redo),
                         tint = if (canRedo) Color(0xFFE4F5EC) else DisabledTint,
                         modifier = Modifier.size(20.dp)
+                    )
+                }
+
+                IconButton(onClick = {
+                    findVisible = !findVisible
+                    if (!findVisible) closeFind()
+                }) {
+                    Icon(
+                        imageVector = Icons.Outlined.Search,
+                        contentDescription = "Find",
+                        tint = if (findVisible) AccentGreen else Color(0xFFE4F5EC),
+                        modifier = Modifier.size(19.dp)
+                    )
+                }
+
+                Box {
+                    IconButton(onClick = { toolsExpanded = true }) {
+                        Icon(
+                            imageVector = Icons.Outlined.MoreVert,
+                            contentDescription = "Tools",
+                            tint = Color(0xFFE4F5EC),
+                            modifier = Modifier.size(19.dp)
+                        )
+                    }
+                    EditorToolsMenu(
+                        expanded = toolsExpanded,
+                        onDismiss = { toolsExpanded = false },
+                        onFormat = {
+                            toolsExpanded = false
+                            formatCode()
+                        },
+                        onSymbols = {
+                            toolsExpanded = false
+                            showSymbols()
+                        },
+                        onDefinition = {
+                            toolsExpanded = false
+                            goToDefinition()
+                        },
+                        onReferences = {
+                            toolsExpanded = false
+                            findReferences()
+                        }
                     )
                 }
 
@@ -584,6 +791,81 @@ fun EditorScreen(projectPath: String) {
                     }
                 }
             }
+            if (findVisible) {
+                FindReplaceBar(
+                    state = findState,
+                    onQueryChange = { value -> runSearch(findState.copy(query = value)) },
+                    onReplacementChange = { value ->
+                        findState = findState.copy(replacement = value)
+                    },
+                    onToggleOption = { option ->
+                        val next = when (option) {
+                            "case" -> findState.copy(caseSensitive = !findState.caseSensitive)
+                            "word" -> findState.copy(
+                                wholeWord = !findState.wholeWord,
+                                regex = false
+                            )
+                            else -> findState.copy(
+                                regex = !findState.regex,
+                                wholeWord = false
+                            )
+                        }
+                        runSearch(next)
+                    },
+                    onToggleReplace = {
+                        findState = findState.copy(showReplace = !findState.showReplace)
+                    },
+                    onNext = {
+                        editorRef?.let { EditorSearch.next(it) }
+                        syncSearchCounter()
+                    },
+                    onPrevious = {
+                        editorRef?.let { EditorSearch.previous(it) }
+                        syncSearchCounter()
+                    },
+                    onReplace = {
+                        editorRef?.let { EditorSearch.replaceCurrent(it, findState.replacement) }
+                        syncSearchCounter()
+                    },
+                    onReplaceAll = {
+                        editorRef?.let { EditorSearch.replaceAll(it, findState.replacement) }
+                        syncSearchCounter()
+                    },
+                    onClose = { closeFind() }
+                )
+            }
+
+            symbolPanel?.let { symbols ->
+                SymbolListPanel(
+                    title = "Symbols",
+                    symbols = symbols,
+                    onSelect = { symbol ->
+                        symbolPanel = null
+                        jumpTo(symbol.line, symbol.column)
+                    },
+                    onClose = { symbolPanel = null },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(ConsoleHeight)
+                )
+            }
+
+            locationPanel?.let { (title, locations) ->
+                LocationListPanel(
+                    title = title,
+                    locations = locations,
+                    projectDir = projectDir,
+                    onSelect = { entry ->
+                        locationPanel = null
+                        openLocation(entry)
+                    },
+                    onClose = { locationPanel = null },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(ConsoleHeight)
+                )
+            }
+
             if (consoleVisible) {
                 BuildConsole(
                     lines = consoleLines,
@@ -659,7 +941,8 @@ fun EditorScreen(projectPath: String) {
                     onMenuRequested = { dialog = ExplorerDialog.Menu(it) },
                     onQuickAction = { action, parent ->
                         dialog = ExplorerDialog.Input(initial = "", parent = parent, kind = action)
-                    }
+                    },
+                    onCopyPath = { file -> copyProjectPath(file) }
                 )
             }
         }
