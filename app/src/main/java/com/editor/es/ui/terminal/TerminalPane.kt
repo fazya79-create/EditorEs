@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -18,8 +19,11 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
+import androidx.core.view.doOnLayout
 import com.editor.es.proot.ProotConfig
 import com.editor.es.service.TermuxService
 import com.termux.terminal.TerminalSession
@@ -80,6 +84,9 @@ fun TerminalPane(
 ) {
     val context = androidx.compose.ui.platform.LocalContext.current
     val tag = remember(projectDir) { projectSessionTag(projectDir) }
+    val ubuntuMissing = remember(projectDir) {
+        !(ProotConfig.isInstalled(context) && ProotConfig.isAvailable(context))
+    }
     var ctrlArmed by remember { mutableStateOf(false) }
     var altArmed by remember { mutableStateOf(false) }
     var view by remember { mutableStateOf<TerminalView?>(null) }
@@ -99,6 +106,11 @@ fun TerminalPane(
         }
         current.attachSession(created)
         session = created
+        current.doOnLayout { it.post { current.updateSize() } }
+        current.post {
+            current.updateSize()
+            current.requestFocus()
+        }
     }
 
     DisposableEffect(Unit) {
@@ -125,6 +137,17 @@ fun TerminalPane(
     }
 
     Column(modifier = modifier.background(PaneBackground)) {
+        if (ubuntuMissing) {
+            Text(
+                text = "Ubuntu is not installed, open Terminal from home to install it",
+                fontSize = 10.sp,
+                fontFamily = FontFamily.Monospace,
+                color = Color(0xFFFFB74D),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 10.dp, vertical = 5.dp)
+            )
+        }
         Box(modifier = Modifier.weight(1f)) {
             AndroidView(
                 modifier = Modifier.fillMaxSize(),
@@ -157,6 +180,9 @@ fun TerminalPane(
                         )
                         view = this
                     }
+                },
+                update = { current ->
+                    current.post { current.updateSize() }
                 }
             )
         }

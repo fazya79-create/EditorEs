@@ -172,7 +172,7 @@ fun BuildConsole(
             )
         }
 
-        Box(modifier = Modifier.weight(1f)) {
+        Box(modifier = Modifier.weight(1f).fillMaxWidth()) {
             when (tab) {
                 ConsoleTab.Terminal -> terminalContent()
                 ConsoleTab.Build -> {
