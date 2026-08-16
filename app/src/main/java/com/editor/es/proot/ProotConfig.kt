@@ -92,7 +92,7 @@ object ProotConfig {
     fun registerAndroidUser(context: Context) {
         val rootfs = rootfsDir(context)
         val uid = Process.myUid()
-        val gid = Process.myGid()
+        val gid = uid
         val passwd = File(rootfs, "etc/passwd")
         val shadow = File(rootfs, "etc/shadow")
         val userName = "aid_a$uid"

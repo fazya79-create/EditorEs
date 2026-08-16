@@ -186,9 +186,9 @@ class UbuntuInstaller(private val context: Context) {
 
     private fun applyPermissions(target: File, entry: TarArchiveEntry) {
         val mode = entry.mode
-        if (mode and 0b100 != 0) target.setExecutable(true, false)
-        if (mode and 0b010 != 0) target.setWritable(true, false)
-        target.setReadable(mode and 0b004 != 0, false)
+        if (mode and 64 != 0) target.setExecutable(true, false)
+        if (mode and 128 != 0) target.setWritable(true, false)
+        target.setReadable(mode and 256 != 0, false)
     }
 
     private fun finalizeRootfs(onProgress: (InstallPhase) -> Unit) {
