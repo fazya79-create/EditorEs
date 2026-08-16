@@ -102,22 +102,20 @@ private val SecondRow = listOf(
     TerminalKey("PGDN", "\u001b[6~", repeatable = true)
 )
 
-private fun buildEnv(home: String, binDir: String): Array<String> = arrayOf(
+private fun buildEnv(home: String): Array<String> = arrayOf(
     "TERM=xterm-256color",
     "HOME=$home",
-    "PATH=$binDir:/system/bin:/system/xbin:/vendor/bin",
-    "LANG=C.UTF-8"
+    "PATH=/system/bin:/system/xbin:/vendor/bin",
+    "LANG=C.UTF-8",
+    "ENV=$home/.editor-es-shrc"
 )
 
-private fun installTerminalBin(context: Context): String {
-    val binDir = File(context.filesDir, "bin")
-    binDir.mkdirs()
-    val clearScript = File(binDir, "clear")
-    if (!clearScript.exists()) {
-        clearScript.writeText("#!/system/bin/sh\nprintf '\\033[2J\\033[3J\\033[H'\n")
-        clearScript.setExecutable(true)
+private fun installShellProfile(context: Context) {
+    val profile = File(context.filesDir, ".editor-es-shrc")
+    val content = "clear() { printf '\\033[2J\\033[3J\\033[H'; }\n"
+    if (!profile.exists() || profile.readText() != content) {
+        profile.writeText(content)
     }
-    return binDir.absolutePath
 }
 
 private fun applyColorScheme() {
@@ -145,9 +143,11 @@ fun TerminalScreen(onBack: () -> Unit) {
     var terminalView by remember { mutableStateOf<TerminalView?>(null) }
     var sessionClient by remember { mutableStateOf<EditorEsSessionClient?>(null) }
     var sessionRef by remember { mutableStateOf<TerminalSession?>(null) }
-    val terminalBinDir = remember { installTerminalBin(context) }
 
-    remember { applyColorScheme() }
+    remember {
+        applyColorScheme()
+        installShellProfile(context)
+    }
 
     BackHandler { onBack() }
 
@@ -225,7 +225,7 @@ fun TerminalScreen(onBack: () -> Unit) {
                         "/system/bin/sh",
                         context.filesDir.absolutePath,
                         emptyArray(),
-                        buildEnv(context.filesDir.absolutePath, terminalBinDir),
+                        buildEnv(context.filesDir.absolutePath),
                         null,
                         client
                     )
@@ -278,7 +278,7 @@ fun TerminalScreen(onBack: () -> Unit) {
                             "/system/bin/sh",
                             ctx.filesDir.absolutePath,
                             emptyArray(),
-                            buildEnv(ctx.filesDir.absolutePath, terminalBinDir),
+                            buildEnv(ctx.filesDir.absolutePath),
                             null,
                             client
                         )
