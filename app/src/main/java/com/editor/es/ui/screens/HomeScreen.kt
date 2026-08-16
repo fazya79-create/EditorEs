@@ -33,6 +33,7 @@ import com.editor.es.R
 import com.editor.es.ui.components.EditorEsButton
 import com.editor.es.ui.components.EntranceItem
 import com.editor.es.ui.dialogs.CreateProjectDialog
+import com.editor.es.ui.dialogs.OpenProjectSheet
 import com.editor.es.ui.navigation.EditorEsRoute
 import com.editor.es.ui.theme.EditorEsPalette
 
@@ -44,6 +45,7 @@ private val LogoBrush = Brush.linearGradient(
 fun HomeScreen(onNavigate: (EditorEsRoute) -> Unit, onProjectCreated: (String) -> Unit) {
     var visible by remember { mutableStateOf(false) }
     var showCreateDialog by remember { mutableStateOf(false) }
+    var showOpenSheet by remember { mutableStateOf(false) }
     LaunchedEffect(Unit) { visible = true }
     Column(
         modifier = Modifier
@@ -87,7 +89,7 @@ fun HomeScreen(onNavigate: (EditorEsRoute) -> Unit, onProjectCreated: (String) -
             EditorEsButton(
                 label = stringResource(R.string.open_project),
                 icon = Icons.Outlined.FolderOpen,
-                onClick = { onNavigate(EditorEsRoute.OpenProject) }
+                onClick = { showOpenSheet = true }
             )
         }
         Spacer(modifier = Modifier.height(14.dp))
@@ -112,6 +114,15 @@ fun HomeScreen(onNavigate: (EditorEsRoute) -> Unit, onProjectCreated: (String) -
             onClose = { showCreateDialog = false },
             onCreated = { path ->
                 showCreateDialog = false
+                onProjectCreated(path)
+            }
+        )
+    }
+    if (showOpenSheet) {
+        OpenProjectSheet(
+            onDismiss = { showOpenSheet = false },
+            onOpen = { path ->
+                showOpenSheet = false
                 onProjectCreated(path)
             }
         )

@@ -317,39 +317,56 @@ fun EditorScreen(projectPath: String) {
                     )
                 }
             }
-            if (tabs.isEmpty()) {
-                EmptyEditorState()
-            } else {
-                LazyRow(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .background(TabBarBackground),
-                    content = {
-                        items(tabs, key = { it.path }) { tab ->
-                            TabChip(
-                                tab = tab,
-                                active = tab.path == activePath,
-                                onClick = { switchTab(tab.path) },
-                                onClose = {
-                                    if (tab.dirty) {
-                                        dialog = ExplorerDialog.UnsavedClose(tab.path, tab.name)
-                                    } else {
-                                        removeTab(tab.path)
-                                    }
+            Box(modifier = Modifier.weight(1f)) {
+                if (tabs.isEmpty()) {
+                    EmptyEditorState()
+                } else {
+                    Column(modifier = Modifier.fillMaxSize()) {
+                        LazyRow(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .background(TabBarBackground),
+                            content = {
+                                items(tabs, key = { it.path }) { tab ->
+                                    TabChip(
+                                        tab = tab,
+                                        active = tab.path == activePath,
+                                        onClick = { switchTab(tab.path) },
+                                        onClose = {
+                                            if (tab.dirty) {
+                                                dialog = ExplorerDialog.UnsavedClose(tab.path, tab.name)
+                                            } else {
+                                                removeTab(tab.path)
+                                            }
+                                        }
+                                    )
                                 }
+                            }
+                        )
+                        Spacer(modifier = Modifier.height(6.dp))
+                        Box(modifier = Modifier.weight(1f)) {
+                            EditorPane(
+                                onEditorCreated = { editor ->
+                                    editorRef = editor
+                                    val tab = activePath?.let { p -> tabs.firstOrNull { it.path == p } }
+                                    if (tab != null) loadTabIntoEditor(editor, tab)
+                                },
+                                onEditorReleased = { editorRef = null }
                             )
                         }
                     }
-                )
-                Spacer(modifier = Modifier.height(6.dp))
-                Box(modifier = Modifier.weight(1f)) {
-                    EditorPane(
-                        onEditorCreated = { editor ->
-                            editorRef = editor
-                            val tab = activePath?.let { p -> tabs.firstOrNull { it.path == p } }
-                            if (tab != null) loadTabIntoEditor(editor, tab)
+                }
+                if (drawerProgress < 0.05f || edgeDragActive) {
+                    EdgeGestureStrip(
+                        onDragStart = { edgeDragActive = true },
+                        onDrag = { delta ->
+                            val next = (drawerAnim.value + delta / drawerWidthPx).coerceIn(0f, 1f)
+                            scope.launch { drawerAnim.snapTo(next) }
                         },
-                        onEditorReleased = { editorRef = null }
+                        onDragEnd = {
+                            edgeDragActive = false
+                            settleDrawer()
+                        }
                     )
                 }
             }
@@ -399,47 +416,6 @@ fun EditorScreen(projectPath: String) {
                     }
                 )
             }
-        }
-
-        if (drawerProgress < 0.05f || edgeDragActive) {
-            Box(
-                modifier = Modifier
-                    .width(40.dp)
-                    .fillMaxHeight()
-                    .pointerInput(Unit) {
-                        val touchSlop = viewConfiguration.touchSlop
-                        while (true) {
-                            awaitPointerEventScope {
-                                val down = awaitFirstDown(requireUnconsumed = false)
-                                val startX = down.position.x
-                                val startY = down.position.y
-                                var dragging = false
-                                while (true) {
-                                    val change = awaitPointerEvent().changes
-                                        .firstOrNull { it.id == down.id } ?: break
-                                    if (!change.pressed) break
-                                    val dx = change.position.x - startX
-                                    val dy = change.position.y - startY
-                                    if (!dragging && abs(dx) > touchSlop && abs(dx) > abs(dy)) {
-                                        dragging = true
-                                        edgeDragActive = true
-                                    }
-                                    if (dragging) {
-                                        change.consume()
-                                        val delta = change.position.x - change.previousPosition.x
-                                        val next = (drawerAnim.value + delta / drawerWidthPx)
-                                            .coerceIn(0f, 1f)
-                                        scope.launch { drawerAnim.snapTo(next) }
-                                    }
-                                }
-                                if (dragging) {
-                                    edgeDragActive = false
-                                    settleDrawer()
-                                }
-                            }
-                        }
-                    }
-            )
         }
     }
 
@@ -629,6 +605,46 @@ private fun HamburgerIcon(modifier: Modifier = Modifier) {
             )
         }
     }
+}
+
+@Composable
+private fun EdgeGestureStrip(
+    onDragStart: () -> Unit,
+    onDrag: (Float) -> Unit,
+    onDragEnd: () -> Unit
+) {
+    Box(
+        modifier = Modifier
+            .width(40.dp)
+            .fillMaxHeight()
+            .pointerInput(Unit) {
+                val touchSlop = viewConfiguration.touchSlop
+                while (true) {
+                    awaitPointerEventScope {
+                        val down = awaitFirstDown(requireUnconsumed = false)
+                        val startX = down.position.x
+                        val startY = down.position.y
+                        var dragging = false
+                        while (true) {
+                            val change = awaitPointerEvent().changes
+                                .firstOrNull { it.id == down.id } ?: break
+                            if (!change.pressed) break
+                            val dx = change.position.x - startX
+                            val dy = change.position.y - startY
+                            if (!dragging && abs(dx) > touchSlop && abs(dx) > abs(dy)) {
+                                dragging = true
+                                onDragStart()
+                            }
+                            if (dragging) {
+                                change.consume()
+                                onDrag(change.position.x - change.previousPosition.x)
+                            }
+                        }
+                        if (dragging) onDragEnd()
+                    }
+                }
+            }
+    )
 }
 
 @Composable
