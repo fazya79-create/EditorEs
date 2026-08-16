@@ -4,7 +4,9 @@ import android.graphics.Typeface
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
-import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
+import androidx.compose.foundation.gestures.waitForUpOrCancellation
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -49,7 +51,9 @@ import com.termux.terminal.TerminalColors
 import com.termux.terminal.TerminalSession
 import com.termux.terminal.TextStyle
 import com.termux.view.TerminalView
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 
 private val TerminalBackground = Color(0xFF0A2129)
 private val HeaderBackground = Color(0xFF0E2A33)
@@ -124,7 +128,7 @@ fun TerminalScreen(onBack: () -> Unit) {
     var ctrlArmed by remember { mutableStateOf(false) }
     var altArmed by remember { mutableStateOf(false) }
     var terminalTextSize by remember { mutableStateOf(TerminalTextSize) }
-    var appliedTextSize by remember { mutableStateOf(TerminalTextSize) }
+    val appliedTextSize = remember { intArrayOf(TerminalTextSize) }
     var terminalView by remember { mutableStateOf<TerminalView?>(null) }
     var sessionClient by remember { mutableStateOf<EditorEsSessionClient?>(null) }
     var sessionRef by remember { mutableStateOf<TerminalSession?>(null) }
@@ -271,9 +275,9 @@ fun TerminalScreen(onBack: () -> Unit) {
                     }
                 },
                 update = { view ->
-                    if (appliedTextSize != terminalTextSize) {
+                    if (appliedTextSize[0] != terminalTextSize) {
                         view.setTextSize(terminalTextSize)
-                        appliedTextSize = terminalTextSize
+                        appliedTextSize[0] = terminalTextSize
                     }
                 }
             )
@@ -336,25 +340,30 @@ private fun TerminalKeyChip(
             .background(if (armed) ArmedBackground else KeyBackground)
             .border(1.dp, if (armed) SpringGreen else KeyBorder, KeyShape)
             .pointerInput(key) {
-                detectTapGestures(
-                    onPress = {
+                coroutineScope {
+                    awaitEachGesture {
+                        awaitFirstDown()
                         pressed = true
                         onTap()
-                        try {
-                            if (key.repeatable) {
+                        val repeatJob = if (key.repeatable) {
+                            launch {
                                 delay(HoldDelayMs)
                                 while (true) {
                                     onTap()
                                     delay(RepeatIntervalMs)
                                 }
-                            } else {
-                                tryAwaitRelease()
                             }
+                        } else {
+                            null
+                        }
+                        try {
+                            waitForUpOrCancellation()
                         } finally {
+                            repeatJob?.cancel()
                             pressed = false
                         }
                     }
-                )
+                }
             },
         contentAlignment = Alignment.Center
     ) {
