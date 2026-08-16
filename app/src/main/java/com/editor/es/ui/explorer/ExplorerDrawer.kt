@@ -4,7 +4,6 @@ import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -19,15 +18,12 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.Code
 import androidx.compose.material.icons.outlined.CreateNewFolder
 import androidx.compose.material.icons.outlined.KeyboardArrowRight
 import androidx.compose.material.icons.outlined.MoreVert
 import androidx.compose.material.icons.outlined.NoteAdd
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.Switch
-import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -52,7 +48,6 @@ private val MutedForeground = Color(0xFF6E9184)
 private val ActiveRowBackground = Color(0x2902F5A1)
 private val GuideColor = Color(0x2E02F5A1)
 private val ChevronColor = Color(0xFFB7E9D3)
-private val ToggleRowBackground = Color(0xFF08202A)
 
 enum class NodeAction {
     NewFile,
@@ -68,9 +63,7 @@ fun ExplorerDrawerContent(
     activeFilePath: String?,
     onFileClick: (File) -> Unit,
     onMenuRequested: (File) -> Unit,
-    onQuickAction: (NodeAction, File) -> Unit,
-    lspEnabled: Boolean,
-    onLspToggle: (Boolean) -> Unit
+    onQuickAction: (NodeAction, File) -> Unit
 ) {
     Column(
         modifier = Modifier
@@ -167,55 +160,6 @@ fun ExplorerDrawerContent(
                 )
             }
         }
-        LspToggleRow(enabled = lspEnabled, onToggle = onLspToggle)
-    }
-}
-
-@Composable
-private fun LspToggleRow(enabled: Boolean, onToggle: (Boolean) -> Unit) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .background(ToggleRowBackground)
-            .clickable { onToggle(!enabled) }
-            .padding(horizontal = 16.dp, vertical = 12.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Icon(
-            imageVector = Icons.Outlined.Code,
-            contentDescription = null,
-            tint = if (enabled) SectionForeground else MutedForeground,
-            modifier = Modifier.size(17.dp)
-        )
-        Spacer(modifier = Modifier.width(10.dp))
-        Column(modifier = Modifier.weight(1f)) {
-            Text(
-                text = stringResource(R.string.lsp_toggle),
-                fontSize = 12.sp,
-                fontWeight = FontWeight.Medium,
-                color = ItemForeground
-            )
-            Text(
-                text = stringResource(
-                    if (enabled) R.string.lsp_on_hint else R.string.lsp_off_hint
-                ),
-                fontSize = 10.sp,
-                color = MutedForeground,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis
-            )
-        }
-        Switch(
-            checked = enabled,
-            onCheckedChange = onToggle,
-            colors = SwitchDefaults.colors(
-                checkedThumbColor = Color(0xFF07191E),
-                checkedTrackColor = SectionForeground,
-                uncheckedThumbColor = MutedForeground,
-                uncheckedTrackColor = Color(0xFF11333F),
-                uncheckedBorderColor = Color(0xFF1C4A59)
-            )
-        )
     }
 }
 

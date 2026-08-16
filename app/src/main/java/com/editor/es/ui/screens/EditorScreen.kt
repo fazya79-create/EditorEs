@@ -180,7 +180,6 @@ fun EditorScreen(projectPath: String) {
     val context = LocalContext.current
     val lspManager = remember(projectDir) { LspManager(context, projectDir) }
     val lspScope = remember { CoroutineScope(SupervisorJob() + Dispatchers.IO) }
-    var lspEnabled by remember { mutableStateOf(AppSettings.bool(PreferenceSettings.LspEnabled, false)) }
     var lspStatus by remember { mutableStateOf<String?>(null) }
     val buildRunner = remember { BuildRunner(context) }
     val consoleLines = remember { mutableStateListOf<ConsoleLine>() }
@@ -213,7 +212,7 @@ fun EditorScreen(projectPath: String) {
         editor.setEditorLanguage(EditorLanguageResolver.resolve(tab.name))
         editor.text.addContentListener(dirtyMarker)
         dirtyMarker.enabled = true
-        if (lspEnabled) {
+        if (AppSettings.bool(PreferenceSettings.LspEnabled, false)) {
             scope.launch {
                 lspManager.attach(editor, File(tab.path)) { lspStatus = it }
             }
@@ -584,28 +583,6 @@ fun EditorScreen(projectPath: String) {
                     onMenuRequested = { dialog = ExplorerDialog.Menu(it) },
                     onQuickAction = { action, parent ->
                         dialog = ExplorerDialog.Input(initial = "", parent = parent, kind = action)
-                    },
-                    lspEnabled = lspEnabled,
-                    onLspToggle = { enabled ->
-                        lspEnabled = enabled
-                        AppSettings.putBool(PreferenceSettings.LspEnabled, enabled)
-                        scope.launch {
-                            if (enabled) {
-                                val editor = editorRef
-                                val current = activePath
-                                if (editor != null && current != null) {
-                                    lspManager.attach(editor, File(current)) { lspStatus = it }
-                                }
-                            } else {
-                                lspManager.shutdown()
-                                lspStatus = null
-                                val editor = editorRef
-                                val tab = activePath?.let { p -> tabs.firstOrNull { it.path == p } }
-                                if (editor != null && tab != null) {
-                                    editor.setEditorLanguage(EditorLanguageResolver.resolve(tab.name))
-                                }
-                            }
-                        }
                     }
                 )
             }
