@@ -522,15 +522,15 @@ private fun TabChip(
                 .padding(horizontal = 10.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Icon(
-                imageVector = Icons.Outlined.Close,
-                contentDescription = stringResource(R.string.close),
-                tint = if (active) Color(0xFFE4F5EC) else TabInactiveForeground,
-                modifier = Modifier
-                    .size(15.dp)
-                    .clickable(onClick = onClose)
-            )
-            Spacer(modifier = Modifier.width(7.dp))
+            if (tab.dirty) {
+                Box(
+                    modifier = Modifier
+                        .size(7.dp)
+                        .clip(RoundedCornerShape(4.dp))
+                        .background(DirtyDot)
+                )
+                Spacer(modifier = Modifier.width(7.dp))
+            }
             Icon(
                 imageVector = FileTypeIcons.resolve(tab.name),
                 contentDescription = null,
@@ -546,15 +546,15 @@ private fun TabChip(
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
             )
-            if (tab.dirty) {
-                Spacer(modifier = Modifier.width(6.dp))
-                Box(
-                    modifier = Modifier
-                        .size(7.dp)
-                        .clip(RoundedCornerShape(4.dp))
-                        .background(DirtyDot)
-                )
-            }
+            Spacer(modifier = Modifier.width(7.dp))
+            Icon(
+                imageVector = Icons.Outlined.Close,
+                contentDescription = stringResource(R.string.close),
+                tint = if (active) Color(0xFFE4F5EC) else TabInactiveForeground,
+                modifier = Modifier
+                    .size(15.dp)
+                    .clickable(onClick = onClose)
+            )
         }
     }
 }
