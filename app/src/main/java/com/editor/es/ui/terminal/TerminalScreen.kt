@@ -2,6 +2,7 @@ package com.editor.es.ui.terminal
 
 import android.content.Context
 import android.graphics.Typeface
+import android.view.inputmethod.InputMethodManager
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -152,6 +153,11 @@ fun TerminalScreen(onBack: () -> Unit) {
     fun leaveTerminal() {
         if (!isFinishing.value) {
             isFinishing.value = true
+            terminalView?.let { view ->
+                view.clearFocus()
+                context.getSystemService(InputMethodManager::class.java)
+                    .hideSoftInputFromWindow(view.windowToken, 0)
+            }
             onBack()
         }
     }
