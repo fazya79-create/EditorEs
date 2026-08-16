@@ -154,6 +154,13 @@ object EditorConfigurator {
                 setEnabledAnimation(boolOf(EditorSettings.CompletionAnimation))
                 setHighlightMatchedLabel(boolOf(EditorSettings.CompletionHighlightMatched))
                 setMaxHeight(dpToPx(editor, intOf(EditorSettings.CompletionMaxHeight)))
+                setCompletionWndPositionMode(
+                    when (intOf(EditorSettings.CompletionWidthMode)) {
+                        1 -> EditorAutoCompletion.WINDOW_POS_MODE_AUTO
+                        2 -> EditorAutoCompletion.WINDOW_POS_MODE_FULL_WIDTH_ALWAYS
+                        else -> EditorAutoCompletion.WINDOW_POS_MODE_FOLLOW_CURSOR_ALWAYS
+                    }
+                )
             }
         }
         runCatching {

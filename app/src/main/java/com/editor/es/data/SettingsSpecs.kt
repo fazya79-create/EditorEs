@@ -91,6 +91,7 @@ object EditorSettings {
     const val CompletionAnimation = "editor_completion_animation"
     const val CompletionHighlightMatched = "editor_completion_highlight"
     const val CompletionMaxHeight = "editor_completion_max_height"
+    const val CompletionWidthMode = "editor_completion_width_mode"
     const val SelectCompletionOnEnter = "editor_completion_enter"
     const val SoftKeyboardEnabled = "editor_soft_keyboard"
     const val DisallowSuggestions = "editor_disallow_suggestions"
@@ -213,7 +214,14 @@ object EditorSettings {
         HeaderSpec("hdr_completion", "Completion"),
         BoolSpec(CompletionAnimation, "Completion animation", "Animate the completion popup", true),
         BoolSpec(CompletionHighlightMatched, "Highlight matched text", "Emphasise the typed prefix", true),
-        IntSpec(CompletionMaxHeight, "Completion height", "Maximum popup height in dp", 350, 120, 600, 10, "dp"),
+        IntSpec(CompletionMaxHeight, "Completion height", "Maximum popup height in dp", 260, 120, 600, 10, "dp"),
+        ChoiceSpec(
+            CompletionWidthMode,
+            "Completion width",
+            "How wide the completion popup grows",
+            listOf("Compact", "Auto", "Full width"),
+            0
+        ),
         BoolSpec(AutoCompletionOnComposing, "Complete while composing", "Suggest during IME composition", true),
         BoolSpec(SelectCompletionOnEnter, "Enter selects first item", "Accept the first suggestion with enter", true),
 
