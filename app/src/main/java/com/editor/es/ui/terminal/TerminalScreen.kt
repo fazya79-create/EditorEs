@@ -51,6 +51,7 @@ import com.termux.terminal.TerminalColors
 import com.termux.terminal.TerminalSession
 import com.termux.terminal.TextStyle
 import com.termux.view.TerminalView
+import java.io.File
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -100,12 +101,23 @@ private val SecondRow = listOf(
     TerminalKey("PGDN", "\u001b[6~", repeatable = true)
 )
 
-private fun buildEnv(home: String): Array<String> = arrayOf(
+private fun buildEnv(home: String, binDir: String): Array<String> = arrayOf(
     "TERM=xterm-256color",
     "HOME=$home",
-    "PATH=/system/bin:/system/xbin:/vendor/bin",
+    "PATH=$binDir:/system/bin:/system/xbin:/vendor/bin",
     "LANG=C.UTF-8"
 )
+
+private fun installTerminalBin(context: Context): String {
+    val binDir = File(context.filesDir, "bin")
+    binDir.mkdirs()
+    val clearScript = File(binDir, "clear")
+    if (!clearScript.exists()) {
+        clearScript.writeText("#!/system/bin/sh\nprintf '\\033[2J\\033[3J\\033[H'\n")
+        clearScript.setExecutable(true)
+    }
+    return binDir.absolutePath
+}
 
 private fun applyColorScheme() {
     runCatching {
@@ -132,6 +144,7 @@ fun TerminalScreen(onBack: () -> Unit) {
     var terminalView by remember { mutableStateOf<TerminalView?>(null) }
     var sessionClient by remember { mutableStateOf<EditorEsSessionClient?>(null) }
     var sessionRef by remember { mutableStateOf<TerminalSession?>(null) }
+    val terminalBinDir = remember { installTerminalBin(context) }
 
     remember { applyColorScheme() }
 
@@ -194,7 +207,7 @@ fun TerminalScreen(onBack: () -> Unit) {
                 overflow = TextOverflow.Ellipsis,
                 modifier = Modifier.weight(1f)
             )
-            IconButton(onClick = { writeText(terminalView?.currentSession, "\u001b[2J\u001b[H") }) {
+            IconButton(onClick = { writeText(terminalView?.currentSession, "\u001b[2J\u001b[3J\u001b[H") }) {
                 Icon(
                     imageVector = Icons.Outlined.DeleteSweep,
                     contentDescription = stringResource(R.string.clear_terminal),
@@ -211,7 +224,7 @@ fun TerminalScreen(onBack: () -> Unit) {
                         "/system/bin/sh",
                         context.filesDir.absolutePath,
                         emptyArray(),
-                        buildEnv(context.filesDir.absolutePath),
+                        buildEnv(context.filesDir.absolutePath, terminalBinDir),
                         null,
                         client
                     )
@@ -264,7 +277,7 @@ fun TerminalScreen(onBack: () -> Unit) {
                             "/system/bin/sh",
                             ctx.filesDir.absolutePath,
                             emptyArray(),
-                            buildEnv(ctx.filesDir.absolutePath),
+                            buildEnv(ctx.filesDir.absolutePath, terminalBinDir),
                             null,
                             client
                         )
