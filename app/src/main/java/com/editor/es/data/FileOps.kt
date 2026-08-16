@@ -35,9 +35,20 @@ object FileOps {
 
     fun delete(target: File): Result<Unit> = runCatching {
         if (target.isDirectory) {
-            require(target.deleteRecursively()) { "Unable to delete the folder" }
+            var failed = false
+            target.walkBottomUp().forEach { file ->
+                if (!file.delete()) {
+                    file.setWritable(true)
+                    file.setExecutable(true)
+                    if (!file.delete()) failed = true
+                }
+            }
+            require(!failed) { "Unable to delete the folder" }
         } else {
-            require(target.delete()) { "Unable to delete the file" }
+            if (!target.delete()) {
+                target.setWritable(true)
+                require(target.delete()) { "Unable to delete the file" }
+            }
         }
     }
 }

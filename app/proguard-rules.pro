@@ -8,4 +8,6 @@
 -keepattributes EnclosingMethod
 -keep class com.termux.terminal.JNI { *; }
 -keep class com.termux.terminal.** { *; }
+-keep class com.editor.es.service.TermuxService { *; }
+-keep class com.editor.es.storage.EditorEsDocumentsProvider { *; }
 -keep class com.termux.view.** { *; }

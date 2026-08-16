@@ -1,14 +1,22 @@
 package com.editor.es.ui.terminal
 
+import android.Manifest
 import android.content.Context
+import android.content.pm.PackageManager
 import android.graphics.Typeface
+import android.os.Build
+import android.os.Handler
+import android.os.Looper
 import android.view.inputmethod.InputMethodManager
 import androidx.activity.compose.BackHandler
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.gestures.waitForUpOrCancellation
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -20,16 +28,21 @@ import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.systemBarsPadding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import androidx.compose.material.icons.outlined.DeleteSweep
 import androidx.compose.material.icons.outlined.RestartAlt
+import androidx.compose.material3.Button
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.LinearProgressIndicator
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -38,16 +51,26 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
+import androidx.core.content.ContextCompat
 import com.editor.es.R
+import com.editor.es.proot.InstallPhase
+import com.editor.es.proot.ProotConfig
+import com.editor.es.proot.UbuntuInstaller
+import com.editor.es.service.TermuxService
 import com.editor.es.ui.theme.SpringGreen
 import com.termux.terminal.TerminalColors
 import com.termux.terminal.TerminalSession
@@ -65,6 +88,8 @@ private val KeyBorder = Color(0x3302F5A1)
 private val KeyForeground = Color(0xFFD9F3E6)
 private val ArmedBackground = Color(0x2902F5A1)
 private val KeyShape = RoundedCornerShape(10.dp)
+private val CardShape = RoundedCornerShape(18.dp)
+private val CardSurface = Color(0xFF0C242D)
 internal val TerminalTextSize = 13
 private const val MinTerminalTextSize = 8
 private const val MaxTerminalTextSize = 24
@@ -74,6 +99,13 @@ private const val RepeatIntervalMs = 60L
 private enum class ModifierKey {
     Ctrl,
     Alt
+}
+
+private sealed class TerminalFlow {
+    data object Terminal : TerminalFlow()
+    data object AskInstall : TerminalFlow()
+    data object Installing : TerminalFlow()
+    data object AskNotification : TerminalFlow()
 }
 
 private data class TerminalKey(
@@ -103,7 +135,7 @@ private val SecondRow = listOf(
     TerminalKey("PGDN", "\u001b[6~", repeatable = true)
 )
 
-private fun buildEnv(home: String): Array<String> = arrayOf(
+private fun buildShellEnv(home: String): Array<String> = arrayOf(
     "TERM=xterm-256color",
     "HOME=$home",
     "PATH=/system/bin:/system/xbin:/vendor/bin",
@@ -134,6 +166,36 @@ private fun writeText(session: TerminalSession?, text: String) {
     session.write(bytes, 0, bytes.size)
 }
 
+private fun createTerminalSession(
+    context: Context,
+    view: TerminalView,
+    onShellExited: () -> Unit
+): Pair<TerminalSession, Int> {
+    val client = EditorEsSessionClient(context, view, onShellExited)
+    val ubuntuReady = ProotConfig.isInstalled(context) && ProotConfig.isAvailable(context)
+    val session = if (ubuntuReady) {
+        TerminalSession(
+            ProotConfig.prootBinary(context),
+            context.filesDir.absolutePath,
+            ProotConfig.prootArgs(context),
+            ProotConfig.prootEnv(context),
+            null,
+            client
+        )
+    } else {
+        TerminalSession(
+            "/system/bin/sh",
+            context.filesDir.absolutePath,
+            emptyArray(),
+            buildShellEnv(context.filesDir.absolutePath),
+            null,
+            client
+        )
+    }
+    val sessionId = TermuxService.registerSession(context, session)
+    return session to sessionId
+}
+
 @Composable
 fun TerminalScreen(onBack: () -> Unit) {
     val context = LocalContext.current
@@ -143,7 +205,13 @@ fun TerminalScreen(onBack: () -> Unit) {
     val appliedTextSize = remember { intArrayOf(TerminalTextSize) }
     var terminalView by remember { mutableStateOf<TerminalView?>(null) }
     var sessionRef by remember { mutableStateOf<TerminalSession?>(null) }
+    var previousSessionId by remember { mutableStateOf<Int?>(null) }
     val isFinishing = remember { mutableStateOf(false) }
+    var flow by remember {
+        mutableStateOf(
+            if (ProotConfig.isInstalled(context)) TerminalFlow.Terminal else TerminalFlow.AskInstall
+        )
+    }
 
     remember {
         applyColorScheme()
@@ -158,16 +226,32 @@ fun TerminalScreen(onBack: () -> Unit) {
                 context.getSystemService(InputMethodManager::class.java)
                     .hideSoftInputFromWindow(view.windowToken, 0)
             }
+            sessionRef?.finishIfRunning()
+            sessionRef = null
+            previousSessionId?.let { TermuxService.unregisterSession(context, it) }
+            previousSessionId = null
             onBack()
         }
     }
 
-    BackHandler { leaveTerminal() }
-
     DisposableEffect(Unit) {
+        TermuxService.onExitRequested = { leaveTerminal() }
         onDispose {
+            TermuxService.onExitRequested = null
             sessionRef?.finishIfRunning()
+            previousSessionId?.let { TermuxService.unregisterSession(context, it) }
         }
+    }
+
+    fun startSession(view: TerminalView) {
+        val previous = sessionRef
+        sessionRef = null
+        previous?.finishIfRunning()
+        previousSessionId?.let { TermuxService.unregisterSession(context, it) }
+        val (session, sessionId) = createTerminalSession(context, view) { leaveTerminal() }
+        view.attachSession(session)
+        sessionRef = session
+        previousSessionId = sessionId
     }
 
     fun sendKey(key: TerminalKey) {
@@ -189,13 +273,40 @@ fun TerminalScreen(onBack: () -> Unit) {
         }
     }
 
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(TerminalBackground)
-            .systemBarsPadding()
-            .imePadding()
-    ) {
+    BackHandler {
+        when (flow) {
+            TerminalFlow.AskInstall -> leaveTerminal()
+            TerminalFlow.Installing -> leaveTerminal()
+            TerminalFlow.AskNotification -> flow = TerminalFlow.Terminal
+            TerminalFlow.Terminal -> leaveTerminal()
+        }
+    }
+
+    LaunchedEffect(flow, terminalView) {
+        if (flow == TerminalFlow.Terminal && terminalView != null && sessionRef == null) {
+            startSession(terminalView!!)
+        }
+    }
+
+    if (flow == TerminalFlow.AskInstall) {
+        InstallAskDialog(
+            onOk = { flow = TerminalFlow.Installing },
+            onCancel = { leaveTerminal() }
+        )
+    }
+
+    if (flow == TerminalFlow.AskNotification) {
+        NotificationPermissionGate(onDismiss = { flow = TerminalFlow.Terminal })
+    }
+
+    Box(modifier = Modifier.fillMaxSize()) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(TerminalBackground)
+                .systemBarsPadding()
+                .imePadding()
+        ) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -230,20 +341,7 @@ fun TerminalScreen(onBack: () -> Unit) {
                 )
             }
             IconButton(
-                onClick = {
-                    val view = terminalView ?: return@IconButton
-                    sessionRef?.finishIfRunning()
-                    val session = TerminalSession(
-                        "/system/bin/sh",
-                        context.filesDir.absolutePath,
-                        emptyArray(),
-                        buildEnv(context.filesDir.absolutePath),
-                        null,
-                        EditorEsSessionClient(context, view) { leaveTerminal() }
-                    )
-                    view.attachSession(session)
-                    sessionRef = session
-                }
+                onClick = { terminalView?.let { startSession(it) } }
             ) {
                 Icon(
                     imageVector = Icons.Outlined.RestartAlt,
@@ -278,23 +376,12 @@ fun TerminalScreen(onBack: () -> Unit) {
                                 }
                             )
                         )
-                        val client = EditorEsSessionClient(ctx, this) { leaveTerminal() }
                         setTextSize(terminalTextSize)
                         setTypeface(
                             runCatching {
                                 Typeface.createFromAsset(ctx.assets, "fonts/JetBrainsMono-Regular.ttf")
                             }.getOrDefault(Typeface.MONOSPACE)
                         )
-                        val session = TerminalSession(
-                            "/system/bin/sh",
-                            ctx.filesDir.absolutePath,
-                            emptyArray(),
-                            buildEnv(ctx.filesDir.absolutePath),
-                            null,
-                            client
-                        )
-                        attachSession(session)
-                        sessionRef = session
                         terminalView = this
                         requestFocus()
                     }
@@ -340,6 +427,260 @@ fun TerminalScreen(onBack: () -> Unit) {
                     }
                 }
             )
+        }
+        }
+
+        if (flow == TerminalFlow.Installing) {
+            InstallerScreen(
+                onFinished = { flow = TerminalFlow.AskNotification },
+                onFailed = { leaveTerminal() }
+            )
+        }
+    }
+}
+
+@Composable
+private fun InstallAskDialog(onOk: () -> Unit, onCancel: () -> Unit) {
+    Dialog(
+        onDismissRequest = onCancel,
+        properties = DialogProperties(dismissOnBackPress = false, dismissOnClickOutside = false)
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(CardShape)
+                .background(CardSurface)
+                .border(1.dp, KeyBorder, CardShape)
+                .padding(22.dp)
+        ) {
+            Text(
+                text = stringResource(R.string.ubuntu_install_title),
+                fontSize = 17.sp,
+                fontWeight = FontWeight.Bold,
+                color = SpringGreen
+            )
+            Spacer(modifier = Modifier.height(10.dp))
+            Text(
+                text = stringResource(R.string.ubuntu_install_message),
+                fontSize = 13.sp,
+                color = KeyForeground,
+                lineHeight = 19.sp
+            )
+            Spacer(modifier = Modifier.height(20.dp))
+            Row(horizontalArrangement = Arrangement.End, modifier = Modifier.fillMaxWidth()) {
+                OutlinedButton(onClick = onCancel) {
+                    Text(stringResource(R.string.cancel), fontSize = 12.sp)
+                }
+                Spacer(modifier = Modifier.width(10.dp))
+                Button(onClick = onOk) {
+                    Text(stringResource(R.string.ok), fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun InstallerScreen(onFinished: () -> Unit, onFailed: () -> Unit) {
+    val context = LocalContext.current
+    val installer = remember { UbuntuInstaller(context) }
+    var phase by remember { mutableStateOf<InstallPhase>(InstallPhase.Idle) }
+    val mainHandler = remember { Handler(Looper.getMainLooper()) }
+
+    LaunchedEffect(Unit) {
+        installer.install { newPhase -> mainHandler.post { phase = newPhase } }
+    }
+
+    DisposableEffect(Unit) {
+        onDispose {
+            installer.cancel()
+            mainHandler.removeCallbacksAndMessages(null)
+        }
+    }
+
+    LaunchedEffect(phase) {
+        when (phase) {
+            InstallPhase.Done -> {
+                delay(600)
+                onFinished()
+            }
+            is InstallPhase.Failed -> {
+                delay(1200)
+                onFailed()
+            }
+            else -> Unit
+        }
+    }
+
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(TerminalBackground),
+        contentAlignment = Alignment.Center
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 28.dp)
+                .clip(CardShape)
+                .background(CardSurface)
+                .border(1.dp, KeyBorder, CardShape)
+                .padding(22.dp)
+        ) {
+            Text(
+                text = stringResource(R.string.ubuntu_installing),
+                fontSize = 16.sp,
+                fontWeight = FontWeight.Bold,
+                color = SpringGreen
+            )
+            Spacer(modifier = Modifier.height(16.dp))
+            when (val current = phase) {
+                InstallPhase.Idle -> {
+                    LinearProgressIndicator(
+                        modifier = Modifier.fillMaxWidth().height(6.dp),
+                        color = SpringGreen,
+                        strokeCap = StrokeCap.Round
+                    )
+                }
+                is InstallPhase.Downloading -> {
+                    LinearProgressIndicator(
+                        progress = { current.percent / 100f },
+                        modifier = Modifier.fillMaxWidth().height(6.dp),
+                        color = SpringGreen,
+                        strokeCap = StrokeCap.Round
+                    )
+                    Spacer(modifier = Modifier.height(10.dp))
+                    Text(
+                        text = "Downloading rootfs • ${current.percent}% • " +
+                            "%.1f MB / %.1f MB".format(current.receivedMb, current.totalMb),
+                        fontSize = 12.sp,
+                        color = KeyForeground
+                    )
+                }
+                is InstallPhase.Extracting -> {
+                    LinearProgressIndicator(
+                        modifier = Modifier.fillMaxWidth().height(6.dp),
+                        color = SpringGreen,
+                        strokeCap = StrokeCap.Round
+                    )
+                    Spacer(modifier = Modifier.height(10.dp))
+                    Text(
+                        text = "extracting: ${current.entry}",
+                        fontSize = 12.sp,
+                        fontFamily = FontFamily.Monospace,
+                        color = SpringGreen,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                    Text(
+                        text = "${current.count} files",
+                        fontSize = 12.sp,
+                        color = KeyForeground
+                    )
+                }
+                InstallPhase.Finalizing -> {
+                    LinearProgressIndicator(
+                        modifier = Modifier.fillMaxWidth().height(6.dp),
+                        color = SpringGreen,
+                        strokeCap = StrokeCap.Round
+                    )
+                    Spacer(modifier = Modifier.height(10.dp))
+                    Text(
+                        text = "Configuring Ubuntu…",
+                        fontSize = 12.sp,
+                        color = KeyForeground
+                    )
+                }
+                InstallPhase.Done -> {
+                    LinearProgressIndicator(
+                        progress = { 1f },
+                        modifier = Modifier.fillMaxWidth().height(6.dp),
+                        color = SpringGreen,
+                        strokeCap = StrokeCap.Round
+                    )
+                    Spacer(modifier = Modifier.height(10.dp))
+                    Text(
+                        text = "Ubuntu installed ✓",
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = SpringGreen
+                    )
+                }
+                is InstallPhase.Failed -> {
+                    Text(
+                        text = current.message,
+                        fontSize = 12.sp,
+                        color = Color(0xFFFF6B6B),
+                        textAlign = TextAlign.Start
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun NotificationPermissionGate(onDismiss: () -> Unit) {
+    val context = LocalContext.current
+    var permissionGranted by remember {
+        mutableStateOf(
+            Build.VERSION.SDK_INT < 33 || ContextCompat.checkSelfPermission(
+                context,
+                Manifest.permission.POST_NOTIFICATIONS
+            ) == PackageManager.PERMISSION_GRANTED
+        )
+    }
+    val launcher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) {
+        permissionGranted = true
+        onDismiss()
+    }
+
+    LaunchedEffect(Unit) {
+        delay(400)
+        if (permissionGranted) onDismiss()
+    }
+
+    if (!permissionGranted) {
+        Dialog(
+            onDismissRequest = onDismiss,
+            properties = DialogProperties(dismissOnBackPress = false, dismissOnClickOutside = false)
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(CardShape)
+                    .background(CardSurface)
+                    .border(1.dp, KeyBorder, CardShape)
+                    .padding(22.dp)
+            ) {
+                Text(
+                    text = stringResource(R.string.notification_permission_title),
+                    fontSize = 17.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = SpringGreen
+                )
+                Spacer(modifier = Modifier.height(10.dp))
+                Text(
+                    text = stringResource(R.string.notification_permission_message),
+                    fontSize = 13.sp,
+                    color = KeyForeground,
+                    lineHeight = 19.sp
+                )
+                Spacer(modifier = Modifier.height(20.dp))
+                Row(horizontalArrangement = Arrangement.End, modifier = Modifier.fillMaxWidth()) {
+                    OutlinedButton(onClick = onDismiss) {
+                        Text(stringResource(R.string.cancel), fontSize = 12.sp)
+                    }
+                    Spacer(modifier = Modifier.width(10.dp))
+                    Button(
+                        onClick = { launcher.launch(Manifest.permission.POST_NOTIFICATIONS) }
+                    ) {
+                        Text(stringResource(R.string.ok), fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                    }
+                }
+            }
         }
     }
 }

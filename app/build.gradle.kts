@@ -18,10 +18,14 @@ android {
 
     defaultConfig {
         applicationId = "com.editor.es"
-        minSdk = 26
-        targetSdk = 36
+        minSdk = 28
+        targetSdk = 28
         versionCode = 1
         versionName = "1.0.0"
+    }
+
+    packaging {
+        jniLibs.useLegacyPackaging = true
     }
 
     if (keystoreFile.exists()) {
@@ -79,6 +83,8 @@ dependencies {
     implementation("io.github.rosemoe:editor")
     implementation("io.github.rosemoe:language-textmate")
     implementation(project(":terminal-view"))
+    implementation("org.apache.commons:commons-compress:1.28.0")
+    implementation("org.tukaani:xz:1.12")
     implementation(platform(libs.androidx.compose.bom))
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.activity.compose)

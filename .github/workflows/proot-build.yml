@@ -1,0 +1,67 @@
+name: Build proot static aarch64
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - '.github/workflows/proot-build.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  build-proot:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Clone termux-packages
+        run: git clone --depth 1 https://github.com/termux/termux-packages.git
+
+      - name: Patch proot for static build
+        run: |
+          cd termux-packages
+          cat > packages/proot/build.sh << 'EOF'
+          TERMUX_PKG_HOMEPAGE=https://proot-me.github.io/
+          TERMUX_PKG_DESCRIPTION="Emulate chroot, mount --bind and binfmt_misc for non-root users"
+          TERMUX_PKG_LICENSE="GPL-2.0"
+          TERMUX_PKG_MAINTAINER="@termux"
+          TERMUX_PKG_VERSION="5.1.107.91"
+          TERMUX_PKG_SRCURL=https://github.com/termux/proot/archive/v${TERMUX_PKG_VERSION}.zip
+          TERMUX_PKG_SHA256=a7bc2fab34bf9a39073e8291f08a662e848c61a67494e59f5f84f5ca10690128
+          TERMUX_PKG_DEPENDS="libtalloc"
+          TERMUX_PKG_BUILD_IN_SRC=true
+          TERMUX_PKG_EXTRA_MAKE_ARGS="-C src"
+
+          export PROOT_UNBUNDLE_LOADER=$TERMUX_PREFIX/libexec/proot
+
+          termux_step_pre_configure() {
+          	LDFLAGS+=" -static"
+          	LDFLAGS+=" -ffunction-sections -fdata-sections -Wl,--gc-sections"
+          	CPPFLAGS+=" -DARG_MAX=131072 -DVERSION=\\\"${TERMUX_PKG_VERSION}\\\""
+          }
+          EOF
+
+      - name: Build proot and libtalloc
+        run: |
+          cd termux-packages
+          ./scripts/run-docker.sh ./build-package.sh -a aarch64 libtalloc proot
+
+      - name: Extract binaries
+        run: |
+          mkdir -p extracted
+          for deb in termux-packages/output/*.deb; do
+            dpkg-deb -x "$deb" extracted/
+          done
+          find extracted -name proot -type f
+          find extracted -name loader -type f
+          cp "$(find extracted -path '*/usr/bin/proot' -type f | head -1)" proot-aarch64
+          cp "$(find extracted -path '*/libexec/proot/loader' -type f | head -1)" loader-aarch64
+          chmod +x proot-aarch64 loader-aarch64
+          ls -la proot-aarch64 loader-aarch64
+
+      - name: Upload binaries
+        uses: actions/upload-artifact@v4
+        with:
+          name: proot-aarch64-static
+          path: |
+            proot-aarch64
+            loader-aarch64

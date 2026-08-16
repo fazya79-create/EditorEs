@@ -38,4 +38,11 @@
     <string name="ok">OK</string>
     <string name="clear_terminal">Clear terminal</string>
     <string name="restart_terminal">Restart terminal</string>
+    <string name="ubuntu_install_title">Install Ubuntu?</string>
+    <string name="ubuntu_install_message">Install a full Ubuntu environment in the terminal? This downloads about 90 MB and needs around 500 MB of free space.</string>
+    <string name="ubuntu_installing">Installing Ubuntu</string>
+    <string name="notification_permission_title">Session Notifications</string>
+    <string name="notification_permission_message">Allow notifications to see active terminal sessions and stop them from the notification panel.</string>
+    <string name="session_notification_exit">Exit</string>
+    <string name="session_notification_channel">Terminal sessions</string>
 </resources>
