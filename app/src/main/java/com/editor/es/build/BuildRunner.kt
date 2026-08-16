@@ -1,6 +1,8 @@
 package com.editor.es.build
 
 import android.content.Context
+import com.editor.es.data.AppSettings
+import com.editor.es.data.PreferenceSettings
 import com.editor.es.proot.ProotConfig
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -66,7 +68,7 @@ class BuildRunner(private val context: Context) {
                     extraPath = listOf(ToolchainPaths.guestCMakeBin())
                 )
 
-                onEvent(BuildEvent.Line("> cmake + ninja (arm64-v8a, android-24)"))
+                onEvent(BuildEvent.Line("> cmake + ninja (${abi()}, android-${apiLevel()}, ${buildType()})"))
                 onEvent(BuildEvent.Line("> ${ToolchainPaths.guestCMake()}"))
 
                 val builder = ProcessBuilder(args)
@@ -100,10 +102,25 @@ class BuildRunner(private val context: Context) {
                 " -DCMAKE_MAKE_PROGRAM=$ninja" +
                 " -DCMAKE_TOOLCHAIN_FILE=$toolchain" +
                 " -DCMAKE_EXPORT_COMPILE_COMMANDS=ON" +
-                " -DANDROID_ABI=arm64-v8a" +
-                " -DANDROID_PLATFORM=android-24" +
-                " -DCMAKE_BUILD_TYPE=Release",
+                " -DANDROID_ABI=${abi()}" +
+                " -DANDROID_PLATFORM=android-${apiLevel()}" +
+                " -DCMAKE_BUILD_TYPE=${buildType()}",
             "$cmake --build build"
         ).joinToString(" && ")
+    }
+
+    private fun abi(): String = when (AppSettings.int(PreferenceSettings.BuildAbi, 0)) {
+        1 -> "armeabi-v7a"
+        2 -> "x86_64"
+        else -> "arm64-v8a"
+    }
+
+    private fun apiLevel(): Int = AppSettings.int(PreferenceSettings.BuildApiLevel, 24)
+
+    private fun buildType(): String = when (AppSettings.int(PreferenceSettings.BuildType, 0)) {
+        1 -> "Debug"
+        2 -> "RelWithDebInfo"
+        3 -> "MinSizeRel"
+        else -> "Release"
     }
 }

@@ -23,6 +23,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.core.content.ContextCompat
+import com.editor.es.data.AppSettings
 import com.editor.es.ui.navigation.EditorEsNavHost
 import com.editor.es.ui.screens.StorageGateScreen
 import com.editor.es.ui.theme.EditorEsTheme
@@ -53,6 +54,7 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        AppSettings.init(this)
         enableEdgeToEdge()
         setContent {
             EditorEsTheme {

@@ -67,11 +67,13 @@ import com.editor.es.R
 import com.editor.es.build.BuildEvent
 import com.editor.es.build.BuildRunner
 import com.editor.es.data.AppSettings
+import com.editor.es.data.PreferenceSettings
 import com.editor.es.lsp.LspManager
 import com.editor.es.build.ToolchainKind
 import com.editor.es.build.ToolchainPaths
 import com.editor.es.data.FileOps
 import com.editor.es.data.ProjectCreator
+import com.editor.es.editor.EditorConfigurator
 import com.editor.es.editor.EditorLanguageResolver
 import com.editor.es.editor.EditorPane
 import com.editor.es.ui.build.BuildConsole
@@ -176,10 +178,9 @@ fun EditorScreen(projectPath: String) {
     var dialog by remember { mutableStateOf<ExplorerDialog?>(null) }
 
     val context = LocalContext.current
-    val settings = remember { AppSettings(context) }
     val lspManager = remember(projectDir) { LspManager(context, projectDir) }
     val lspScope = remember { CoroutineScope(SupervisorJob() + Dispatchers.IO) }
-    var lspEnabled by remember { mutableStateOf(settings.lspEnabled) }
+    var lspEnabled by remember { mutableStateOf(AppSettings.bool(PreferenceSettings.LspEnabled, false)) }
     var lspStatus by remember { mutableStateOf<String?>(null) }
     val buildRunner = remember { BuildRunner(context) }
     val consoleLines = remember { mutableStateListOf<ConsoleLine>() }
@@ -301,15 +302,17 @@ fun EditorScreen(projectPath: String) {
 
     fun appendConsole(text: String, kind: ConsoleLineKind = ConsoleLineKind.Normal) {
         consoleLines.add(ConsoleLine(text, kind))
-        if (consoleLines.size > 2000) consoleLines.removeRange(0, consoleLines.size - 2000)
+        val limit = AppSettings.int(PreferenceSettings.ConsoleMaxLines, 2000)
+        if (consoleLines.size > limit) consoleLines.removeRange(0, consoleLines.size - limit)
     }
 
     fun startBuild() {
         if (building) return
-        consoleVisible = true
+        if (AppSettings.bool(PreferenceSettings.ConsoleAutoOpen, true)) consoleVisible = true
         building = true
         scope.launch {
-            val savedCount = saveAllDirty()
+            val savedCount =
+                if (AppSettings.bool(PreferenceSettings.AutoSaveOnBuild, true)) saveAllDirty() else 0
             if (savedCount > 0) {
                 appendConsole(
                     if (savedCount == 1) "> saved 1 file" else "> saved $savedCount files"
@@ -379,6 +382,10 @@ fun EditorScreen(projectPath: String) {
 
     BackHandler(enabled = drawerProgress == 0f && consoleVisible) {
         consoleVisible = false
+    }
+
+    LaunchedEffect(editorRef) {
+        editorRef?.let { EditorConfigurator.apply(it) }
     }
 
     DisposableEffect(Unit) {
@@ -581,7 +588,7 @@ fun EditorScreen(projectPath: String) {
                     lspEnabled = lspEnabled,
                     onLspToggle = { enabled ->
                         lspEnabled = enabled
-                        settings.lspEnabled = enabled
+                        AppSettings.putBool(PreferenceSettings.LspEnabled, enabled)
                         scope.launch {
                             if (enabled) {
                                 val editor = editorRef

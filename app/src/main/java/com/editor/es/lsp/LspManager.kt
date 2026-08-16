@@ -3,6 +3,8 @@ package com.editor.es.lsp
 import android.content.Context
 import com.editor.es.build.ToolchainKind
 import com.editor.es.build.ToolchainPaths
+import com.editor.es.data.AppSettings
+import com.editor.es.data.PreferenceSettings
 import io.github.rosemoe.sora.lsp.client.languageserver.serverdefinition.languageServerDefinition
 import io.github.rosemoe.sora.lsp.editor.LspEditor
 import io.github.rosemoe.sora.lsp.editor.LspProject
@@ -31,7 +33,10 @@ class LspManager(private val context: Context, private val projectDir: File) {
         return CppExtensions.any { lower.endsWith(it) }
     }
 
-    fun tooLarge(file: File): Boolean = file.length() > MaxFileBytes
+    fun tooLarge(file: File): Boolean {
+        val limitKb = AppSettings.int(PreferenceSettings.LspMaxFileKb, 2048)
+        return file.length() > limitKb * 1024L
+    }
 
     private fun expectedCapabilities(): ServerCapabilities = ServerCapabilities().apply {
         completionProvider = CompletionOptions(true, CompletionTriggers)
@@ -100,9 +105,10 @@ class LspManager(private val context: Context, private val projectDir: File) {
             lspEditor.wrapperLanguage =
                 com.editor.es.editor.EditorLanguageResolver.resolve(file.name)
             lspEditor.editor = editor
-            lspEditor.isEnableHover = true
-            lspEditor.isEnableSignatureHelp = true
-            lspEditor.isEnableInlayHint = true
+            lspEditor.isEnableHover = AppSettings.bool(PreferenceSettings.LspHover, true)
+            lspEditor.isEnableSignatureHelp =
+                AppSettings.bool(PreferenceSettings.LspSignatureHelp, true)
+            lspEditor.isEnableInlayHint = AppSettings.bool(PreferenceSettings.LspInlayHint, true)
             lspEditor.completionTriggers.addAll(CompletionTriggers)
             lspEditor.signatureHelpTriggers.addAll(SignatureTriggers)
             lspEditor.signatureHelpReTriggers.addAll(SignatureRetriggers)
@@ -160,8 +166,6 @@ class LspManager(private val context: Context, private val projectDir: File) {
     }
 
     companion object {
-        private const val MaxFileBytes = 2L * 1024L * 1024L
-
         private val CppExtensions =
             listOf(".cpp", ".cc", ".cxx", ".c", ".h", ".hpp", ".hh", ".hxx")
 

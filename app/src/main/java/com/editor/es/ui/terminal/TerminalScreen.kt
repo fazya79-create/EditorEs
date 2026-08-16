@@ -72,6 +72,8 @@ import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import com.editor.es.R
 import com.editor.es.proot.InstallPhase
+import com.editor.es.data.AppSettings
+import com.editor.es.data.PreferenceSettings
 import com.editor.es.proot.ProotConfig
 import com.editor.es.proot.UbuntuInstaller
 import com.editor.es.service.TermuxService
@@ -241,6 +243,10 @@ fun TerminalScreen(onBack: () -> Unit) {
         if (!isFinishing.value) {
             isFinishing.value = true
             hideKeyboard()
+            if (!AppSettings.bool(PreferenceSettings.KeepTerminalAlive, true)) {
+                sessionRef?.finishIfRunning()
+                previousSessionId?.let { TermuxService.unregisterSession(context, it) }
+            }
             sessionRef = null
             previousSessionId = null
             onBack()
