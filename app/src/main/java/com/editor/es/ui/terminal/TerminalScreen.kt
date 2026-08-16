@@ -141,15 +141,22 @@ fun TerminalScreen(onBack: () -> Unit) {
     var terminalTextSize by remember { mutableStateOf(TerminalTextSize) }
     val appliedTextSize = remember { intArrayOf(TerminalTextSize) }
     var terminalView by remember { mutableStateOf<TerminalView?>(null) }
-    var sessionClient by remember { mutableStateOf<EditorEsSessionClient?>(null) }
     var sessionRef by remember { mutableStateOf<TerminalSession?>(null) }
+    val isFinishing = remember { mutableStateOf(false) }
 
     remember {
         applyColorScheme()
         installShellProfile(context)
     }
 
-    BackHandler { onBack() }
+    fun leaveTerminal() {
+        if (!isFinishing.value) {
+            isFinishing.value = true
+            onBack()
+        }
+    }
+
+    BackHandler { leaveTerminal() }
 
     DisposableEffect(Unit) {
         onDispose {
@@ -190,7 +197,7 @@ fun TerminalScreen(onBack: () -> Unit) {
                 .padding(horizontal = 4.dp, vertical = 4.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            IconButton(onClick = onBack) {
+            IconButton(onClick = { leaveTerminal() }) {
                 Icon(
                     imageVector = Icons.AutoMirrored.Outlined.ArrowBack,
                     contentDescription = stringResource(R.string.back),
@@ -219,7 +226,6 @@ fun TerminalScreen(onBack: () -> Unit) {
             IconButton(
                 onClick = {
                     val view = terminalView ?: return@IconButton
-                    val client = sessionClient ?: return@IconButton
                     sessionRef?.finishIfRunning()
                     val session = TerminalSession(
                         "/system/bin/sh",
@@ -227,7 +233,7 @@ fun TerminalScreen(onBack: () -> Unit) {
                         emptyArray(),
                         buildEnv(context.filesDir.absolutePath),
                         null,
-                        client
+                        EditorEsSessionClient(context, view) { leaveTerminal() }
                     )
                     view.attachSession(session)
                     sessionRef = session
@@ -266,8 +272,7 @@ fun TerminalScreen(onBack: () -> Unit) {
                                 }
                             )
                         )
-                        val client = EditorEsSessionClient(ctx, this)
-                        sessionClient = client
+                        val client = EditorEsSessionClient(ctx, this) { leaveTerminal() }
                         setTextSize(terminalTextSize)
                         setTypeface(
                             runCatching {

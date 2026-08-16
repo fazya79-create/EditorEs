@@ -14,7 +14,8 @@ import com.termux.view.TerminalViewClient
 
 class EditorEsSessionClient(
     private val context: Context,
-    private val view: TerminalView
+    private val view: TerminalView,
+    private val onShellExited: () -> Unit
 ) : TerminalSessionClient {
 
     override fun onTextChanged(changedSession: TerminalSession) {
@@ -25,7 +26,11 @@ class EditorEsSessionClient(
         view.invalidate()
     }
 
-    override fun onSessionFinished(finishedSession: TerminalSession) {}
+    override fun onSessionFinished(finishedSession: TerminalSession) {
+        view.post {
+            if (finishedSession == view.currentSession) onShellExited()
+        }
+    }
 
     override fun onCopyTextToClipboard(session: TerminalSession, text: String?) {
         if (text.isNullOrEmpty()) return
