@@ -71,12 +71,10 @@ import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.editor.es.R
-import com.editor.es.build.BuildAction
 import com.editor.es.build.BuildEvent
 import com.editor.es.build.BuildRequest
 import com.editor.es.build.BuildRunner
 import com.editor.es.build.RunConfigurations
-import com.editor.es.build.RunMenuState
 import com.editor.es.data.AppSettings
 import com.editor.es.data.PreferenceSettings
 import com.editor.es.lsp.LocationEntry
@@ -92,7 +90,6 @@ import com.editor.es.editor.EditorSearch
 import com.editor.es.editor.EditorLanguageResolver
 import com.editor.es.editor.EditorPane
 import com.editor.es.ui.build.BuildConsole
-import com.editor.es.ui.build.NewCommandDialog
 import com.editor.es.ui.build.RunMenu
 import com.editor.es.ui.build.ConsoleLine
 import com.editor.es.ui.build.ConsoleLineKind
@@ -207,9 +204,7 @@ fun EditorScreen(projectPath: String) {
     val runConfigurations = remember(projectDir) {
         RunConfigurations(context, projectDir, buildRunner)
     }
-    var runMenu by remember { mutableStateOf<RunMenuState?>(null) }
     var menuExpanded by remember { mutableStateOf(false) }
-    var showNewCommand by remember { mutableStateOf(false) }
     var toolsExpanded by remember { mutableStateOf(false) }
     var findState by remember { mutableStateOf(FindState()) }
     var findVisible by remember { mutableStateOf(false) }
@@ -505,18 +500,21 @@ fun EditorScreen(projectPath: String) {
         }
     }
 
-    fun refreshRunMenu() {
-        scope.launch { runMenu = runConfigurations.load() }
-    }
-
-    fun runAction(action: BuildAction, rebuild: Boolean) {
-        val configure = runMenu?.selected ?: action.configurePreset
-        val request = when {
-            action.isRaw -> BuildRequest.Raw(action.label, action.rawCommand.orEmpty())
-            rebuild -> BuildRequest.Rebuild(action.name, configure ?: action.name)
-            else -> BuildRequest.Build(action.name, configure ?: action.name)
+    fun runBuild(clean: Boolean) {
+        scope.launch {
+            if (!runConfigurations.hasPresets()) {
+                withContext(Dispatchers.IO) { runConfigurations.bootstrap() }
+                appendConsole("> created ${com.editor.es.build.CmakePresets.ProjectFileName}")
+            }
+            val preset = runConfigurations.activePreset()
+            if (preset == null) {
+                appendConsole("> no build preset found", ConsoleLineKind.Error)
+                return@launch
+            }
+            execute(
+                if (clean) BuildRequest.CleanBuild(preset) else BuildRequest.Build(preset)
+            )
         }
-        execute(request)
     }
 
     fun openRunMenu() {
@@ -526,14 +524,7 @@ fun EditorScreen(projectPath: String) {
             showToolchainDialog = true
             return
         }
-        scope.launch {
-            if (!runConfigurations.hasPresets()) {
-                withContext(Dispatchers.IO) { runConfigurations.bootstrap() }
-                appendConsole("> created ${com.editor.es.build.CmakePresets.ProjectFileName}")
-            }
-            runMenu = runConfigurations.load()
-            menuExpanded = true
-        }
+        menuExpanded = true
     }
 
     fun undo() {
@@ -726,44 +717,18 @@ fun EditorScreen(projectPath: String) {
                             modifier = Modifier.size(22.dp)
                         )
                     }
-                    val menu = runMenu
-                    if (menu != null) {
-                        RunMenu(
-                            expanded = menuExpanded,
-                            configurePresets = menu.configurePresets,
-                            actions = menu.actions,
-                            selected = menu.selected,
-                            canDelete = { runConfigurations.isUserDefined(it) },
-                            onDismiss = { menuExpanded = false },
-                            onSelectPreset = { name ->
-                                runConfigurations.selectPreset(name)
-                                refreshRunMenu()
-                            },
-                            onBuild = { action ->
-                                menuExpanded = false
-                                runAction(action, false)
-                            },
-                            onRebuild = { action ->
-                                menuExpanded = false
-                                runAction(action, true)
-                            },
-                            onReconfigure = {
-                                menuExpanded = false
-                                val preset = menu.selected
-                                if (preset != null) {
-                                    execute(BuildRequest.Reconfigure(preset))
-                                }
-                            },
-                            onDelete = { action ->
-                                runConfigurations.remove(action)
-                                refreshRunMenu()
-                            },
-                            onNewCommand = {
-                                menuExpanded = false
-                                showNewCommand = true
-                            }
-                        )
-                    }
+                    RunMenu(
+                        expanded = menuExpanded,
+                        onDismiss = { menuExpanded = false },
+                        onBuild = {
+                            menuExpanded = false
+                            runBuild(false)
+                        },
+                        onCleanBuild = {
+                            menuExpanded = false
+                            runBuild(true)
+                        }
+                    )
                 }
             }
             Box(modifier = Modifier.weight(1f)) {
@@ -975,36 +940,6 @@ fun EditorScreen(projectPath: String) {
             delay(2600)
             lspStatus = null
         }
-    }
-
-    if (showNewCommand) {
-        val menu = runMenu
-        NewCommandDialog(
-            configurePresets = menu?.configurePresets.orEmpty(),
-            defaultPreset = menu?.selected,
-            onDismiss = { showNewCommand = false },
-            onSave = { result ->
-                showNewCommand = false
-                scope.launch {
-                    withContext(Dispatchers.IO) {
-                        if (result.rawCommand != null) {
-                            runConfigurations.saveRawCommand(result.name, result.rawCommand)
-                        } else {
-                            runConfigurations.saveBuildPreset(
-                                name = result.name,
-                                configurePreset = result.configurePreset,
-                                targets = result.targets,
-                                jobs = result.jobs,
-                                verbose = result.verbose,
-                                cleanFirst = result.cleanFirst
-                            )
-                        }
-                    }
-                    runMenu = runConfigurations.load()
-                    menuExpanded = true
-                }
-            }
-        )
     }
 
     if (showToolchainDialog) {

@@ -17,10 +17,8 @@ sealed interface BuildEvent {
 }
 
 sealed interface BuildRequest {
-    data class Build(val preset: String, val configurePreset: String) : BuildRequest
-    data class Rebuild(val preset: String, val configurePreset: String) : BuildRequest
-    data class Reconfigure(val configurePreset: String) : BuildRequest
-    data class Raw(val label: String, val command: String) : BuildRequest
+    data class Build(val preset: String) : BuildRequest
+    data class CleanBuild(val preset: String) : BuildRequest
 }
 
 class BuildRunner(private val context: Context) {
@@ -57,20 +55,14 @@ class BuildRunner(private val context: Context) {
 
             val script = when (request) {
                 is BuildRequest.Build ->
-                    buildScript(projectDir, request.preset, request.configurePreset, false, onEvent)
-                is BuildRequest.Rebuild ->
-                    buildScript(projectDir, request.preset, request.configurePreset, true, onEvent)
-                is BuildRequest.Reconfigure -> {
-                    val binaryDir = CmakePresets.binaryDirOf(projectDir, request.configurePreset)
-                    onEvent(BuildEvent.Line("> removing ${binaryDir.name}"))
-                    binaryDir.deleteRecursively()
-                    onEvent(BuildEvent.Line("> configure ${request.configurePreset}"))
-                    configureCommand(request.configurePreset)
-                }
-                is BuildRequest.Raw -> {
-                    onEvent(BuildEvent.Line("> ${request.label}"))
-                    onEvent(BuildEvent.Line("> ${request.command}"))
-                    request.command
+                    buildScript(projectDir, request.preset, false, onEvent)
+                is BuildRequest.CleanBuild -> {
+                    val binaryDir = CmakePresets.binaryDirOf(projectDir, request.preset)
+                    if (binaryDir.isDirectory) {
+                        onEvent(BuildEvent.Line("> removing build/${binaryDir.name}"))
+                        binaryDir.deleteRecursively()
+                    }
+                    buildScript(projectDir, request.preset, true, onEvent)
                 }
             }
 
@@ -84,12 +76,11 @@ class BuildRunner(private val context: Context) {
     private fun buildScript(
         projectDir: File,
         preset: String,
-        configurePreset: String,
         cleanFirst: Boolean,
         onEvent: (BuildEvent) -> Unit
     ): String {
         val cmake = ToolchainPaths.guestCMake()
-        val binaryDir = CmakePresets.binaryDirOf(projectDir, configurePreset)
+        val binaryDir = CmakePresets.binaryDirOf(projectDir, preset)
         val staleReason = staleCacheReason(binaryDir, projectDir)
         if (staleReason != null) {
             onEvent(BuildEvent.Line("> stale cache: $staleReason"))
@@ -97,8 +88,8 @@ class BuildRunner(private val context: Context) {
         }
         val steps = mutableListOf("set -e")
         if (!File(binaryDir, "CMakeCache.txt").isFile) {
-            onEvent(BuildEvent.Line("> configure $configurePreset"))
-            steps += configureCommand(configurePreset)
+            onEvent(BuildEvent.Line("> configure $preset"))
+            steps += configureCommand(preset)
         }
         onEvent(BuildEvent.Line("> build $preset"))
         val clean = if (cleanFirst) " --clean-first" else ""
