@@ -137,13 +137,14 @@ object ProotConfig {
         val gids = linkedSetOf(Process.myUid())
         runCatching {
             File("/proc/self/status").forEachLine { line ->
-                if (line.startsWith("Groups:")) {
-                    line.removePrefix("Groups:")
-                        .trim()
-                        .split(Regex("\\s+"))
-                        .mapNotNull { it.toIntOrNull() }
-                        .forEach { gids.add(it) }
-                }
+                when {
+                    line.startsWith("Groups:") -> line.removePrefix("Groups:")
+                    line.startsWith("Gid:") -> line.removePrefix("Gid:")
+                    else -> null
+                }?.trim()
+                    ?.split(Regex("\\s+"))
+                    ?.mapNotNull { it.toIntOrNull() }
+                    ?.forEach { gids.add(it) }
             }
         }
         return gids.toList()

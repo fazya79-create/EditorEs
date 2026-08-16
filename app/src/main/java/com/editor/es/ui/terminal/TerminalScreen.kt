@@ -24,9 +24,13 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.asPaddingValues
+import androidx.compose.foundation.layout.ime
+import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -173,6 +177,7 @@ private fun createTerminalSession(
     val client = EditorEsSessionClient(context, view, onShellExited)
     val ubuntuReady = ProotConfig.isInstalled(context) && ProotConfig.isAvailable(context)
     val session = if (ubuntuReady) {
+        ProotConfig.registerAndroidIds(context)
         TerminalSession(
             ProotConfig.prootBinary(context),
             context.filesDir.absolutePath,
@@ -206,6 +211,9 @@ fun TerminalScreen(onBack: () -> Unit) {
     var sessionRef by remember { mutableStateOf<TerminalSession?>(null) }
     var previousSessionId by remember { mutableStateOf<Int?>(null) }
     val isFinishing = remember { mutableStateOf(false) }
+    val imeBottom = WindowInsets.ime.asPaddingValues().calculateBottomPadding()
+    val navBottom = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
+    val bottomInset = if (imeBottom > navBottom) imeBottom else navBottom
     var flow by remember {
         mutableStateOf(
             if (ProotConfig.isInstalled(context)) TerminalFlow.Terminal else TerminalFlow.AskInstall
@@ -303,7 +311,8 @@ fun TerminalScreen(onBack: () -> Unit) {
             modifier = Modifier
                 .fillMaxSize()
                 .background(TerminalBackground)
-                .safeDrawingPadding()
+                .statusBarsPadding()
+                .padding(bottom = bottomInset)
         ) {
         Row(
             modifier = Modifier
