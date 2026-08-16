@@ -1,10 +1,16 @@
 package com.editor.es.ui.dialogs
 
+import androidx.activity.compose.BackHandler
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.spring
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
@@ -18,10 +24,9 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Check
 import androidx.compose.material.icons.outlined.Close
 import androidx.compose.material3.Icon
-import androidx.compose.material3.ModalBottomSheet
-import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -30,6 +35,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -43,10 +49,12 @@ import com.editor.es.ui.icons.FileTypeFolder
 import com.editor.es.ui.theme.EditorEsPalette
 import java.io.File
 
+private val SheetShape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp)
+private val SheetSurface = Color(0xFF0A222B)
 private val SelectedBackground = Color(0x2902F5A1)
 private val ItemShape = RoundedCornerShape(12.dp)
+private val HandleColor = Color(0x4D02F5A1)
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun OpenProjectSheet(
     onDismiss: () -> Unit,
@@ -59,13 +67,45 @@ fun OpenProjectSheet(
             ?: emptyList()
     }
     var selected by remember { mutableStateOf<String?>(null) }
-
-    ModalBottomSheet(
-        onDismissRequest = onDismiss,
-        containerColor = EditorEsPalette.abyss,
-        contentColor = EditorEsPalette.textPrimary
-    ) {
-        Column(modifier = Modifier.padding(horizontal = 24.dp)) {
+    val entrance = remember { Animatable(0f) }
+    LaunchedEffect(Unit) {
+        entrance.animateTo(
+            targetValue = 1f,
+            animationSpec = spring(
+                dampingRatio = Spring.DampingRatioLowBouncy,
+                stiffness = Spring.StiffnessMediumLow
+            )
+        )
+    }
+    BackHandler { onDismiss() }
+    Box(modifier = Modifier.fillMaxSize()) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(Color.Black.copy(alpha = 0.55f * entrance.value))
+                .clickable(onClick = onDismiss)
+        )
+        Column(
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .fillMaxWidth()
+                .graphicsLayer {
+                    translationY = (1f - entrance.value) * 280f
+                    alpha = entrance.value
+                }
+                .clip(SheetShape)
+                .background(SheetSurface)
+                .padding(horizontal = 22.dp, vertical = 14.dp)
+        ) {
+            Box(
+                modifier = Modifier
+                    .align(Alignment.CenterHorizontally)
+                    .width(44.dp)
+                    .height(4.dp)
+                    .clip(RoundedCornerShape(2.dp))
+                    .background(HandleColor)
+            )
+            Spacer(modifier = Modifier.height(16.dp))
             Text(
                 text = stringResource(R.string.open_project),
                 fontSize = 20.sp,
@@ -78,7 +118,7 @@ fun OpenProjectSheet(
                 fontSize = 13.sp,
                 color = EditorEsPalette.textSecondary
             )
-            Spacer(modifier = Modifier.height(18.dp))
+            Spacer(modifier = Modifier.height(16.dp))
             if (projects.isEmpty()) {
                 Text(
                     text = stringResource(R.string.no_projects),
@@ -87,10 +127,10 @@ fun OpenProjectSheet(
                     textAlign = TextAlign.Center,
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(vertical = 32.dp)
+                        .padding(vertical = 28.dp)
                 )
             } else {
-                LazyColumn(modifier = Modifier.heightIn(max = 280.dp)) {
+                LazyColumn(modifier = Modifier.heightIn(max = 260.dp)) {
                     items(projects, key = { it.absolutePath }) { project ->
                         ProjectRow(
                             project = project,
@@ -100,7 +140,7 @@ fun OpenProjectSheet(
                     }
                 }
             }
-            Spacer(modifier = Modifier.height(20.dp))
+            Spacer(modifier = Modifier.height(18.dp))
             Row {
                 EditorEsButton(
                     label = stringResource(R.string.cancel),
@@ -118,7 +158,6 @@ fun OpenProjectSheet(
                     onClick = { selected?.let(onOpen) }
                 )
             }
-            Spacer(modifier = Modifier.height(12.dp))
         }
     }
 }

@@ -98,7 +98,7 @@ private val TabActiveForeground = Color(0xFFF2FFFA)
 private val TabInactiveForeground = Color(0xFF7FA898)
 private val DirtyDot = SpringGreen
 private val AccentGreen = SpringGreen
-private val DrawerWidth = 260.dp
+private val DrawerWidth = 220.dp
 private val DrawerShape = RoundedCornerShape(topEnd = 24.dp, bottomEnd = 24.dp)
 private val HamburgerBrush = Brush.linearGradient(
     colors = listOf(SpringGreen, SpringGreen.copy(alpha = 0.55f))
