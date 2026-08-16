@@ -27,15 +27,30 @@ class TermuxService : Service() {
         private val sessionCounter = AtomicInteger(0)
         var onExitRequested: (() -> Unit)? = null
 
+        var activeSession: TerminalSession? = null
+            private set
+
+        private var activeSessionId: Int? = null
+
+        fun currentSessionId(): Int = activeSessionId ?: 0
+
+        fun liveSession(): TerminalSession? = activeSession?.takeIf { it.isRunning }
+
         fun registerSession(context: Context, session: TerminalSession): Int {
             val id = sessionCounter.incrementAndGet()
             sessions[id] = session
+            activeSession = session
+            activeSessionId = id
             context.startForegroundService(Intent(context, TermuxService::class.java))
             return id
         }
 
         fun unregisterSession(context: Context, id: Int) {
             sessions.remove(id)
+            if (activeSessionId == id) {
+                activeSession = null
+                activeSessionId = null
+            }
             if (sessions.isEmpty()) {
                 context.stopService(Intent(context, TermuxService::class.java))
             }
@@ -75,6 +90,8 @@ class TermuxService : Service() {
     private fun killAllSessions() {
         sessions.values.forEach { runCatching { it.finishIfRunning() } }
         sessions.clear()
+        activeSession = null
+        activeSessionId = null
     }
 
     private fun buildNotification(): Notification {

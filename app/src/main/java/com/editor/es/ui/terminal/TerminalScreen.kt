@@ -1,13 +1,13 @@
 package com.editor.es.ui.terminal
 
 import android.Manifest
+import android.app.Activity
 import android.content.Context
 import android.content.pm.PackageManager
 import android.graphics.Typeface
 import android.os.Build
 import android.os.Handler
 import android.os.Looper
-import android.view.inputmethod.InputMethodManager
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -24,10 +24,8 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.WindowInsets
-import androidx.compose.foundation.layout.asPaddingValues
-import androidx.compose.foundation.layout.ime
-import androidx.compose.foundation.layout.navigationBars
+import androidx.compose.foundation.layout.imePadding
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
@@ -58,6 +56,7 @@ import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
@@ -69,6 +68,8 @@ import androidx.compose.ui.viewinterop.AndroidView
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import androidx.core.content.ContextCompat
+import androidx.core.view.WindowCompat
+import androidx.core.view.WindowInsetsCompat
 import com.editor.es.R
 import com.editor.es.proot.InstallPhase
 import com.editor.es.proot.ProotConfig
@@ -175,6 +176,11 @@ private fun createTerminalSession(
     onShellExited: () -> Unit
 ): Pair<TerminalSession, Int> {
     val client = EditorEsSessionClient(context, view, onShellExited)
+    val existing = TermuxService.liveSession()
+    if (existing != null) {
+        existing.updateTerminalSessionClient(client)
+        return existing to TermuxService.currentSessionId()
+    }
     val ubuntuReady = ProotConfig.isInstalled(context) && ProotConfig.isAvailable(context)
     val session = if (ubuntuReady) {
         ProotConfig.registerAndroidIds(context)
@@ -211,9 +217,7 @@ fun TerminalScreen(onBack: () -> Unit) {
     var sessionRef by remember { mutableStateOf<TerminalSession?>(null) }
     var previousSessionId by remember { mutableStateOf<Int?>(null) }
     val isFinishing = remember { mutableStateOf(false) }
-    val imeBottom = WindowInsets.ime.asPaddingValues().calculateBottomPadding()
-    val navBottom = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
-    val bottomInset = if (imeBottom > navBottom) imeBottom else navBottom
+    val localView = LocalView.current
     var flow by remember {
         mutableStateOf(
             if (ProotConfig.isInstalled(context)) TerminalFlow.Terminal else TerminalFlow.AskInstall
@@ -225,14 +229,27 @@ fun TerminalScreen(onBack: () -> Unit) {
         installShellProfile(context)
     }
 
+    fun hideKeyboard() {
+        val window = (localView.context as? Activity)?.window ?: return
+        WindowCompat.getInsetsController(window, localView)
+            .hide(WindowInsetsCompat.Type.ime())
+        terminalView?.clearFocus()
+    }
+
     fun leaveTerminal() {
         if (!isFinishing.value) {
             isFinishing.value = true
-            terminalView?.let { view ->
-                view.clearFocus()
-                context.getSystemService(InputMethodManager::class.java)
-                    .hideSoftInputFromWindow(view.windowToken, 0)
-            }
+            hideKeyboard()
+            sessionRef = null
+            previousSessionId = null
+            onBack()
+        }
+    }
+
+    fun terminateTerminal() {
+        if (!isFinishing.value) {
+            isFinishing.value = true
+            hideKeyboard()
             sessionRef?.finishIfRunning()
             sessionRef = null
             previousSessionId?.let { TermuxService.unregisterSession(context, it) }
@@ -242,23 +259,23 @@ fun TerminalScreen(onBack: () -> Unit) {
     }
 
     DisposableEffect(Unit) {
-        TermuxService.onExitRequested = { leaveTerminal() }
-        onDispose {
-            TermuxService.onExitRequested = null
-            sessionRef?.finishIfRunning()
-            previousSessionId?.let { TermuxService.unregisterSession(context, it) }
-        }
+        TermuxService.onExitRequested = { terminateTerminal() }
+        onDispose { TermuxService.onExitRequested = null }
     }
 
     fun startSession(view: TerminalView) {
-        val previous = sessionRef
-        sessionRef = null
-        previous?.finishIfRunning()
-        previousSessionId?.let { TermuxService.unregisterSession(context, it) }
-        val (session, sessionId) = createTerminalSession(context, view) { leaveTerminal() }
+        val (session, sessionId) = createTerminalSession(context, view) { terminateTerminal() }
         view.attachSession(session)
         sessionRef = session
         previousSessionId = sessionId
+    }
+
+    fun restartSession(view: TerminalView) {
+        sessionRef?.finishIfRunning()
+        sessionRef = null
+        previousSessionId?.let { TermuxService.unregisterSession(context, it) }
+        previousSessionId = null
+        startSession(view)
     }
 
     fun sendKey(key: TerminalKey) {
@@ -312,7 +329,8 @@ fun TerminalScreen(onBack: () -> Unit) {
                 .fillMaxSize()
                 .background(TerminalBackground)
                 .statusBarsPadding()
-                .padding(bottom = bottomInset)
+                .imePadding()
+                .navigationBarsPadding()
         ) {
         Row(
             modifier = Modifier
@@ -348,7 +366,7 @@ fun TerminalScreen(onBack: () -> Unit) {
                 )
             }
             IconButton(
-                onClick = { terminalView?.let { startSession(it) } }
+                onClick = { terminalView?.let { restartSession(it) } }
             ) {
                 Icon(
                     imageVector = Icons.Outlined.RestartAlt,
