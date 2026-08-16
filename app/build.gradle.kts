@@ -78,6 +78,7 @@ dependencies {
     coreLibraryDesugaring(libs.androidx.desugar.jdk.libs)
     implementation("io.github.rosemoe:editor")
     implementation("io.github.rosemoe:language-textmate")
+    implementation(project(":terminal-view"))
     implementation(platform(libs.androidx.compose.bom))
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.activity.compose)

@@ -20,4 +20,6 @@ dependencyResolutionManagement {
 }
 rootProject.name = "EditorEs"
 include(":app")
+include(":terminal-emulator")
+include(":terminal-view")
 includeBuild("sora-editor")

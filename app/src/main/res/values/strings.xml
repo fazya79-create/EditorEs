@@ -36,4 +36,6 @@
     <string name="open_from_explorer">Open a file from the explorer</string>
     <string name="no_projects">No projects yet. Create one first!</string>
     <string name="ok">OK</string>
+    <string name="clear_terminal">Clear terminal</string>
+    <string name="restart_terminal">Restart terminal</string>
 </resources>

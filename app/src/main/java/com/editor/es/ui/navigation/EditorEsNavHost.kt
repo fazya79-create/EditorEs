@@ -8,7 +8,6 @@ import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Settings
-import androidx.compose.material.icons.outlined.Terminal
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
@@ -22,6 +21,7 @@ import com.editor.es.R
 import com.editor.es.ui.screens.EditorScreen
 import com.editor.es.ui.screens.HomeScreen
 import com.editor.es.ui.screens.PlaceholderScreen
+import com.editor.es.ui.terminal.TerminalScreen
 
 enum class EditorEsRoute(val path: String) {
     Home("home"),
@@ -66,11 +66,7 @@ fun EditorEsNavHost(
             EditorScreen(projectPath = projectPath)
         }
         composable(EditorEsRoute.Terminal.path) {
-            PlaceholderScreen(
-                title = stringResource(R.string.terminal),
-                icon = Icons.Outlined.Terminal,
-                onBack = { navController.popBackStack() }
-            )
+            TerminalScreen(onBack = { navController.popBackStack() })
         }
         composable(EditorEsRoute.Settings.path) {
             PlaceholderScreen(

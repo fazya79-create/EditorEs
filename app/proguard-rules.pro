@@ -6,3 +6,6 @@
 -keepattributes *Annotation*
 -keepattributes InnerClasses
 -keepattributes EnclosingMethod
+-keep class com.termux.terminal.JNI { *; }
+-keep class com.termux.terminal.** { *; }
+-keep class com.termux.view.** { *; }
