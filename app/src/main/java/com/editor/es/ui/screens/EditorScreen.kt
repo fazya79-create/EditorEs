@@ -65,6 +65,7 @@ import androidx.compose.ui.unit.sp
 import com.editor.es.R
 import com.editor.es.build.BuildEvent
 import com.editor.es.build.BuildRunner
+import com.editor.es.build.BuildSystemDetector
 import com.editor.es.build.ToolchainKind
 import com.editor.es.build.ToolchainPaths
 import com.editor.es.data.FileOps
@@ -263,6 +264,23 @@ fun EditorScreen(projectPath: String) {
         }
     }
 
+    suspend fun saveAllDirty(): Int {
+        captureActiveText()
+        val pending = tabs.filter { it.dirty }
+        if (pending.isEmpty()) return 0
+        val failures = withContext(Dispatchers.IO) {
+            pending.count { tab ->
+                runCatching { File(tab.path).writeText(tab.text) }.isFailure
+            }
+        }
+        for (tab in pending) {
+            val index = tabs.indexOfFirst { it.path == tab.path }
+            if (index >= 0) tabs[index] = tabs[index].copy(dirty = false)
+        }
+        if (failures == 0) saveState = SaveState.Saved
+        return pending.size
+    }
+
     fun appendConsole(text: String, kind: ConsoleLineKind = ConsoleLineKind.Normal) {
         consoleLines.add(ConsoleLine(text, kind))
         if (consoleLines.size > 2000) consoleLines.removeRange(0, consoleLines.size - 2000)
@@ -272,8 +290,14 @@ fun EditorScreen(projectPath: String) {
         if (building) return
         consoleVisible = true
         building = true
-        appendConsole("> building ${projectDir.name}")
         scope.launch {
+            val savedCount = saveAllDirty()
+            if (savedCount > 0) {
+                appendConsole(
+                    if (savedCount == 1) "> saved 1 file" else "> saved $savedCount files"
+                )
+            }
+            appendConsole("> building ${projectDir.name}")
             buildRunner.run(projectDir) { event ->
                 when (event) {
                     is BuildEvent.Line -> appendConsole(event.text)
@@ -295,8 +319,9 @@ fun EditorScreen(projectPath: String) {
     }
 
     fun requestBuild() {
-        val ready = ToolchainPaths.isInstalled(context, ToolchainKind.CMake) &&
-            ToolchainPaths.isInstalled(context, ToolchainKind.Ndk)
+        val usesNdkBuild = BuildSystemDetector.androidMk(projectDir) != null
+        val ready = ToolchainPaths.isInstalled(context, ToolchainKind.Ndk) &&
+            (usesNdkBuild || ToolchainPaths.isInstalled(context, ToolchainKind.CMake))
         if (ready) startBuild() else showToolchainDialog = true
     }
 

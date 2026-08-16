@@ -112,10 +112,39 @@ object ToolchainPruner {
         if (!relative.startsWith(LlvmPrefix)) return true
 
         val rest = relative.removePrefix(LlvmPrefix)
-        if (rest.startsWith("python3/")) return false
+        if (rest.startsWith("python3/")) return keepPython(rest.removePrefix("python3/"))
         if (rest.startsWith("bin/")) return keepBin(rest.removePrefix("bin/"))
         if (rest.startsWith("sysroot/usr/lib/")) return keepSysrootLib(rest.removePrefix("sysroot/usr/lib/"))
         if (rest.startsWith("lib/clang/")) return keepClangLib(rest)
+        return true
+    }
+
+    private val DroppedPythonDirs = listOf(
+        "test",
+        "idlelib",
+        "tkinter",
+        "lib2to3",
+        "distutils",
+        "ensurepip",
+        "pydoc_data",
+        "unittest",
+        "site-packages",
+        "turtledemo",
+        "__pycache__"
+    )
+
+    private fun keepPython(rest: String): Boolean {
+        if (rest.startsWith("lib/python3.11/")) {
+            val tail = rest.removePrefix("lib/python3.11/")
+            val head = tail.substringBefore('/')
+            if (head in DroppedPythonDirs) return false
+            if (tail.contains("/__pycache__/")) return false
+            return true
+        }
+        if (rest.startsWith("lib/") && rest.contains("/config-")) return false
+        if (rest.contains("config-3.11")) return false
+        if (rest.startsWith("share/")) return false
+        if (rest.startsWith("include/")) return false
         return true
     }
 

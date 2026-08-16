@@ -33,40 +33,63 @@ class BuildRunner(private val context: Context) {
                     onEvent(BuildEvent.Failed("Ubuntu environment is not installed"))
                     return@withContext
                 }
-                if (!ToolchainPaths.isInstalled(context, ToolchainKind.CMake)) {
-                    onEvent(BuildEvent.Failed("CMake is not installed"))
-                    return@withContext
-                }
                 if (!ToolchainPaths.isInstalled(context, ToolchainKind.Ndk)) {
                     onEvent(BuildEvent.Failed("Android NDK is not installed"))
                     return@withContext
                 }
-                if (!File(projectDir, "CMakeLists.txt").isFile) {
-                    onEvent(BuildEvent.Failed("CMakeLists.txt not found in ${projectDir.name}"))
+
+                val target = BuildSystemDetector.detect(projectDir)
+                if (target == null) {
+                    onEvent(
+                        BuildEvent.Failed(
+                            "No CMakeLists.txt or Android.mk found in ${projectDir.name}"
+                        )
+                    )
                     return@withContext
                 }
 
-                val cmakeHost = ToolchainPaths.cmakeBinary(context)
-                val ninjaHost = File(cmakeHost.parentFile, "ninja")
-                if (!cmakeHost.canExecute()) cmakeHost.setExecutable(true, false)
-                if (!ninjaHost.canExecute()) ninjaHost.setExecutable(true, false)
-                if (!cmakeHost.canExecute()) {
-                    onEvent(BuildEvent.Failed("cmake is not executable at ${cmakeHost.absolutePath}"))
+                if (target.system == BuildSystem.CMake &&
+                    !ToolchainPaths.isInstalled(context, ToolchainKind.CMake)
+                ) {
+                    onEvent(BuildEvent.Failed("CMake is not installed"))
                     return@withContext
                 }
+
+                prepareExecutables(target.system)
 
                 val guestProject = "/project"
-                val script = buildScript()
+                val script = when (target.system) {
+                    BuildSystem.CMake -> cmakeScript()
+                    BuildSystem.NdkBuild -> ndkBuildScript(projectDir, target.makefile, guestProject)
+                }
+
                 val args = ProotConfig.commandArgs(
                     context = context,
                     script = script,
                     guestCwd = guestProject,
                     binds = listOf("${projectDir.absolutePath}:$guestProject"),
-                    extraPath = listOf(ToolchainPaths.guestCMakeBin())
+                    extraPath = listOf(ToolchainPaths.guestCMakeBin(), ToolchainPaths.guestNdkBin())
                 )
 
-                onEvent(BuildEvent.Line("> cmake configure + build (arm64-v8a, android-24)"))
-                onEvent(BuildEvent.Line("> using ${ToolchainPaths.guestCMake()}"))
+                when (target.system) {
+                    BuildSystem.CMake -> {
+                        onEvent(BuildEvent.Line("> cmake + ninja (arm64-v8a, android-24)"))
+                        onEvent(BuildEvent.Line("> ${ToolchainPaths.guestCMake()}"))
+                    }
+                    BuildSystem.NdkBuild -> {
+                        val appMk = BuildSystemDetector.applicationMk(target.makefile)
+                        onEvent(BuildEvent.Line("> ndk-build (${target.makefile.name})"))
+                        onEvent(
+                            BuildEvent.Line(
+                                if (appMk != null) {
+                                    "> using Application.mk"
+                                } else {
+                                    "> no Application.mk, defaulting to arm64-v8a / android-24"
+                                }
+                            )
+                        )
+                    }
+                }
 
                 val builder = ProcessBuilder(args)
                 builder.redirectErrorStream(true)
@@ -89,7 +112,19 @@ class BuildRunner(private val context: Context) {
             }
         }
 
-    private fun buildScript(): String {
+    private fun prepareExecutables(system: BuildSystem) {
+        if (system == BuildSystem.CMake) {
+            val cmake = ToolchainPaths.cmakeBinary(context)
+            cmake.setExecutable(true, false)
+            File(cmake.parentFile, "ninja").setExecutable(true, false)
+        } else {
+            ToolchainPaths.ndkBuildScript(context).setExecutable(true, false)
+            ToolchainPaths.ndkMakeBinary(context).setExecutable(true, false)
+            ToolchainPaths.ndkPythonBinary(context).setExecutable(true, false)
+        }
+    }
+
+    private fun cmakeScript(): String {
         val cmake = ToolchainPaths.guestCMake()
         val toolchain = ToolchainPaths.guestNdkToolchainFile()
         val ninja = ToolchainPaths.guestNinja()
@@ -103,5 +138,29 @@ class BuildRunner(private val context: Context) {
                 " -DCMAKE_BUILD_TYPE=Release",
             "$cmake --build build"
         ).joinToString(" && ")
+    }
+
+    private fun ndkBuildScript(projectDir: File, androidMk: File, guestRoot: String): String {
+        val guestMk = BuildSystemDetector.guestRelativePath(projectDir, androidMk, guestRoot)
+        val appMk = BuildSystemDetector.applicationMk(androidMk)
+        val ndkRoot = ToolchainPaths.guestDir(ToolchainKind.Ndk)
+        val make = ToolchainPaths.guestNdkMake()
+        val python = ToolchainPaths.guestNdkPython()
+
+        val parts = mutableListOf(
+            "NDK_PROJECT_PATH=$guestRoot",
+            "APP_BUILD_SCRIPT=$guestMk",
+            "NDK_HOST_MAKE=$make",
+            "NDK_HOST_PYTHON=$python"
+        )
+        if (appMk != null) {
+            parts += "NDK_APPLICATION_MK=" +
+                BuildSystemDetector.guestRelativePath(projectDir, appMk, guestRoot)
+        } else {
+            parts += "APP_ABI=arm64-v8a"
+            parts += "APP_PLATFORM=android-24"
+        }
+
+        return "set -e && ${parts.joinToString(" ")} $ndkRoot/ndk-build"
     }
 }

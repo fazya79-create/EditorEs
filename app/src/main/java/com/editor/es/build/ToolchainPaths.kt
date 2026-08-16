@@ -64,11 +64,32 @@ object ToolchainPaths {
     fun ndkToolchainFile(context: Context): File =
         File(hostDir(context, ToolchainKind.Ndk), "build/cmake/android.toolchain.cmake")
 
+    fun ndkBuildScript(context: Context): File =
+        File(hostDir(context, ToolchainKind.Ndk), "ndk-build")
+
+    fun ndkMakeBinary(context: Context): File =
+        File(hostDir(context, ToolchainKind.Ndk), "prebuilt/linux-arm64/bin/make")
+
+    fun ndkPythonBinary(context: Context): File =
+        File(
+            hostDir(context, ToolchainKind.Ndk),
+            "toolchains/llvm/prebuilt/linux-arm64/python3/bin/python3"
+        )
+
     fun cmakeBinary(context: Context): File =
         File(hostDir(context, ToolchainKind.CMake), "bin/cmake")
 
     fun guestNdkToolchainFile(): String =
         "${guestDir(ToolchainKind.Ndk)}/build/cmake/android.toolchain.cmake"
+
+    fun guestNdkBin(): String =
+        "${guestDir(ToolchainKind.Ndk)}/toolchains/llvm/prebuilt/linux-arm64/bin"
+
+    fun guestNdkMake(): String =
+        "${guestDir(ToolchainKind.Ndk)}/prebuilt/linux-arm64/bin/make"
+
+    fun guestNdkPython(): String =
+        "${guestDir(ToolchainKind.Ndk)}/toolchains/llvm/prebuilt/linux-arm64/python3/bin/python3"
 
     fun guestCMakeBin(): String = "${guestDir(ToolchainKind.CMake)}/bin"
 
