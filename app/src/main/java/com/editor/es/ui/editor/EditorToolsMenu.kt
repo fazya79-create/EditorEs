@@ -2,11 +2,6 @@ package com.editor.es.ui.editor
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.size
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.AutoAwesome
-import androidx.compose.material.icons.outlined.FormatIndentIncrease
-import androidx.compose.material.icons.outlined.List
-import androidx.compose.material.icons.outlined.MyLocation
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
