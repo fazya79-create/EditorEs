@@ -81,6 +81,7 @@ import com.editor.es.editor.EditorSearch
 import com.editor.es.editor.EditorLanguageResolver
 import com.editor.es.editor.EditorPane
 import com.editor.es.ui.agent.AgentPickerSheet
+import com.editor.es.build.GradleRequirement
 import com.editor.es.build.GradleTask
 import com.editor.es.build.GradleToolchain
 import com.editor.es.build.ProjectDetector
@@ -214,7 +215,8 @@ fun EditorScreen(
     var consoleMaximized by remember { mutableStateOf(false) }
     var agentPicker by remember { mutableStateOf(false) }
     var gradlePrompt by remember { mutableStateOf<GradleRequirement?>(null) }
-    val projectType = remember(projectDir, historyRevision) {
+    var projectScan by remember { mutableStateOf(0) }
+    val projectType = remember(projectDir, projectScan) {
         ProjectDetector.detect(projectDir)
     }
     var toolsExpanded by remember { mutableStateOf(false) }
