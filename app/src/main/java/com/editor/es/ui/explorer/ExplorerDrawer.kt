@@ -5,6 +5,8 @@ import androidx.compose.animation.core.spring
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -48,6 +50,9 @@ private val ItemForeground = Color(0xFFDDF5EA)
 private val MutedForeground = Color(0xFF6E9184)
 private val ActiveRowBackground = Color(0x2902F5A1)
 private val GuideColor = Color(0x2E02F5A1)
+private val TreeContentWidth = 320.dp
+private val IndentWidth = 9.dp
+private const val MaxIndentLevels = 6
 private val FolderTint = Color(0xFF66C6A6)
 private val FileTint = Color(0xFF9BC4B4)
 private val ChevronColor = Color(0xFFB7E9D3)
@@ -150,10 +155,13 @@ fun ExplorerDrawerContent(
         }
         Spacer(modifier = Modifier.height(10.dp))
         val rows = explorer.rows()
+        val treeScroll = rememberScrollState()
         LazyColumn(
             modifier = Modifier
                 .fillMaxWidth()
                 .weight(1f)
+                .horizontalScroll(treeScroll)
+                .width(TreeContentWidth)
         ) {
             items(rows, key = { it.file.absolutePath + ":" + it.file.lastModified() }) { row ->
                 TreeRowItem(
@@ -252,17 +260,17 @@ private fun TreeRowItem(
     )
     Row(
         modifier = Modifier
-            .fillMaxWidth()
+            .width(TreeContentWidth)
             .height(34.dp)
             .background(if (isActive) ActiveRowBackground else Color.Transparent)
             .combinedClickable(onClick = onClick, onLongClick = onMenu)
-            .padding(start = 8.dp, end = 2.dp),
+            .padding(start = 4.dp, end = 0.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        repeat(row.depth) {
+        repeat(row.depth.coerceAtMost(MaxIndentLevels)) {
             Box(
                 modifier = Modifier
-                    .width(14.dp)
+                    .width(IndentWidth)
                     .fillMaxHeight(),
                 contentAlignment = Alignment.CenterStart
             ) {
@@ -283,7 +291,6 @@ private fun TreeRowItem(
                     .size(16.dp)
                     .graphicsLayer { rotationZ = chevronRotation }
             )
-            Spacer(modifier = Modifier.width(2.dp))
             Icon(
                 painter = painterResource(
                     if (expanded) R.drawable.folder_managed else R.drawable.folder
@@ -293,7 +300,7 @@ private fun TreeRowItem(
                 modifier = Modifier.size(17.dp)
             )
         } else {
-            Spacer(modifier = Modifier.width(18.dp))
+            Spacer(modifier = Modifier.width(16.dp))
             Icon(
                 painter = painterResource(XedIcons.fileType(row.file.name)),
                 contentDescription = null,
@@ -301,7 +308,7 @@ private fun TreeRowItem(
                 modifier = Modifier.size(17.dp)
             )
         }
-        Spacer(modifier = Modifier.width(7.dp))
+        Spacer(modifier = Modifier.width(6.dp))
         Text(
             text = row.file.name,
             fontSize = 13.sp,
@@ -310,12 +317,12 @@ private fun TreeRowItem(
             overflow = TextOverflow.Ellipsis,
             modifier = Modifier.weight(1f)
         )
-        IconButton(onClick = onMenu, modifier = Modifier.size(26.dp)) {
+        IconButton(onClick = onMenu, modifier = Modifier.size(24.dp)) {
             Icon(
                 painter = painterResource(R.drawable.drag_indicator),
                 contentDescription = null,
                 tint = MutedForeground,
-                modifier = Modifier.size(15.dp)
+                modifier = Modifier.size(14.dp)
             )
         }
     }

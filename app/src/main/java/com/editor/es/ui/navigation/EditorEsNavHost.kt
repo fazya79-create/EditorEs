@@ -19,6 +19,7 @@ import androidx.compose.ui.platform.LocalContext
 import com.editor.es.agent.AgentCatalog
 import com.editor.es.agent.AgentInstaller
 import com.editor.es.agent.AgentSandbox
+import com.editor.es.build.GradleCommands
 import com.editor.es.proot.ProotConfig
 import com.editor.es.ui.screens.EditorScreen
 import com.editor.es.ui.screens.HomeScreen
@@ -31,6 +32,8 @@ enum class EditorEsRoute(val path: String) {
     Settings("settings"),
     AgentTerminal("agent"),
     AgentRun("agent-run"),
+    Gradle("gradle"),
+    GradleInstall("gradle-install"),
     Editor("editor")
 }
 
@@ -44,6 +47,12 @@ fun agentInstallRoute(agentId: String): String =
 
 fun agentRunRoute(agentId: String, projectPath: String): String =
     EditorEsRoute.AgentRun.path + "/" + Uri.encode(agentId) + "/" + Uri.encode(projectPath)
+
+fun gradleRoute(projectPath: String, args: String): String =
+    EditorEsRoute.Gradle.path + "/" + Uri.encode(projectPath) + "/" + Uri.encode(args)
+
+fun gradleInstallRoute(projectPath: String): String =
+    EditorEsRoute.GradleInstall.path + "/" + Uri.encode(projectPath)
 
 @Composable
 fun EditorEsNavHost(
@@ -80,7 +89,9 @@ fun EditorEsNavHost(
                 projectPath = projectPath,
                 onOpenSettings = { navController.navigate(EditorEsRoute.Settings.path) },
                 onOpenTerminal = { navController.navigate(projectTerminalRoute(projectPath)) },
-                onRunAgent = { id -> navController.navigate(agentRunRoute(id, projectPath)) }
+                onRunAgent = { id -> navController.navigate(agentRunRoute(id, projectPath)) },
+                onRunGradle = { args -> navController.navigate(gradleRoute(projectPath, args)) },
+                onInstallGradle = { navController.navigate(gradleInstallRoute(projectPath)) }
             )
         }
         composable(EditorEsRoute.Terminal.path) {
@@ -120,6 +131,38 @@ fun EditorEsNavHost(
                 projectDir = launch?.guestCwd?.let { java.io.File(it) },
                 initialCommand = launch?.bootCommand,
                 isolation = launch?.isolation ?: ProotConfig.Isolation.None
+            )
+        }
+        composable(
+            route = EditorEsRoute.Gradle.path + "/{path}/{args}",
+            arguments = listOf(
+                navArgument("path") { type = NavType.StringType },
+                navArgument("args") { type = NavType.StringType }
+            )
+        ) { backStackEntry ->
+            val path = backStackEntry.arguments?.getString("path").orEmpty()
+            val args = backStackEntry.arguments?.getString("args").orEmpty()
+            val dir = java.io.File(path)
+            TerminalScreen(
+                onBack = { navController.popBackStack() },
+                projectDir = dir,
+                initialCommand = GradleCommands.build(dir, args)
+            )
+        }
+        composable(
+            route = EditorEsRoute.GradleInstall.path + "/{path}",
+            arguments = listOf(navArgument("path") { type = NavType.StringType })
+        ) { backStackEntry ->
+            val path = backStackEntry.arguments?.getString("path").orEmpty()
+            val context = LocalContext.current
+            val dir = java.io.File(path)
+            val command = remember(path) {
+                GradleCommands.install(context, dir)
+            }
+            TerminalScreen(
+                onBack = { navController.popBackStack() },
+                projectDir = dir,
+                initialCommand = command
             )
         }
         composable(EditorEsRoute.Settings.path) {

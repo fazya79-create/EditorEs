@@ -13,6 +13,7 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.editor.es.R
+import com.editor.es.build.ProjectType
 
 private val MenuBackground = Color(0xFF0A222B)
 private val TextPrimary = Color(0xFFDDF5EA)
@@ -21,17 +22,30 @@ private val IconTint = Color(0xFF6E9184)
 @Composable
 fun RunMenu(
     expanded: Boolean,
+    projectType: ProjectType,
     onDismiss: () -> Unit,
     onBuild: () -> Unit,
-    onCleanBuild: () -> Unit
+    onCleanBuild: () -> Unit,
+    onBuildRelease: () -> Unit,
+    onInstallApk: () -> Unit
 ) {
     DropdownMenu(
         expanded = expanded,
         onDismissRequest = onDismiss,
         modifier = Modifier.background(MenuBackground)
     ) {
-        Entry("Build", R.drawable.run, onBuild)
-        Entry("Clean build", R.drawable.refresh, onCleanBuild)
+        when (projectType) {
+            ProjectType.Gradle -> {
+                Entry("Build debug", R.drawable.run, onBuild)
+                Entry("Build release", R.drawable.build, onBuildRelease)
+                Entry("Clean build", R.drawable.refresh, onCleanBuild)
+                Entry("Install APK", R.drawable.download, onInstallApk)
+            }
+            else -> {
+                Entry("Build", R.drawable.run, onBuild)
+                Entry("Clean build", R.drawable.refresh, onCleanBuild)
+            }
+        }
     }
 }
 

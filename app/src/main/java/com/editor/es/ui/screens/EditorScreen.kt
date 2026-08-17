@@ -81,7 +81,13 @@ import com.editor.es.editor.EditorSearch
 import com.editor.es.editor.EditorLanguageResolver
 import com.editor.es.editor.EditorPane
 import com.editor.es.ui.agent.AgentPickerSheet
+import com.editor.es.build.GradleTask
+import com.editor.es.build.GradleToolchain
+import com.editor.es.build.ProjectDetector
+import com.editor.es.build.ProjectType
+import com.editor.es.build.ApkInstaller
 import com.editor.es.ui.build.BuildConsole
+import com.editor.es.ui.build.GradleInstallDialog
 import com.editor.es.ui.build.RunMenu
 import com.editor.es.ui.build.ConsoleLine
 import com.editor.es.ui.build.ConsoleLineKind
@@ -127,6 +133,7 @@ private val AccentGreen = SpringGreen
 private val LspStatusColor = Color(0xFF6FD9AE)
 private val LspStatusBackground = Color(0xFF08202A)
 private val DrawerWidth = 220.dp
+private val DrawerHandleWidth = 22.dp
 private val ConsoleHeight = 260.dp
 private val DrawerShape = RoundedCornerShape(topEnd = 24.dp, bottomEnd = 24.dp)
 private val HamburgerBrush = Brush.linearGradient(
@@ -170,7 +177,9 @@ fun EditorScreen(
     projectPath: String,
     onOpenSettings: () -> Unit,
     onOpenTerminal: () -> Unit,
-    onRunAgent: (String) -> Unit
+    onRunAgent: (String) -> Unit,
+    onRunGradle: (String) -> Unit,
+    onInstallGradle: () -> Unit
 ) {
     val scope = rememberCoroutineScope()
     val drawerAnim = remember { Animatable(0f) }
@@ -204,6 +213,10 @@ fun EditorScreen(
     var menuExpanded by remember { mutableStateOf(false) }
     var consoleMaximized by remember { mutableStateOf(false) }
     var agentPicker by remember { mutableStateOf(false) }
+    var gradlePrompt by remember { mutableStateOf<GradleRequirement?>(null) }
+    val projectType = remember(projectDir, historyRevision) {
+        ProjectDetector.detect(projectDir)
+    }
     var toolsExpanded by remember { mutableStateOf(false) }
     var findState by remember { mutableStateOf(FindState()) }
     var findVisible by remember { mutableStateOf(false) }
@@ -524,7 +537,33 @@ fun EditorScreen(
         }
     }
 
+    fun runGradle(task: GradleTask) {
+        GradleToolchain.writeLocalProperties(projectDir)
+        consoleVisible = true
+        appendConsole("> gradle ${task.arguments}")
+        onRunGradle(task.arguments)
+    }
+
+    fun installApk() {
+        val apk = ApkInstaller.latestApk(projectDir)
+        if (apk == null) {
+            consoleVisible = true
+            appendConsole("> no APK found, build first", ConsoleLineKind.Error)
+            return
+        }
+        ApkInstaller.install(context, apk)
+    }
+
     fun openRunMenu() {
+        if (projectType == ProjectType.Gradle) {
+            val missing = GradleToolchain.missing(context, projectDir)
+            if (missing.isNotEmpty()) {
+                gradlePrompt = GradleRequirement(missing)
+                return
+            }
+            menuExpanded = true
+            return
+        }
         val ready = ToolchainPaths.isInstalled(context, ToolchainKind.CMake) &&
             ToolchainPaths.isInstalled(context, ToolchainKind.Ndk)
         if (!ready) {
@@ -730,14 +769,31 @@ fun EditorScreen(
                     }
                     RunMenu(
                         expanded = menuExpanded,
+                        projectType = projectType,
                         onDismiss = { menuExpanded = false },
                         onBuild = {
                             menuExpanded = false
-                            runBuild(false)
+                            if (projectType == ProjectType.Gradle) {
+                                runGradle(GradleTask.AssembleDebug)
+                            } else {
+                                runBuild(false)
+                            }
                         },
                         onCleanBuild = {
                             menuExpanded = false
-                            runBuild(true)
+                            if (projectType == ProjectType.Gradle) {
+                                runGradle(GradleTask.Clean)
+                            } else {
+                                runBuild(true)
+                            }
+                        },
+                        onBuildRelease = {
+                            menuExpanded = false
+                            runGradle(GradleTask.AssembleRelease)
+                        },
+                        onInstallApk = {
+                            menuExpanded = false
+                            installApk()
                         }
                     )
                 }
@@ -922,16 +978,6 @@ fun EditorScreen(
                     .offset { IntOffset(((drawerProgress - 1f) * drawerWidthPx).roundToInt(), 0) }
                     .clip(DrawerShape)
                     .background(SidebarBackground)
-                    .pointerInput(Unit) {
-                        detectHorizontalDragGestures(
-                            onDragEnd = { settleDrawer() },
-                            onDragCancel = { settleDrawer() }
-                        ) { change, drag ->
-                            change.consume()
-                            val next = (drawerAnim.value + drag / drawerWidthPx).coerceIn(0f, 1f)
-                            scope.launch { drawerAnim.snapTo(next) }
-                        }
-                    }
                     .systemBarsPadding()
             ) {
                 ExplorerDrawerContent(
@@ -960,6 +1006,27 @@ fun EditorScreen(
                     }
                 )
             }
+            Box(
+                modifier = Modifier
+                    .offset {
+                        IntOffset(
+                            (drawerWidthPx + (drawerProgress - 1f) * drawerWidthPx).roundToInt(),
+                            0
+                        )
+                    }
+                    .width(DrawerHandleWidth)
+                    .fillMaxHeight()
+                    .pointerInput(Unit) {
+                        detectHorizontalDragGestures(
+                            onDragEnd = { settleDrawer() },
+                            onDragCancel = { settleDrawer() }
+                        ) { change, drag ->
+                            change.consume()
+                            val next = (drawerAnim.value + drag / drawerWidthPx).coerceIn(0f, 1f)
+                            scope.launch { drawerAnim.snapTo(next) }
+                        }
+                    }
+            )
         }
     }
 
@@ -975,6 +1042,18 @@ fun EditorScreen(
             delay(2600)
             lspStatus = null
         }
+    }
+
+    gradlePrompt?.let { requirement ->
+        GradleInstallDialog(
+            requirement = requirement,
+            onConfirm = {
+                gradlePrompt = null
+                GradleToolchain.prepareGuestDirs(context)
+                onInstallGradle()
+            },
+            onDismiss = { gradlePrompt = null }
+        )
     }
 
     if (agentPicker) {
