@@ -54,28 +54,28 @@ fun NodeActionSheet(
             if (target.isDirectory) {
                 ActionRow(
                     label = stringResource(R.string.new_file),
-                    iconRes = LEGACY_NoteAdd,
+                    iconRes = R.drawable.add,
                     onClick = { onAction(NodeAction.NewFile) }
                 )
                 ActionRow(
                     label = stringResource(R.string.new_folder),
-                    iconRes = LEGACY_CreateNewFolder,
+                    iconRes = R.drawable.outline_folder,
                     onClick = { onAction(NodeAction.NewFolder) }
                 )
             }
             ActionRow(
                 label = stringResource(R.string.copy_path),
-                iconRes = LEGACY_ContentCopy,
+                iconRes = R.drawable.copy,
                 onClick = { onAction(NodeAction.CopyPath) }
             )
             ActionRow(
                 label = stringResource(R.string.rename),
-                iconRes = LEGACY_DriveFileRenameOutline,
+                iconRes = R.drawable.edit,
                 onClick = { onAction(NodeAction.Rename) }
             )
             ActionRow(
                 label = stringResource(R.string.delete),
-                iconRes = LEGACY_DeleteOutline,
+                iconRes = R.drawable.close,
                 danger = true,
                 onClick = { onAction(NodeAction.Delete) }
             )
