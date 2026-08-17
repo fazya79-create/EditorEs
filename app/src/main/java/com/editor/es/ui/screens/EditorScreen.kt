@@ -80,6 +80,7 @@ import com.editor.es.editor.EditorConfigurator
 import com.editor.es.editor.EditorSearch
 import com.editor.es.editor.EditorLanguageResolver
 import com.editor.es.editor.EditorPane
+import com.editor.es.ui.agent.AgentPickerSheet
 import com.editor.es.ui.build.BuildConsole
 import com.editor.es.ui.build.RunMenu
 import com.editor.es.ui.build.ConsoleLine
@@ -168,7 +169,8 @@ private class DirtyMarker(private val onDirty: () -> Unit) : ContentListener {
 fun EditorScreen(
     projectPath: String,
     onOpenSettings: () -> Unit,
-    onOpenTerminal: () -> Unit
+    onOpenTerminal: () -> Unit,
+    onRunAgent: (String) -> Unit
 ) {
     val scope = rememberCoroutineScope()
     val drawerAnim = remember { Animatable(0f) }
@@ -201,6 +203,7 @@ fun EditorScreen(
     }
     var menuExpanded by remember { mutableStateOf(false) }
     var consoleMaximized by remember { mutableStateOf(false) }
+    var agentPicker by remember { mutableStateOf(false) }
     var toolsExpanded by remember { mutableStateOf(false) }
     var findState by remember { mutableStateOf(FindState()) }
     var findVisible by remember { mutableStateOf(false) }
@@ -950,6 +953,10 @@ fun EditorScreen(
                     onOpenTerminal = {
                         closeDrawer()
                         onOpenTerminal()
+                    },
+                    onOpenAgent = {
+                        closeDrawer()
+                        agentPicker = true
                     }
                 )
             }
@@ -968,6 +975,17 @@ fun EditorScreen(
             delay(2600)
             lspStatus = null
         }
+    }
+
+    if (agentPicker) {
+        AgentPickerSheet(
+            projectDir = projectDir,
+            onDismiss = { agentPicker = false },
+            onPick = { id ->
+                agentPicker = false
+                onRunAgent(id)
+            }
+        )
     }
 
     if (showToolchainDialog) {

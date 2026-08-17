@@ -14,8 +14,12 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
+import androidx.compose.runtime.remember
+import androidx.compose.ui.platform.LocalContext
 import com.editor.es.agent.AgentCatalog
 import com.editor.es.agent.AgentInstaller
+import com.editor.es.agent.AgentSandbox
+import com.editor.es.proot.ProotConfig
 import com.editor.es.ui.screens.EditorScreen
 import com.editor.es.ui.screens.HomeScreen
 import com.editor.es.ui.settings.SettingsScreen
@@ -26,6 +30,7 @@ enum class EditorEsRoute(val path: String) {
     Terminal("terminal"),
     Settings("settings"),
     AgentTerminal("agent"),
+    AgentRun("agent-run"),
     Editor("editor")
 }
 
@@ -36,6 +41,9 @@ fun projectTerminalRoute(path: String): String =
 
 fun agentInstallRoute(agentId: String): String =
     EditorEsRoute.AgentTerminal.path + "/" + Uri.encode(agentId)
+
+fun agentRunRoute(agentId: String, projectPath: String): String =
+    EditorEsRoute.AgentRun.path + "/" + Uri.encode(agentId) + "/" + Uri.encode(projectPath)
 
 @Composable
 fun EditorEsNavHost(
@@ -71,7 +79,8 @@ fun EditorEsNavHost(
             EditorScreen(
                 projectPath = projectPath,
                 onOpenSettings = { navController.navigate(EditorEsRoute.Settings.path) },
-                onOpenTerminal = { navController.navigate(projectTerminalRoute(projectPath)) }
+                onOpenTerminal = { navController.navigate(projectTerminalRoute(projectPath)) },
+                onRunAgent = { id -> navController.navigate(agentRunRoute(id, projectPath)) }
             )
         }
         composable(EditorEsRoute.Terminal.path) {
@@ -85,6 +94,32 @@ fun EditorEsNavHost(
             TerminalScreen(
                 onBack = { navController.popBackStack() },
                 projectDir = path.takeIf { it.isNotEmpty() }?.let { java.io.File(it) }
+            )
+        }
+        composable(
+            route = EditorEsRoute.AgentRun.path + "/{id}/{path}",
+            arguments = listOf(
+                navArgument("id") { type = NavType.StringType },
+                navArgument("path") { type = NavType.StringType }
+            )
+        ) { backStackEntry ->
+            val id = backStackEntry.arguments?.getString("id").orEmpty()
+            val path = backStackEntry.arguments?.getString("path").orEmpty()
+            val spec = AgentCatalog.byId(id)
+            val context = LocalContext.current
+            val launch = remember(id, path) {
+                val dir = java.io.File(path)
+                if (spec != null && path.isNotEmpty()) {
+                    AgentSandbox.launch(context, spec, dir)
+                } else {
+                    null
+                }
+            }
+            TerminalScreen(
+                onBack = { navController.popBackStack() },
+                projectDir = path.takeIf { it.isNotEmpty() }?.let { java.io.File(it) },
+                initialCommand = launch?.bootCommand,
+                isolation = launch?.isolation ?: ProotConfig.Isolation.None
             )
         }
         composable(EditorEsRoute.Settings.path) {

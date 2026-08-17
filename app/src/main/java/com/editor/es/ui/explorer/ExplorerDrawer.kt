@@ -68,7 +68,8 @@ fun ExplorerDrawerContent(
     onMenuRequested: (File) -> Unit,
     onQuickAction: (NodeAction, File) -> Unit,
     onOpenSettings: () -> Unit,
-    onOpenTerminal: () -> Unit
+    onOpenTerminal: () -> Unit,
+    onOpenAgent: () -> Unit
 ) {
     Column(
         modifier = Modifier
@@ -182,6 +183,12 @@ fun ExplorerDrawerContent(
                 label = stringResource(R.string.terminal),
                 iconRes = R.drawable.terminal,
                 onClick = onOpenTerminal,
+                modifier = Modifier.weight(1f)
+            )
+            FooterAction(
+                label = "Agent",
+                iconRes = R.drawable.bolt,
+                onClick = onOpenAgent,
                 modifier = Modifier.weight(1f)
             )
             FooterAction(
