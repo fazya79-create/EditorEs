@@ -65,15 +65,17 @@ private val TabInactive = Color(0xFF0E2B35)
 
 private enum class SettingsTab(val label: String) {
     Preference("Preference"),
-    Editor("Editor")
+    Editor("Editor"),
+    Agent("Agent")
 }
 
 @Composable
-fun SettingsScreen(onBack: () -> Unit) {
+fun SettingsScreen(onBack: () -> Unit, onInstallAgent: (String) -> Unit = {}) {
     var tab by remember { mutableStateOf(SettingsTab.Preference) }
     val specs = when (tab) {
         SettingsTab.Preference -> PreferenceSettings.specs
         SettingsTab.Editor -> EditorSettings.specs
+        SettingsTab.Agent -> emptyList()
     }
     var revision by remember { mutableIntStateOf(0) }
 
@@ -103,18 +105,20 @@ fun SettingsScreen(onBack: () -> Unit) {
                 color = TextPrimary,
                 modifier = Modifier.weight(1f)
             )
-            IconButton(
-                onClick = {
-                    AppSettings.resetAll(specs)
-                    revision++
+            if (tab != SettingsTab.Agent) {
+                IconButton(
+                    onClick = {
+                        AppSettings.resetAll(specs)
+                        revision++
+                    }
+                ) {
+                    Icon(
+                        painter = painterResource(R.drawable.restart),
+                        contentDescription = "Reset",
+                        tint = TextSecondary,
+                        modifier = Modifier.size(20.dp)
+                    )
                 }
-            ) {
-                Icon(
-                    painter = painterResource(R.drawable.restart),
-                    contentDescription = "Reset",
-                    tint = TextSecondary,
-                    modifier = Modifier.size(20.dp)
-                )
             }
         }
 
@@ -129,23 +133,36 @@ fun SettingsScreen(onBack: () -> Unit) {
                 TabChip(
                     label = entry.label,
                     selected = entry == tab,
-                    onClick = { tab = entry }
+                    onClick = {
+                        tab = entry
+                        revision++
+                    }
                 )
             }
         }
 
-        LazyColumn(
-            modifier = Modifier
-                .fillMaxWidth()
-                .weight(1f),
-            contentPadding = androidx.compose.foundation.layout.PaddingValues(
-                start = 16.dp,
-                end = 16.dp,
-                bottom = 24.dp
+        if (tab == SettingsTab.Agent) {
+            AgentTabContent(
+                refreshKey = revision,
+                onInstall = onInstallAgent,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .weight(1f)
             )
-        ) {
-            items(specs, key = { it.key }) { spec ->
-                SettingRow(spec = spec, revision = revision)
+        } else {
+            LazyColumn(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .weight(1f),
+                contentPadding = androidx.compose.foundation.layout.PaddingValues(
+                    start = 16.dp,
+                    end = 16.dp,
+                    bottom = 24.dp
+                )
+            ) {
+                items(specs, key = { it.key }) { spec ->
+                    SettingRow(spec = spec, revision = revision)
+                }
             }
         }
     }

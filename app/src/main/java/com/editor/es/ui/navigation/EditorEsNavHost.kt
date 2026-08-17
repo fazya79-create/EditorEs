@@ -14,6 +14,8 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
+import com.editor.es.agent.AgentCatalog
+import com.editor.es.agent.AgentInstaller
 import com.editor.es.ui.screens.EditorScreen
 import com.editor.es.ui.screens.HomeScreen
 import com.editor.es.ui.settings.SettingsScreen
@@ -23,6 +25,7 @@ enum class EditorEsRoute(val path: String) {
     Home("home"),
     Terminal("terminal"),
     Settings("settings"),
+    AgentTerminal("agent"),
     Editor("editor")
 }
 
@@ -30,6 +33,9 @@ fun editorRoute(path: String): String = EditorEsRoute.Editor.path + "/" + Uri.en
 
 fun projectTerminalRoute(path: String): String =
     EditorEsRoute.Terminal.path + "/" + Uri.encode(path)
+
+fun agentInstallRoute(agentId: String): String =
+    EditorEsRoute.AgentTerminal.path + "/" + Uri.encode(agentId)
 
 @Composable
 fun EditorEsNavHost(
@@ -82,7 +88,23 @@ fun EditorEsNavHost(
             )
         }
         composable(EditorEsRoute.Settings.path) {
-            SettingsScreen(onBack = { navController.popBackStack() })
+            SettingsScreen(
+                onBack = { navController.popBackStack() },
+                onInstallAgent = { id -> navController.navigate(agentInstallRoute(id)) }
+            )
+        }
+        composable(
+            route = EditorEsRoute.AgentTerminal.path + "/{id}",
+            arguments = listOf(navArgument("id") { type = NavType.StringType })
+        ) { backStackEntry ->
+            val id = backStackEntry.arguments?.getString("id").orEmpty()
+            val spec = AgentCatalog.byId(id)
+            TerminalScreen(
+                onBack = { navController.popBackStack() },
+                initialCommand = spec?.let {
+                    "bash " + AgentInstaller.guestScriptPath(it)
+                }
+            )
         }
     }
 }

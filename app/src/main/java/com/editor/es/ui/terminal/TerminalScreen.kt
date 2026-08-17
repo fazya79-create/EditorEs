@@ -227,7 +227,11 @@ private fun createTerminalSession(
 }
 
 @Composable
-fun TerminalScreen(onBack: () -> Unit, projectDir: File? = null) {
+fun TerminalScreen(
+    onBack: () -> Unit,
+    projectDir: File? = null,
+    initialCommand: String? = null
+) {
     val context = LocalContext.current
     var ctrlArmed by remember { mutableStateOf(false) }
     var altArmed by remember { mutableStateOf(false) }
@@ -341,10 +345,21 @@ fun TerminalScreen(onBack: () -> Unit, projectDir: File? = null) {
         }
     }
 
+    val commandSent = remember { mutableStateOf(false) }
+
     LaunchedEffect(flow, terminalView) {
         if (flow == TerminalFlow.Terminal && terminalView != null && sessionRef == null) {
             startSession(terminalView!!)
         }
+    }
+
+    LaunchedEffect(sessionRef, initialCommand) {
+        val session = sessionRef ?: return@LaunchedEffect
+        val command = initialCommand ?: return@LaunchedEffect
+        if (commandSent.value) return@LaunchedEffect
+        commandSent.value = true
+        delay(400)
+        writeText(session, command + "\n")
     }
 
     if (flow == TerminalFlow.AskInstall) {
