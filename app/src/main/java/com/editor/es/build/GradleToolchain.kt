@@ -14,8 +14,7 @@ enum class GradlePiece(val label: String, val sizeHint: String) {
     Jdk("JDK 17", "180 MB"),
     Sdk("Android SDK tools", "149 MB"),
     Platform("SDK platform", "60 MB"),
-    Gradle("Gradle ${AndroidToolchainVersions.GradleVersion}", "130 MB"),
-    Ndk("Android NDK", "already handled by CMake toolchain")
+    Gradle("Gradle ${AndroidToolchainVersions.GradleVersion}", "130 MB")
 }
 
 data class GradleRequirement(val missing: List<GradlePiece>) {
@@ -61,12 +60,13 @@ object GradleToolchain {
         val compileSdk = ProjectDetector.compileSdkOf(projectDir) ?: 36
         if (!platformDir(context, compileSdk).isDirectory) pieces += GradlePiece.Platform
         if (!File(gradleDir(context), "bin/gradle").isFile) pieces += GradlePiece.Gradle
-        if (ProjectDetector.usesNative(projectDir) &&
-            !ToolchainPaths.isInstalled(context, ToolchainKind.Ndk)
-        ) {
-            pieces += GradlePiece.Ndk
-        }
         return pieces
+    }
+
+    fun nativeMissing(context: Context, projectDir: File): Boolean {
+        if (!ProjectDetector.usesNative(projectDir)) return false
+        return !ToolchainPaths.isInstalled(context, ToolchainKind.Ndk) ||
+            !ToolchainPaths.isInstalled(context, ToolchainKind.CMake)
     }
 
     fun installScript(context: Context, projectDir: File): String {
@@ -118,10 +118,16 @@ object GradleToolchain {
         }
     }
 
-    fun writeLocalProperties(projectDir: File) {
+    fun writeLocalProperties(context: Context, projectDir: File) {
         runCatching {
-            File(projectDir, "local.properties")
-                .writeText("sdk.dir=$GuestSdkRoot\n")
+            val lines = mutableListOf("sdk.dir=$GuestSdkRoot")
+            if (ToolchainPaths.isInstalled(context, ToolchainKind.Ndk)) {
+                lines += "ndk.dir=${ToolchainPaths.guestDir(ToolchainKind.Ndk)}"
+            }
+            if (ToolchainPaths.isInstalled(context, ToolchainKind.CMake)) {
+                lines += "cmake.dir=${ToolchainPaths.guestDir(ToolchainKind.CMake)}"
+            }
+            File(projectDir, "local.properties").writeText(lines.joinToString("\n") + "\n")
         }
     }
 

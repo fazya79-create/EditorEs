@@ -540,7 +540,7 @@ fun EditorScreen(
     }
 
     fun runGradle(task: GradleTask) {
-        GradleToolchain.writeLocalProperties(projectDir)
+        GradleToolchain.writeLocalProperties(context, projectDir)
         consoleVisible = true
         appendConsole("> gradle ${task.arguments}")
         onRunGradle(task.arguments)
@@ -558,6 +558,10 @@ fun EditorScreen(
 
     fun openRunMenu() {
         if (projectType == ProjectType.Gradle) {
+            if (GradleToolchain.nativeMissing(context, projectDir)) {
+                showToolchainDialog = true
+                return
+            }
             val missing = GradleToolchain.missing(context, projectDir)
             if (missing.isNotEmpty()) {
                 gradlePrompt = GradleRequirement(missing)
