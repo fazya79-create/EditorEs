@@ -25,8 +25,10 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.editor.es.R
 import com.editor.es.lsp.LocationEntry
 import com.editor.es.lsp.SymbolEntry
 
@@ -190,7 +192,7 @@ private fun Panel(
             )
             IconButton(onClick = onClose, modifier = Modifier.size(30.dp)) {
                 Icon(
-                    imageVector = Icons.Outlined.Close,
+                    painter = painterResource(R.drawable.close),
                     contentDescription = "Close",
                     tint = TextSecondary,
                     modifier = Modifier.size(16.dp)

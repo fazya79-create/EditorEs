@@ -29,16 +29,6 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.outlined.Redo
-import androidx.compose.material.icons.automirrored.outlined.Undo
-import androidx.compose.material.icons.outlined.Check
-import androidx.compose.material.icons.outlined.Close
-import androidx.compose.material.icons.outlined.InsertDriveFile
-import androidx.compose.material.icons.outlined.MoreVert
-import androidx.compose.material.icons.outlined.PlayArrow
-import androidx.compose.material.icons.outlined.Search
-import androidx.compose.material.icons.outlined.Save
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
@@ -63,6 +53,7 @@ import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.font.FontFamily
@@ -107,7 +98,7 @@ import com.editor.es.ui.explorer.ExplorerDrawerContent
 import com.editor.es.ui.explorer.ExplorerState
 import com.editor.es.ui.explorer.NodeAction
 import com.editor.es.ui.explorer.NodeActionSheet
-import com.editor.es.ui.icons.FileTypeIcons
+import com.editor.es.ui.icons.XedIcons
 import com.editor.es.ui.theme.EditorEsPalette
 import com.editor.es.ui.theme.SpringGreen
 import io.github.rosemoe.sora.text.Content
@@ -653,7 +644,7 @@ fun EditorScreen(
 
                 IconButton(onClick = { undo() }, enabled = canUndo) {
                     Icon(
-                        imageVector = Icons.AutoMirrored.Outlined.Undo,
+                        painter = painterResource(R.drawable.undo),
                         contentDescription = stringResource(R.string.undo),
                         tint = if (canUndo) Color(0xFFE4F5EC) else DisabledTint,
                         modifier = Modifier.size(20.dp)
@@ -662,7 +653,7 @@ fun EditorScreen(
 
                 IconButton(onClick = { redo() }, enabled = canRedo) {
                     Icon(
-                        imageVector = Icons.AutoMirrored.Outlined.Redo,
+                        painter = painterResource(R.drawable.redo),
                         contentDescription = stringResource(R.string.redo),
                         tint = if (canRedo) Color(0xFFE4F5EC) else DisabledTint,
                         modifier = Modifier.size(20.dp)
@@ -674,7 +665,7 @@ fun EditorScreen(
                     if (!findVisible) closeFind()
                 }) {
                     Icon(
-                        imageVector = Icons.Outlined.Search,
+                        painter = painterResource(R.drawable.search),
                         contentDescription = "Find",
                         tint = if (findVisible) AccentGreen else Color(0xFFE4F5EC),
                         modifier = Modifier.size(19.dp)
@@ -684,7 +675,7 @@ fun EditorScreen(
                 Box {
                     IconButton(onClick = { toolsExpanded = true }) {
                         Icon(
-                            imageVector = Icons.Outlined.MoreVert,
+                            painter = painterResource(R.drawable.command_palette),
                             contentDescription = "Tools",
                             tint = Color(0xFFE4F5EC),
                             modifier = Modifier.size(19.dp)
@@ -714,7 +705,7 @@ fun EditorScreen(
 
                 IconButton(onClick = { saveActive() }) {
                     Icon(
-                        imageVector = if (saveState is SaveState.Saved) Icons.Outlined.Check else Icons.Outlined.Save,
+                        painter = painterResource(if (saveState is SaveState.Saved) R.drawable.select else R.drawable.save),
                         contentDescription = stringResource(R.string.save),
                         tint = when (saveState) {
                             SaveState.Saved -> EditorEsPalette.mint
@@ -728,7 +719,7 @@ fun EditorScreen(
                 Box {
                     IconButton(onClick = { openRunMenu() }, enabled = !building) {
                         Icon(
-                            imageVector = Icons.Outlined.PlayArrow,
+                            painter = painterResource(R.drawable.run),
                             contentDescription = stringResource(R.string.run_build),
                             tint = if (building) DisabledTint else AccentGreen,
                             modifier = Modifier.size(22.dp)
@@ -1131,9 +1122,9 @@ private fun TabChip(
                 Spacer(modifier = Modifier.width(7.dp))
             }
             Icon(
-                imageVector = FileTypeIcons.resolve(tab.name),
+                painter = painterResource(XedIcons.fileType(tab.name)),
                 contentDescription = null,
-                tint = Color.Unspecified,
+                tint = if (active) AccentGreen else Color(0xFF9BC4B4),
                 modifier = Modifier.size(16.dp)
             )
             Spacer(modifier = Modifier.width(7.dp))
@@ -1147,7 +1138,7 @@ private fun TabChip(
             )
             Spacer(modifier = Modifier.width(7.dp))
             Icon(
-                imageVector = Icons.Outlined.Close,
+                painter = painterResource(R.drawable.close),
                 contentDescription = stringResource(R.string.close),
                 tint = if (active) Color(0xFFE4F5EC) else TabInactiveForeground,
                 modifier = Modifier
@@ -1182,7 +1173,7 @@ private fun EmptyEditorState() {
     ) {
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
             Icon(
-                imageVector = Icons.Outlined.InsertDriveFile,
+                painter = painterResource(R.drawable.file),
                 contentDescription = null,
                 tint = TabInactiveForeground,
                 modifier = Modifier.size(44.dp)

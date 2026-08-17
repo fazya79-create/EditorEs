@@ -8,11 +8,6 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.Add
-import androidx.compose.material.icons.outlined.FolderOpen
-import androidx.compose.material.icons.outlined.Settings
-import androidx.compose.material.icons.outlined.Terminal
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -80,7 +75,7 @@ fun HomeScreen(onNavigate: (EditorEsRoute) -> Unit, onProjectCreated: (String) -
             EditorEsButton(
                 primary = true,
                 label = stringResource(R.string.create_project),
-                icon = Icons.Outlined.Add,
+                iconRes = R.drawable.add,
                 onClick = { showCreateDialog = true }
             )
         }
@@ -88,7 +83,7 @@ fun HomeScreen(onNavigate: (EditorEsRoute) -> Unit, onProjectCreated: (String) -
         EntranceItem(visible = visible, delayMillis = 320) {
             EditorEsButton(
                 label = stringResource(R.string.open_project),
-                icon = Icons.Outlined.FolderOpen,
+                iconRes = R.drawable.outline_folder,
                 onClick = { showOpenSheet = true }
             )
         }
@@ -96,7 +91,7 @@ fun HomeScreen(onNavigate: (EditorEsRoute) -> Unit, onProjectCreated: (String) -
         EntranceItem(visible = visible, delayMillis = 400) {
             EditorEsButton(
                 label = stringResource(R.string.terminal),
-                icon = Icons.Outlined.Terminal,
+                iconRes = R.drawable.terminal,
                 onClick = { onNavigate(EditorEsRoute.Terminal) }
             )
         }
@@ -104,7 +99,7 @@ fun HomeScreen(onNavigate: (EditorEsRoute) -> Unit, onProjectCreated: (String) -
         EntranceItem(visible = visible, delayMillis = 480) {
             EditorEsButton(
                 label = stringResource(R.string.settings),
-                icon = Icons.Outlined.Settings,
+                iconRes = R.drawable.settings,
                 onClick = { onNavigate(EditorEsRoute.Settings) }
             )
         }

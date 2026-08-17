@@ -17,10 +17,6 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.Check
-import androidx.compose.material.icons.outlined.Download
-import androidx.compose.material.icons.outlined.ExpandMore
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.DropdownMenu
@@ -44,8 +40,10 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.editor.es.R
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import com.editor.es.build.ToolchainInstaller
@@ -185,7 +183,7 @@ private fun ToolchainSection(
             )
             if (installed) {
                 Icon(
-                    imageVector = Icons.Outlined.Check,
+                    painter = painterResource(R.drawable.select),
                     contentDescription = null,
                     tint = SpringGreen,
                     modifier = Modifier.size(15.dp)
@@ -229,7 +227,7 @@ private fun ToolchainSection(
                     Spacer(modifier = Modifier.width(6.dp))
                 }
                 Icon(
-                    imageVector = Icons.Outlined.ExpandMore,
+                    painter = painterResource(R.drawable.chevron_down),
                     contentDescription = null,
                     tint = Muted,
                     modifier = Modifier.size(16.dp)
@@ -301,7 +299,7 @@ private fun ToolchainSection(
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Icon(
-                    imageVector = Icons.Outlined.Download,
+                    painter = painterResource(R.drawable.download),
                     contentDescription = null,
                     modifier = Modifier.size(16.dp)
                 )

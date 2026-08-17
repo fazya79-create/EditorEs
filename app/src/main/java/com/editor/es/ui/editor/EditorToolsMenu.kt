@@ -14,8 +14,10 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.editor.es.R
 
 private val MenuBackground = Color(0xFF0A222B)
 private val TextPrimary = Color(0xFFDDF5EA)
@@ -35,24 +37,24 @@ fun EditorToolsMenu(
         onDismissRequest = onDismiss,
         modifier = Modifier.background(MenuBackground)
     ) {
-        Entry("Format code", Icons.Outlined.FormatIndentIncrease, onFormat)
-        Entry("Document symbols", Icons.Outlined.List, onSymbols)
-        Entry("Go to definition", Icons.Outlined.MyLocation, onDefinition)
-        Entry("Find references", Icons.Outlined.AutoAwesome, onReferences)
+        Entry("Format code", R.drawable.auto_fix, onFormat)
+        Entry("Document symbols", R.drawable.jump_to_element, onSymbols)
+        Entry("Go to definition", R.drawable.arrow_outward, onDefinition)
+        Entry("Find references", R.drawable.manage_search, onReferences)
     }
 }
 
 @Composable
 private fun Entry(
     label: String,
-    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    @androidx.annotation.DrawableRes iconRes: Int,
     onClick: () -> Unit
 ) {
     DropdownMenuItem(
         text = { Text(text = label, fontSize = 13.sp, color = TextPrimary) },
         leadingIcon = {
             Icon(
-                imageVector = icon,
+                painter = painterResource(iconRes),
                 contentDescription = null,
                 tint = IconTint,
                 modifier = Modifier.size(17.dp)

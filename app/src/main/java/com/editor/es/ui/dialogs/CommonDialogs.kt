@@ -6,9 +6,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.Check
-import androidx.compose.material.icons.outlined.Close
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.OutlinedTextField
@@ -22,6 +19,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -55,7 +53,7 @@ fun NameInputDialog(
                 )
                 IconButton(onClick = onDismiss) {
                     Icon(
-                        imageVector = Icons.Outlined.Close,
+                        painter = painterResource(R.drawable.close),
                         contentDescription = stringResource(R.string.close),
                         tint = EditorEsPalette.textSecondary
                     )
@@ -92,7 +90,7 @@ fun NameInputDialog(
             EditorEsButton(
                 primary = true,
                 label = stringResource(R.string.confirm),
-                icon = Icons.Outlined.Check
+                iconRes = R.drawable.select
             ) {
                 val failure = onSubmit(value)
                 if (failure != null) {
@@ -131,7 +129,7 @@ fun ConfirmDialog(
             Row {
                 EditorEsButton(
                     label = stringResource(R.string.cancel),
-                    icon = Icons.Outlined.Close,
+                    iconRes = R.drawable.close,
                     modifier = Modifier.weight(1f),
                     onClick = onDismiss
                 )
@@ -139,7 +137,7 @@ fun ConfirmDialog(
                 EditorEsButton(
                     primary = true,
                     label = confirmLabel,
-                    icon = Icons.Outlined.Check,
+                    iconRes = R.drawable.select,
                     modifier = Modifier.weight(1f),
                     onClick = {
                         onConfirm()
@@ -176,7 +174,7 @@ fun UnsavedChangesDialog(
             Row {
                 EditorEsButton(
                     label = stringResource(R.string.dont_save),
-                    icon = Icons.Outlined.Close,
+                    iconRes = R.drawable.close,
                     modifier = Modifier.weight(1f),
                     onClick = onDontSave
                 )
@@ -184,7 +182,7 @@ fun UnsavedChangesDialog(
                 EditorEsButton(
                     primary = true,
                     label = stringResource(R.string.save),
-                    icon = Icons.Outlined.Check,
+                    iconRes = R.drawable.select,
                     modifier = Modifier.weight(1f),
                     onClick = onSave
                 )

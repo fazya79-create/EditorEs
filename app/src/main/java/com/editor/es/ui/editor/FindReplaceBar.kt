@@ -31,8 +31,10 @@ import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.editor.es.R
 
 private val BarBackground = Color(0xFF0A222B)
 private val Accent = Color(0xFF02F5A1)
@@ -91,7 +93,7 @@ fun FindReplaceBar(
             )
             IconButton(onClick = onPrevious, modifier = Modifier.size(34.dp)) {
                 Icon(
-                    imageVector = Icons.Outlined.KeyboardArrowUp,
+                    painter = painterResource(R.drawable.chevron_up),
                     contentDescription = "Previous",
                     tint = TextPrimary,
                     modifier = Modifier.size(19.dp)
@@ -99,7 +101,7 @@ fun FindReplaceBar(
             }
             IconButton(onClick = onNext, modifier = Modifier.size(34.dp)) {
                 Icon(
-                    imageVector = Icons.Outlined.KeyboardArrowDown,
+                    painter = painterResource(R.drawable.chevron_down),
                     contentDescription = "Next",
                     tint = TextPrimary,
                     modifier = Modifier.size(19.dp)
@@ -107,7 +109,7 @@ fun FindReplaceBar(
             }
             IconButton(onClick = onClose, modifier = Modifier.size(34.dp)) {
                 Icon(
-                    imageVector = Icons.Outlined.Close,
+                    painter = painterResource(R.drawable.close),
                     contentDescription = "Close",
                     tint = TextSecondary,
                     modifier = Modifier.size(17.dp)

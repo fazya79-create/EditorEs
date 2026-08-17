@@ -36,8 +36,10 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.editor.es.R
 import androidx.compose.foundation.text.selection.SelectionContainer
 import com.editor.es.ui.theme.SpringGreen
 
@@ -106,7 +108,7 @@ fun BuildConsole(
             if (running) {
                 IconButton(onClick = onStop, modifier = Modifier.size(30.dp)) {
                     Icon(
-                        imageVector = Icons.Outlined.Stop,
+                        painter = painterResource(R.drawable.stop),
                         contentDescription = "Stop build",
                         tint = ErrorForeground,
                         modifier = Modifier.size(17.dp)
@@ -115,7 +117,7 @@ fun BuildConsole(
             }
             IconButton(onClick = onCopy, modifier = Modifier.size(30.dp)) {
                 Icon(
-                    imageVector = Icons.Outlined.ContentCopy,
+                    painter = painterResource(R.drawable.copy),
                     contentDescription = "Copy output",
                     tint = ConsoleForeground,
                     modifier = Modifier.size(16.dp)
@@ -123,7 +125,7 @@ fun BuildConsole(
             }
             IconButton(onClick = onClear, modifier = Modifier.size(30.dp)) {
                 Icon(
-                    imageVector = Icons.Outlined.DeleteSweep,
+                    painter = painterResource(R.drawable.close),
                     contentDescription = "Clear console",
                     tint = ConsoleForeground,
                     modifier = Modifier.size(17.dp)
@@ -131,11 +133,9 @@ fun BuildConsole(
             }
             IconButton(onClick = onToggleMaximize, modifier = Modifier.size(30.dp)) {
                 Icon(
-                    imageVector = if (maximized) {
-                        Icons.Outlined.CloseFullscreen
-                    } else {
-                        Icons.Outlined.OpenInFull
-                    },
+                    painter = painterResource(
+                        if (maximized) R.drawable.chevron_down else R.drawable.chevron_up
+                    ),
                     contentDescription = "Toggle size",
                     tint = ConsoleForeground,
                     modifier = Modifier.size(16.dp)
@@ -143,7 +143,7 @@ fun BuildConsole(
             }
             IconButton(onClick = onClose, modifier = Modifier.size(30.dp)) {
                 Icon(
-                    imageVector = Icons.Outlined.Close,
+                    painter = painterResource(R.drawable.close),
                     contentDescription = "Close console",
                     tint = ConsoleForeground,
                     modifier = Modifier.size(17.dp)

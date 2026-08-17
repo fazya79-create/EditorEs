@@ -19,10 +19,10 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
@@ -54,28 +54,28 @@ fun NodeActionSheet(
             if (target.isDirectory) {
                 ActionRow(
                     label = stringResource(R.string.new_file),
-                    icon = Icons.Outlined.NoteAdd,
+                    iconRes = LEGACY_NoteAdd,
                     onClick = { onAction(NodeAction.NewFile) }
                 )
                 ActionRow(
                     label = stringResource(R.string.new_folder),
-                    icon = Icons.Outlined.CreateNewFolder,
+                    iconRes = LEGACY_CreateNewFolder,
                     onClick = { onAction(NodeAction.NewFolder) }
                 )
             }
             ActionRow(
                 label = stringResource(R.string.copy_path),
-                icon = Icons.Outlined.ContentCopy,
+                iconRes = LEGACY_ContentCopy,
                 onClick = { onAction(NodeAction.CopyPath) }
             )
             ActionRow(
                 label = stringResource(R.string.rename),
-                icon = Icons.Outlined.DriveFileRenameOutline,
+                iconRes = LEGACY_DriveFileRenameOutline,
                 onClick = { onAction(NodeAction.Rename) }
             )
             ActionRow(
                 label = stringResource(R.string.delete),
-                icon = Icons.Outlined.DeleteOutline,
+                iconRes = LEGACY_DeleteOutline,
                 danger = true,
                 onClick = { onAction(NodeAction.Delete) }
             )
@@ -86,7 +86,7 @@ fun NodeActionSheet(
 @Composable
 private fun ActionRow(
     label: String,
-    icon: ImageVector,
+    @androidx.annotation.DrawableRes iconRes: Int,
     danger: Boolean = false,
     onClick: () -> Unit
 ) {
@@ -99,7 +99,7 @@ private fun ActionRow(
         verticalAlignment = Alignment.CenterVertically
     ) {
         Icon(
-            imageVector = icon,
+            painter = painterResource(iconRes),
             contentDescription = null,
             tint = if (danger) DangerColor else EditorEsPalette.mint,
             modifier = Modifier.size(20.dp)

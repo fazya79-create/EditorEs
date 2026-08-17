@@ -20,9 +20,6 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.Check
-import androidx.compose.material.icons.outlined.Close
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -36,6 +33,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -45,7 +43,6 @@ import androidx.compose.ui.unit.sp
 import com.editor.es.R
 import com.editor.es.data.ProjectCreator
 import com.editor.es.ui.components.EditorEsButton
-import com.editor.es.ui.icons.FileTypeFolder
 import com.editor.es.ui.theme.EditorEsPalette
 import java.io.File
 
@@ -144,7 +141,7 @@ fun OpenProjectSheet(
             Row {
                 EditorEsButton(
                     label = stringResource(R.string.cancel),
-                    icon = Icons.Outlined.Close,
+                    iconRes = R.drawable.close,
                     modifier = Modifier.weight(1f),
                     onClick = onDismiss
                 )
@@ -152,7 +149,7 @@ fun OpenProjectSheet(
                 EditorEsButton(
                     primary = true,
                     label = stringResource(R.string.ok),
-                    icon = Icons.Outlined.Check,
+                    iconRes = R.drawable.select,
                     modifier = Modifier.weight(1f),
                     enabled = selected != null,
                     onClick = { selected?.let(onOpen) }
@@ -179,9 +176,9 @@ private fun ProjectRow(
         verticalAlignment = Alignment.CenterVertically
     ) {
         Icon(
-            imageVector = FileTypeFolder,
+            painter = painterResource(R.drawable.folder_code),
             contentDescription = null,
-            tint = Color.Unspecified,
+            tint = EditorEsPalette.mint,
             modifier = Modifier.size(22.dp)
         )
         Spacer(modifier = Modifier.width(12.dp))
@@ -196,7 +193,7 @@ private fun ProjectRow(
         )
         if (selected) {
             Icon(
-                imageVector = Icons.Outlined.Check,
+                painter = painterResource(R.drawable.select),
                 contentDescription = null,
                 tint = EditorEsPalette.mint,
                 modifier = Modifier.size(18.dp)

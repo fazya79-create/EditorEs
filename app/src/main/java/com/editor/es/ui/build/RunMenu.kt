@@ -12,9 +12,10 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.editor.es.R
 
 private val MenuBackground = Color(0xFF0A222B)
 private val TextPrimary = Color(0xFFDDF5EA)
@@ -32,18 +33,18 @@ fun RunMenu(
         onDismissRequest = onDismiss,
         modifier = Modifier.background(MenuBackground)
     ) {
-        Entry("Build", Icons.Outlined.PlayArrow, onBuild)
-        Entry("Clean build", Icons.Outlined.CleaningServices, onCleanBuild)
+        Entry("Build", R.drawable.run, onBuild)
+        Entry("Clean build", R.drawable.refresh, onCleanBuild)
     }
 }
 
 @Composable
-private fun Entry(label: String, icon: ImageVector, onClick: () -> Unit) {
+private fun Entry(label: String, @androidx.annotation.DrawableRes iconRes: Int, onClick: () -> Unit) {
     DropdownMenuItem(
         text = { Text(text = label, fontSize = 13.sp, color = TextPrimary) },
         leadingIcon = {
             Icon(
-                imageVector = icon,
+                painter = painterResource(iconRes),
                 contentDescription = null,
                 tint = IconTint,
                 modifier = Modifier.size(17.dp)

@@ -7,14 +7,12 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.LockOpen
-import androidx.compose.material.icons.outlined.SdStorage
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -36,7 +34,7 @@ fun StorageGateScreen(onGrant: () -> Unit) {
     ) {
         EntranceItem(visible = true, delayMillis = 0) {
             Icon(
-                imageVector = Icons.Outlined.SdStorage,
+                painter = painterResource(R.drawable.sd_card),
                 contentDescription = null,
                 tint = EditorEsPalette.mint,
                 modifier = Modifier.size(72.dp)
@@ -65,7 +63,7 @@ fun StorageGateScreen(onGrant: () -> Unit) {
             EditorEsButton(
                 primary = true,
                 label = stringResource(R.string.grant_access),
-                icon = Icons.Outlined.LockOpen,
+                iconRes = R.drawable.lock,
                 onClick = onGrant
             )
         }

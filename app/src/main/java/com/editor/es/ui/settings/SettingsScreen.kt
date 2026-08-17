@@ -19,9 +19,6 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.outlined.ArrowBack
-import androidx.compose.material.icons.outlined.RestartAlt
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Slider
@@ -42,8 +39,10 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.editor.es.R
 import com.editor.es.data.AppSettings
 import com.editor.es.data.BoolSpec
 import com.editor.es.data.ChoiceSpec
@@ -92,7 +91,7 @@ fun SettingsScreen(onBack: () -> Unit) {
         ) {
             IconButton(onClick = onBack) {
                 Icon(
-                    imageVector = Icons.AutoMirrored.Outlined.ArrowBack,
+                    painter = painterResource(R.drawable.chevron_left),
                     contentDescription = "Back",
                     tint = TextPrimary
                 )
@@ -111,7 +110,7 @@ fun SettingsScreen(onBack: () -> Unit) {
                 }
             ) {
                 Icon(
-                    imageVector = Icons.Outlined.RestartAlt,
+                    painter = painterResource(R.drawable.restart),
                     contentDescription = "Reset",
                     tint = TextSecondary,
                     modifier = Modifier.size(20.dp)

@@ -1,5 +1,6 @@
 package com.editor.es.ui.components
 
+import androidx.annotation.DrawableRes
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
@@ -22,7 +23,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -31,7 +32,7 @@ import com.editor.es.ui.theme.EditorEsPalette
 @Composable
 fun EditorEsButton(
     label: String,
-    icon: ImageVector,
+    @DrawableRes iconRes: Int,
     modifier: Modifier = Modifier,
     primary: Boolean = false,
     enabled: Boolean = true,
@@ -69,7 +70,11 @@ fun EditorEsButton(
         elevation = ButtonDefaults.buttonElevation(defaultElevation = 0.dp, pressedElevation = 0.dp),
         contentPadding = PaddingValues(horizontal = 24.dp)
     ) {
-        Icon(imageVector = icon, contentDescription = null, modifier = Modifier.size(22.dp))
+        Icon(
+            painter = painterResource(iconRes),
+            contentDescription = null,
+            modifier = Modifier.size(22.dp)
+        )
         Spacer(modifier = Modifier.width(14.dp))
         Text(text = label, fontSize = 17.sp, fontWeight = FontWeight.SemiBold)
     }

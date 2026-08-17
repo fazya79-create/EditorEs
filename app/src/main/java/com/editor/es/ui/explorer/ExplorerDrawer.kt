@@ -20,13 +20,6 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.CreateNewFolder
-import androidx.compose.material.icons.outlined.KeyboardArrowRight
-import androidx.compose.material.icons.outlined.MoreVert
-import androidx.compose.material.icons.outlined.NoteAdd
-import androidx.compose.material.icons.outlined.Settings
-import androidx.compose.material.icons.outlined.Terminal
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
@@ -37,15 +30,15 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.editor.es.R
-import com.editor.es.ui.icons.FileTypeFolder
+import com.editor.es.ui.icons.XedIcons
 import com.editor.es.ui.theme.SpringGreen
-import com.editor.es.ui.icons.FileTypeIcons
 import java.io.File
 
 private val SidebarBackground = Color(0xFF0A222B)
@@ -54,6 +47,8 @@ private val ItemForeground = Color(0xFFDDF5EA)
 private val MutedForeground = Color(0xFF6E9184)
 private val ActiveRowBackground = Color(0x2902F5A1)
 private val GuideColor = Color(0x2E02F5A1)
+private val FolderTint = Color(0xFF66C6A6)
+private val FileTint = Color(0xFF9BC4B4)
 private val ChevronColor = Color(0xFFB7E9D3)
 
 enum class NodeAction {
@@ -101,7 +96,7 @@ fun ExplorerDrawerContent(
                 modifier = Modifier.size(30.dp)
             ) {
                 Icon(
-                    imageVector = Icons.Outlined.NoteAdd,
+                    painter = painterResource(R.drawable.add),
                     contentDescription = stringResource(R.string.new_file),
                     tint = SectionForeground,
                     modifier = Modifier.size(17.dp)
@@ -112,7 +107,7 @@ fun ExplorerDrawerContent(
                 modifier = Modifier.size(30.dp)
             ) {
                 Icon(
-                    imageVector = Icons.Outlined.CreateNewFolder,
+                    painter = painterResource(R.drawable.outline_folder),
                     contentDescription = stringResource(R.string.new_folder),
                     tint = SectionForeground,
                     modifier = Modifier.size(17.dp)
@@ -127,9 +122,9 @@ fun ExplorerDrawerContent(
             verticalAlignment = Alignment.CenterVertically
         ) {
             Icon(
-                imageVector = FileTypeFolder,
+                painter = painterResource(R.drawable.folder_code),
                 contentDescription = null,
-                tint = Color.Unspecified,
+                tint = SpringGreen,
                 modifier = Modifier.size(18.dp)
             )
             Spacer(modifier = Modifier.width(8.dp))
@@ -185,13 +180,13 @@ fun ExplorerDrawerContent(
         ) {
             FooterAction(
                 label = stringResource(R.string.terminal),
-                icon = Icons.Outlined.Terminal,
+                iconRes = R.drawable.terminal,
                 onClick = onOpenTerminal,
                 modifier = Modifier.weight(1f)
             )
             FooterAction(
                 label = stringResource(R.string.settings),
-                icon = Icons.Outlined.Settings,
+                iconRes = R.drawable.settings,
                 onClick = onOpenSettings,
                 modifier = Modifier.weight(1f)
             )
@@ -202,7 +197,7 @@ fun ExplorerDrawerContent(
 @Composable
 private fun FooterAction(
     label: String,
-    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    @androidx.annotation.DrawableRes iconRes: Int,
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -215,7 +210,7 @@ private fun FooterAction(
         verticalAlignment = Alignment.CenterVertically
     ) {
         Icon(
-            imageVector = icon,
+            painter = painterResource(iconRes),
             contentDescription = null,
             tint = SpringGreen,
             modifier = Modifier.size(18.dp)
@@ -271,7 +266,7 @@ private fun TreeRowItem(
         }
         if (row.isDirectory) {
             Icon(
-                imageVector = Icons.Outlined.KeyboardArrowRight,
+                painter = painterResource(R.drawable.chevron_right),
                 contentDescription = null,
                 tint = ChevronColor,
                 modifier = Modifier
@@ -280,17 +275,19 @@ private fun TreeRowItem(
             )
             Spacer(modifier = Modifier.width(2.dp))
             Icon(
-                imageVector = FileTypeFolder,
+                painter = painterResource(
+                    if (expanded) R.drawable.folder_managed else R.drawable.folder
+                ),
                 contentDescription = null,
-                tint = Color.Unspecified,
+                tint = FolderTint,
                 modifier = Modifier.size(17.dp)
             )
         } else {
             Spacer(modifier = Modifier.width(18.dp))
             Icon(
-                imageVector = FileTypeIcons.resolve(row.file.name),
+                painter = painterResource(XedIcons.fileType(row.file.name)),
                 contentDescription = null,
-                tint = Color.Unspecified,
+                tint = FileTint,
                 modifier = Modifier.size(17.dp)
             )
         }
@@ -305,7 +302,7 @@ private fun TreeRowItem(
         )
         IconButton(onClick = onMenu, modifier = Modifier.size(26.dp)) {
             Icon(
-                imageVector = Icons.Outlined.MoreVert,
+                painter = painterResource(R.drawable.drag_indicator),
                 contentDescription = null,
                 tint = MutedForeground,
                 modifier = Modifier.size(15.dp)

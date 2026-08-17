@@ -31,10 +31,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.outlined.ArrowBack
-import androidx.compose.material.icons.outlined.DeleteSweep
-import androidx.compose.material.icons.outlined.RestartAlt
 import androidx.compose.material3.Button
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -57,6 +53,7 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
@@ -379,7 +376,7 @@ fun TerminalScreen(onBack: () -> Unit, projectDir: File? = null) {
         ) {
             IconButton(onClick = { leaveTerminal() }) {
                 Icon(
-                    imageVector = Icons.AutoMirrored.Outlined.ArrowBack,
+                    painter = painterResource(R.drawable.chevron_left),
                     contentDescription = stringResource(R.string.back),
                     tint = KeyForeground,
                     modifier = Modifier.size(20.dp)
@@ -398,7 +395,7 @@ fun TerminalScreen(onBack: () -> Unit, projectDir: File? = null) {
             )
             IconButton(onClick = { writeText(terminalView?.currentSession, "\u001b[2J\u001b[3J\u001b[H") }) {
                 Icon(
-                    imageVector = Icons.Outlined.DeleteSweep,
+                    painter = painterResource(R.drawable.close),
                     contentDescription = stringResource(R.string.clear_terminal),
                     tint = KeyForeground,
                     modifier = Modifier.size(20.dp)
@@ -408,7 +405,7 @@ fun TerminalScreen(onBack: () -> Unit, projectDir: File? = null) {
                 onClick = { terminalView?.let { restartSession(it) } }
             ) {
                 Icon(
-                    imageVector = Icons.Outlined.RestartAlt,
+                    painter = painterResource(R.drawable.restart),
                     contentDescription = stringResource(R.string.restart_terminal),
                     tint = KeyForeground,
                     modifier = Modifier.size(20.dp)
