@@ -21,15 +21,6 @@ fi
 echo "==> node $(node --version), npm $(npm --version)"
 """
 
-    private const val EnsurePipx = """
-if ! command -v pipx >/dev/null 2>&1; then
-  echo "==> installing pipx"
-  apt-get update -y
-  apt-get install -y python3 python3-pip pipx
-  pipx ensurepath || true
-fi
-"""
-
     private fun npmAgent(
         id: String,
         name: String,
@@ -73,18 +64,11 @@ echo "==> installed: ${'$'}(command -v $binary || echo NOT_FOUND)"
             pkg = "@openai/codex"
         ),
         npmAgent(
-            id = "gemini-cli",
-            name = "Gemini CLI",
-            subtitle = "Google Gemini agent · npm @google/gemini-cli",
-            binary = "gemini",
-            pkg = "@google/gemini-cli"
-        ),
-        npmAgent(
-            id = "qwen-code",
-            name = "Qwen Code",
-            subtitle = "Qwen3-Coder agent · npm @qwen-code/qwen-code",
-            binary = "qwen",
-            pkg = "@qwen-code/qwen-code"
+            id = "qodercli",
+            name = "Qoder CLI",
+            subtitle = "Alibaba Qoder agent · npm @qoder-ai/qodercli",
+            binary = "qodercli",
+            pkg = "@qoder-ai/qodercli"
         ),
         npmAgent(
             id = "copilot-cli",
@@ -92,19 +76,6 @@ echo "==> installed: ${'$'}(command -v $binary || echo NOT_FOUND)"
             subtitle = "GitHub Copilot agent · npm @github/copilot",
             binary = "copilot",
             pkg = "@github/copilot"
-        ),
-        AgentSpec(
-            id = "aider",
-            name = "Aider",
-            subtitle = "Pair programming in your terminal · pipx aider-chat",
-            binary = "aider",
-            installScript = """
-set -e
-$EnsurePipx
-echo "==> pipx install aider-chat"
-pipx install aider-chat --force
-echo "==> installed: ${'$'}(command -v aider || echo NOT_FOUND)"
-"""
         )
     )
 
