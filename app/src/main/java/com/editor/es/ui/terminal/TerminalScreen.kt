@@ -173,10 +173,15 @@ private fun createTerminalSession(
     context: Context,
     view: TerminalView,
     projectDir: File?,
+    bootCommand: String?,
     onShellExited: () -> Unit
 ): Pair<TerminalSession, Int> {
     val client = EditorEsSessionClient(context, view, onShellExited)
-    val tag = projectDir?.let { "project:${it.absolutePath}" }
+    val tag = if (bootCommand != null) {
+        "boot:${bootCommand.hashCode()}"
+    } else {
+        projectDir?.let { "project:${it.absolutePath}" }
+    }
     if (tag != null) {
         TermuxService.taggedSession(tag)?.let { (id, existing) ->
             existing.updateTerminalSessionClient(client)
@@ -202,17 +207,22 @@ private fun createTerminalSession(
         TerminalSession(
             ProotConfig.prootBinary(context),
             context.filesDir.absolutePath,
-            ProotConfig.prootArgs(context, cwd),
+            ProotConfig.prootArgs(context, cwd, bootCommand),
             ProotConfig.prootEnv(context),
             null,
             client
         )
     } else {
         val home = projectDir?.absolutePath ?: context.filesDir.absolutePath
+        val args = if (bootCommand != null) {
+            arrayOf("-c", "echo 'Ubuntu is required for this action'; exec /system/bin/sh")
+        } else {
+            emptyArray()
+        }
         TerminalSession(
             "/system/bin/sh",
             home,
-            emptyArray(),
+            args,
             buildShellEnv(context.filesDir.absolutePath),
             null,
             client
@@ -260,7 +270,13 @@ fun TerminalScreen(
         terminalView?.clearFocus()
     }
 
-    val sessionTag = remember(projectDir) { projectDir?.let { "project:${it.absolutePath}" } }
+    val sessionTag = remember(projectDir, initialCommand) {
+        if (initialCommand != null) {
+            "boot:${initialCommand.hashCode()}"
+        } else {
+            projectDir?.let { "project:${it.absolutePath}" }
+        }
+    }
 
     fun releaseSession() {
         if (sessionTag != null) {
@@ -303,7 +319,9 @@ fun TerminalScreen(
 
     fun startSession(view: TerminalView) {
         val (session, sessionId) =
-            createTerminalSession(context, view, projectDir) { terminateTerminal() }
+            createTerminalSession(context, view, projectDir, initialCommand) {
+                terminateTerminal()
+            }
         view.attachSession(session)
         sessionRef = session
         previousSessionId = sessionId
@@ -345,21 +363,10 @@ fun TerminalScreen(
         }
     }
 
-    val commandSent = remember { mutableStateOf(false) }
-
     LaunchedEffect(flow, terminalView) {
         if (flow == TerminalFlow.Terminal && terminalView != null && sessionRef == null) {
             startSession(terminalView!!)
         }
-    }
-
-    LaunchedEffect(sessionRef, initialCommand) {
-        val session = sessionRef ?: return@LaunchedEffect
-        val command = initialCommand ?: return@LaunchedEffect
-        if (commandSent.value) return@LaunchedEffect
-        commandSent.value = true
-        delay(400)
-        writeText(session, command + "\n")
     }
 
     if (flow == TerminalFlow.AskInstall) {

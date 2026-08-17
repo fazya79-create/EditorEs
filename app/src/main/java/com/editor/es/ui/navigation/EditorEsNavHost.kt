@@ -102,7 +102,10 @@ fun EditorEsNavHost(
             TerminalScreen(
                 onBack = { navController.popBackStack() },
                 initialCommand = spec?.let {
-                    "bash " + AgentInstaller.guestScriptPath(it)
+                    val path = AgentInstaller.guestScriptPath(it)
+                    "echo '=== installing ${it.name} ==='; " +
+                        "bash $path; " +
+                        "echo \"=== exit code: \$? ===\""
                 }
             )
         }

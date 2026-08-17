@@ -91,7 +91,11 @@ object ProotConfig {
 
     fun tmpDir(context: Context): File = File(context.cacheDir, "proot-tmp").apply { mkdirs() }
 
-    fun prootArgs(context: Context, cwd: String = "/root"): Array<String> {
+    fun prootArgs(
+        context: Context,
+        cwd: String = "/root",
+        bootCommand: String? = null
+    ): Array<String> {
         val rootfs = rootfsDir(context).absolutePath
         val extraBinds = (StorageBinds + listOfNotNull(toolchainBind(context)))
             .map { "--bind=$it" }
@@ -131,10 +135,16 @@ object ProotConfig {
             "ANDROID_NDK_HOME=$GuestNdkRoot",
             "TERM=xterm-256color",
             "TMPDIR=/tmp",
-            "/usr/bin/bash",
-            "-l"
+            *bootShell(bootCommand)
         )
     }
+
+    private fun bootShell(bootCommand: String?): Array<String> =
+        if (bootCommand == null) {
+            arrayOf("/usr/bin/bash", "-l")
+        } else {
+            arrayOf("/usr/bin/bash", "-lc", "$bootCommand; exec /usr/bin/bash -l")
+        }
 
     fun prootEnv(context: Context): Array<String> = arrayOf(
         "TERM=xterm-256color",

@@ -20,7 +20,14 @@ object AgentInstaller {
 
     fun scriptFor(context: Context, spec: AgentSpec): File {
         val dir = File(ProotConfig.rootfsDir(context), "root/$ScriptDirName").apply { mkdirs() }
-        return File(dir, "${spec.id}.sh").apply { writeText(spec.installScript) }
+        val body = buildString {
+            append(spec.installScript.trimStart())
+            append('\n')
+        }
+        return File(dir, "${spec.id}.sh").apply {
+            writeText(body)
+            setExecutable(true)
+        }
     }
 
     fun guestScriptPath(spec: AgentSpec): String = "/root/$ScriptDirName/${spec.id}.sh"
