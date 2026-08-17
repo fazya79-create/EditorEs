@@ -1,6 +1,7 @@
 package com.editor.es.agent
 
 import android.content.Context
+import com.editor.es.data.ProjectCreator
 import com.editor.es.proot.ProotConfig
 import java.io.File
 
@@ -13,30 +14,30 @@ data class AgentLaunch(
 
 object AgentSandbox {
 
-    private const val HomeRoot = "agent-home"
+    private const val GuestHome = "/agent-home"
 
-    fun guestHomeFor(projectDir: File): String =
-        "/$HomeRoot/" + projectDir.name.replace(Regex("[^A-Za-z0-9._-]"), "_")
+    fun workspaceDir(): File = ProjectCreator.baseDir()
 
-    private fun hostHomeFor(context: Context, projectDir: File): File =
-        File(ProotConfig.rootfsDir(context), guestHomeFor(projectDir).trimStart('/'))
-
-    fun prepare(context: Context, projectDir: File) {
+    fun prepare(context: Context, projectDir: File?) {
+        val rootfs = ProotConfig.rootfsDir(context)
         runCatching {
-            hostHomeFor(context, projectDir).mkdirs()
-            File(ProotConfig.rootfsDir(context), projectDir.absolutePath.trimStart('/')).mkdirs()
+            File(rootfs, GuestHome.trimStart('/')).mkdirs()
+            File(rootfs, workspaceDir().absolutePath.trimStart('/')).mkdirs()
+            projectDir?.let { File(rootfs, it.absolutePath.trimStart('/')).mkdirs() }
         }
     }
 
-    fun launch(context: Context, spec: AgentSpec, projectDir: File): AgentLaunch {
+    fun launch(context: Context, spec: AgentSpec, projectDir: File?): AgentLaunch {
         prepare(context, projectDir)
-        val guestHome = guestHomeFor(projectDir)
+        val workspace = workspaceDir()
+        val cwd = projectDir?.takeIf { it.absolutePath.startsWith(workspace.absolutePath) }
+            ?: workspace
         return AgentLaunch(
-            guestCwd = projectDir.absolutePath,
-            guestHome = guestHome,
-            isolation = ProotConfig.Isolation.Project(
-                hostPath = projectDir.absolutePath,
-                guestHome = guestHome
+            guestCwd = cwd.absolutePath,
+            guestHome = GuestHome,
+            isolation = ProotConfig.Isolation.Workspace(
+                hostPath = workspace.absolutePath,
+                guestHome = GuestHome
             ),
             bootCommand = spec.runCommand
         )

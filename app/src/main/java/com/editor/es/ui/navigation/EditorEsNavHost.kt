@@ -117,7 +117,7 @@ fun EditorEsNavHost(
             }
             TerminalScreen(
                 onBack = { navController.popBackStack() },
-                projectDir = path.takeIf { it.isNotEmpty() }?.let { java.io.File(it) },
+                projectDir = launch?.guestCwd?.let { java.io.File(it) },
                 initialCommand = launch?.bootCommand,
                 isolation = launch?.isolation ?: ProotConfig.Isolation.None
             )

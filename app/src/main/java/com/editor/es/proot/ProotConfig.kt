@@ -101,13 +101,13 @@ object ProotConfig {
         val rootfs = rootfsDir(context).absolutePath
         val storage = when (isolation) {
             Isolation.None -> StorageBinds
-            is Isolation.Project -> listOf("${isolation.hostPath}:${isolation.hostPath}")
+            is Isolation.Workspace -> listOf("${isolation.hostPath}:${isolation.hostPath}")
         }
         val extraBinds = (storage + listOfNotNull(toolchainBind(context)))
             .map { "--bind=$it" }
         val home = when (isolation) {
             Isolation.None -> "/root"
-            is Isolation.Project -> isolation.guestHome
+            is Isolation.Workspace -> isolation.guestHome
         }
         return arrayOf(
             "proot",
@@ -153,13 +153,14 @@ object ProotConfig {
     sealed interface Isolation {
         data object None : Isolation
 
-        data class Project(val hostPath: String, val guestHome: String) : Isolation
+        data class Workspace(val hostPath: String, val guestHome: String) : Isolation
     }
 
     private fun isolationEnv(isolation: Isolation): Array<String> =
         when (isolation) {
             Isolation.None -> emptyArray()
-            is Isolation.Project -> arrayOf("IS_SANDBOX=1", "CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC=1")
+            is Isolation.Workspace ->
+                arrayOf("IS_SANDBOX=1", "CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC=1")
         }
 
     private fun bootShell(bootCommand: String?): Array<String> =

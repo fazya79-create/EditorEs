@@ -83,7 +83,8 @@ fun AgentPickerSheet(
             )
             Spacer(modifier = Modifier.height(4.dp))
             Text(
-                text = "Only ${projectDir.name} is mounted. Device storage stays hidden.",
+                text = "Only /EditorEs is mounted, starting in ${projectDir.name}. " +
+                    "The rest of device storage stays hidden.",
                 fontSize = 11.sp,
                 lineHeight = 16.sp,
                 color = TextSecondary
