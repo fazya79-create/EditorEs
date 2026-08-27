@@ -11,16 +11,27 @@ import android.os.Looper
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.gestures.waitForUpOrCancellation
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -30,6 +41,9 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.Icon
@@ -41,12 +55,16 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.graphicsLayer
@@ -73,69 +91,80 @@ import com.editor.es.data.AppSettings
 import com.editor.es.data.PreferenceSettings
 import com.editor.es.proot.ProotConfig
 import com.editor.es.proot.UbuntuInstaller
+import com.editor.es.service.SessionRecord
 import com.editor.es.service.TermuxService
 import com.editor.es.ui.theme.SpringGreen
 import com.termux.terminal.TerminalColors
 import com.termux.terminal.TerminalSession
 import com.termux.terminal.TextStyle
 import com.termux.view.TerminalView
-import java.io.File
-import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import java.io.File
 
 private val TerminalBackground = Color(0xFF0A2129)
-private val HeaderBackground = Color(0xFF0E2A33)
-private val KeyBackground = Color(0xFF0F2830)
+private val HeaderBackground = Color(0xFF071B21)
+private val DrawerBackground = Color(0xFF07191E)
+private val DrawerCardActive = Color(0xFF0D2C35)
+private val DrawerCardInactive = Color(0xFF092027)
+private val DrawerBorder = Color(0x3302F5A1)
+private val KeyBackground = Color(0xFF0D252D)
+private val KeyForeground = Color(0xFFDDF5EA)
 private val KeyBorder = Color(0x3302F5A1)
-private val KeyForeground = Color(0xFFD9F3E6)
-private val ArmedBackground = Color(0x2902F5A1)
-private val KeyShape = RoundedCornerShape(10.dp)
-private val CardShape = RoundedCornerShape(18.dp)
-private val CardSurface = Color(0xFF0C242D)
-internal val TerminalTextSize = 13
-private const val MinTerminalTextSize = 8
-private const val MaxTerminalTextSize = 24
-private const val HoldDelayMs = 350L
-private const val RepeatIntervalMs = 60L
+private val ArmedBackground = Color(0x3302F5A1)
+private val CardSurface = Color(0xFF0B2129)
+private val ScrimColor = Color(0x80000000)
+private val KillRed = Color(0xFFFF5252)
 
-internal enum class ModifierKey {
+private val HamburgerBrush = Brush.linearGradient(
+    colors = listOf(SpringGreen, Color(0xFF00E676))
+)
+
+private val KeyShape = RoundedCornerShape(6.dp)
+private val CardShape = RoundedCornerShape(16.dp)
+private val ItemShape = RoundedCornerShape(12.dp)
+
+private const val HoldDelayMs = 280L
+private const val RepeatIntervalMs = 45L
+private const val TerminalTextSize = 13
+private const val MinTerminalTextSize = 8
+private const val MaxTerminalTextSize = 28
+
+private enum class TerminalFlow {
+    AskInstall,
+    Installing,
+    AskNotification,
+    Terminal
+}
+
+private enum class ModifierKey {
     Ctrl,
     Alt
 }
 
-private sealed class TerminalFlow {
-    data object Terminal : TerminalFlow()
-    data object AskInstall : TerminalFlow()
-    data object Installing : TerminalFlow()
-    data object AskNotification : TerminalFlow()
-}
-
-internal data class TerminalKey(
+private data class TerminalKey(
     val label: String,
     val payload: String? = null,
     val modifier: ModifierKey? = null,
     val repeatable: Boolean = false
 )
 
-internal val FirstRow = listOf(
-    TerminalKey("ESC", "\u001b"),
-    TerminalKey("/", "/"),
-    TerminalKey("-", "-"),
-    TerminalKey("HOME", "\u001b[H", repeatable = true),
-    TerminalKey("▲", "\u001b[A", repeatable = true),
-    TerminalKey("END", "\u001b[F", repeatable = true),
-    TerminalKey("PGUP", "\u001b[5~", repeatable = true)
-)
-
-internal val SecondRow = listOf(
-    TerminalKey("TAB", "\t"),
+private val FirstRow = listOf(
+    TerminalKey("ESC", ""),
+    TerminalKey("TAB", "	"),
     TerminalKey("CTRL", modifier = ModifierKey.Ctrl),
     TerminalKey("ALT", modifier = ModifierKey.Alt),
-    TerminalKey("◀", "\u001b[D", repeatable = true),
-    TerminalKey("▼", "\u001b[B", repeatable = true),
-    TerminalKey("▶", "\u001b[C", repeatable = true),
-    TerminalKey("PGDN", "\u001b[6~", repeatable = true)
+    TerminalKey("↑", "[A", repeatable = true),
+    TerminalKey("↓", "[B", repeatable = true)
+)
+
+private val SecondRow = listOf(
+    TerminalKey("/", "/"),
+    TerminalKey("-", "-"),
+    TerminalKey("~", "~"),
+    TerminalKey("|", "|"),
+    TerminalKey("←", "[D", repeatable = true),
+    TerminalKey("→", "[C", repeatable = true)
 )
 
 internal fun buildShellEnv(home: String): Array<String> = arrayOf(
@@ -148,7 +177,8 @@ internal fun buildShellEnv(home: String): Array<String> = arrayOf(
 
 internal fun installShellProfile(context: Context) {
     val profile = File(context.filesDir, ".editor-es-shrc")
-    val content = "clear() { printf '\\033[2J\\033[3J\\033[H'; }\n"
+    val content = "clear() { printf '\033[2J\033[3J\033[H'; }
+"
     if (!profile.exists() || profile.readText() != content) {
         profile.writeText(content)
     }
@@ -169,32 +199,16 @@ internal fun writeText(session: TerminalSession?, text: String) {
     session.write(bytes, 0, bytes.size)
 }
 
-private fun createTerminalSession(
+private fun instantiateSession(
     context: Context,
     view: TerminalView,
     projectDir: File?,
     bootCommand: String?,
     onShellExited: () -> Unit
-): Pair<TerminalSession, Int> {
+): TerminalSession {
     val client = EditorEsSessionClient(context, view, onShellExited)
-    val tag = if (bootCommand != null) {
-        "boot:${bootCommand.hashCode()}"
-    } else {
-        projectDir?.let { "project:${it.absolutePath}" }
-    }
-    if (tag != null) {
-        TermuxService.taggedSession(tag)?.let { (id, existing) ->
-            existing.updateTerminalSessionClient(client)
-            return existing to id
-        }
-    } else {
-        TermuxService.liveSession()?.let { existing ->
-            existing.updateTerminalSessionClient(client)
-            return existing to TermuxService.currentSessionId()
-        }
-    }
     val ubuntuReady = ProotConfig.isInstalled(context) && ProotConfig.isAvailable(context)
-    val session = if (ubuntuReady) {
+    return if (ubuntuReady) {
         ProotConfig.registerAndroidIds(context)
         ProotConfig.writeShellProfile(context)
         ProotConfig.prepareStorageMounts(context)
@@ -228,12 +242,6 @@ private fun createTerminalSession(
             client
         )
     }
-    val sessionId = if (tag != null) {
-        TermuxService.registerTagged(context, tag, session)
-    } else {
-        TermuxService.registerSession(context, session)
-    }
-    return session to sessionId
 }
 
 @Composable
@@ -243,13 +251,16 @@ fun TerminalScreen(
     initialCommand: String? = null
 ) {
     val context = LocalContext.current
+    val coroutineScope = rememberCoroutineScope()
     var ctrlArmed by remember { mutableStateOf(false) }
     var altArmed by remember { mutableStateOf(false) }
     var terminalTextSize by remember { mutableStateOf(TerminalTextSize) }
     val appliedTextSize = remember { intArrayOf(TerminalTextSize) }
     var terminalView by remember { mutableStateOf<TerminalView?>(null) }
     var sessionRef by remember { mutableStateOf<TerminalSession?>(null) }
-    var previousSessionId by remember { mutableStateOf<Int?>(null) }
+    var activeSessionId by remember { mutableIntStateOf(0) }
+    var sessionsVersion by remember { mutableIntStateOf(0) }
+    var drawerOpen by remember { mutableStateOf(false) }
     val isFinishing = remember { mutableStateOf(false) }
     val localView = LocalView.current
     var flow by remember {
@@ -270,32 +281,15 @@ fun TerminalScreen(
         terminalView?.clearFocus()
     }
 
-    val sessionTag = remember(projectDir, initialCommand) {
-        if (initialCommand != null) {
-            "boot:${initialCommand.hashCode()}"
-        } else {
-            projectDir?.let { "project:${it.absolutePath}" }
-        }
-    }
-
-    fun releaseSession() {
-        if (sessionTag != null) {
-            TermuxService.unregisterTagged(context, sessionTag)
-        } else {
-            previousSessionId?.let { TermuxService.unregisterSession(context, it) }
-        }
-    }
-
     fun leaveTerminal() {
         if (!isFinishing.value) {
             isFinishing.value = true
             hideKeyboard()
             if (!AppSettings.bool(PreferenceSettings.KeepTerminalAlive, true)) {
                 sessionRef?.finishIfRunning()
-                releaseSession()
+                TermuxService.unregisterSession(context, activeSessionId)
             }
             sessionRef = null
-            previousSessionId = null
             onBack()
         }
     }
@@ -306,33 +300,126 @@ fun TerminalScreen(
             hideKeyboard()
             sessionRef?.finishIfRunning()
             sessionRef = null
-            releaseSession()
-            previousSessionId = null
+            TermuxService.unregisterSession(context, activeSessionId)
             onBack()
         }
     }
 
-    DisposableEffect(Unit) {
-        TermuxService.onExitRequested = { terminateTerminal() }
-        onDispose { TermuxService.onExitRequested = null }
-    }
-
-    fun startSession(view: TerminalView) {
-        val (session, sessionId) =
-            createTerminalSession(context, view, projectDir, initialCommand) {
+    // Attach a session to the view
+    fun attachSessionToView(session: TerminalSession, id: Int, view: TerminalView) {
+        val client = EditorEsSessionClient(context, view) {
+            // When shell exits, switch to next or finish
+            TermuxService.killSession(context, id)
+            val remaining = TermuxService.allSessions()
+            if (remaining.isNotEmpty()) {
+                val next = remaining.last()
+                sessionRef = next.session
+                activeSessionId = next.id
+                view.attachSession(next.session)
+            } else {
                 terminateTerminal()
             }
+            sessionsVersion++
+        }
+        session.updateTerminalSessionClient(client)
         view.attachSession(session)
         sessionRef = session
-        previousSessionId = sessionId
+        activeSessionId = id
     }
 
-    fun restartSession(view: TerminalView) {
-        sessionRef?.finishIfRunning()
-        sessionRef = null
-        releaseSession()
-        previousSessionId = null
-        startSession(view)
+    // Start or attach initial session
+    fun startInitialSession(view: TerminalView) {
+        val tag = if (initialCommand != null) {
+            "boot:${initialCommand.hashCode()}"
+        } else {
+            projectDir?.let { "project:${it.absolutePath}" }
+        }
+
+        if (tag != null) {
+            TermuxService.taggedSession(tag)?.let { (id, existing) ->
+                attachSessionToView(existing, id, view)
+                return
+            }
+        }
+
+        TermuxService.liveSession()?.let { existing ->
+            attachSessionToView(existing, TermuxService.currentSessionId(), view)
+            return
+        }
+
+        val session = instantiateSession(context, view, projectDir, initialCommand) {
+            val remaining = TermuxService.allSessions()
+            if (remaining.size <= 1) {
+                terminateTerminal()
+            } else {
+                TermuxService.killSession(context, activeSessionId)
+                val next = TermuxService.allSessions().lastOrNull()
+                if (next != null) {
+                    terminalView?.let { attachSessionToView(next.session, next.id, it) }
+                }
+            }
+            sessionsVersion++
+        }
+
+        val sessionName = projectDir?.name ?: "Session ${TermuxService.sessionCount() + 1}"
+        val sessionId = if (tag != null) {
+            TermuxService.registerTagged(context, tag, session, sessionName)
+        } else {
+            TermuxService.registerSession(context, session, sessionName)
+        }
+        attachSessionToView(session, sessionId, view)
+        sessionsVersion++
+    }
+
+    // Create a brand new session
+    fun createNewSession(view: TerminalView) {
+        val newSessionNumber = TermuxService.allSessions().size + 1
+        val sessionName = "Session $newSessionNumber"
+        val session = instantiateSession(context, view, projectDir, null) {
+            TermuxService.killSession(context, activeSessionId)
+            val next = TermuxService.allSessions().lastOrNull()
+            if (next != null) {
+                terminalView?.let { attachSessionToView(next.session, next.id, it) }
+            } else {
+                terminateTerminal()
+            }
+            sessionsVersion++
+        }
+        val id = TermuxService.registerSession(context, session, sessionName)
+        attachSessionToView(session, id, view)
+        drawerOpen = false
+        sessionsVersion++
+    }
+
+    // Switch to an existing session
+    fun switchToSession(record: SessionRecord, view: TerminalView) {
+        TermuxService.setActiveSession(record.id)
+        attachSessionToView(record.session, record.id, view)
+        drawerOpen = false
+        sessionsVersion++
+    }
+
+    // Kill a specific session
+    fun killSessionById(id: Int) {
+        TermuxService.killSession(context, id)
+        val remaining = TermuxService.allSessions()
+        if (remaining.isEmpty()) {
+            // If all killed, create one fresh session
+            terminalView?.let { createNewSession(it) }
+        } else if (activeSessionId == id) {
+            val next = remaining.last()
+            terminalView?.let { attachSessionToView(next.session, next.id, it) }
+        }
+        sessionsVersion++
+    }
+
+    DisposableEffect(Unit) {
+        TermuxService.onExitRequested = { terminateTerminal() }
+        TermuxService.onSessionsChanged = { sessionsVersion++ }
+        onDispose {
+            TermuxService.onExitRequested = null
+            TermuxService.onSessionsChanged = null
+        }
     }
 
     fun sendKey(key: TerminalKey) {
@@ -355,17 +442,18 @@ fun TerminalScreen(
     }
 
     BackHandler {
-        when (flow) {
-            TerminalFlow.AskInstall -> leaveTerminal()
-            TerminalFlow.Installing -> leaveTerminal()
-            TerminalFlow.AskNotification -> flow = TerminalFlow.Terminal
-            TerminalFlow.Terminal -> leaveTerminal()
+        when {
+            drawerOpen -> drawerOpen = false
+            flow == TerminalFlow.AskInstall -> leaveTerminal()
+            flow == TerminalFlow.Installing -> leaveTerminal()
+            flow == TerminalFlow.AskNotification -> flow = TerminalFlow.Terminal
+            flow == TerminalFlow.Terminal -> leaveTerminal()
         }
     }
 
     LaunchedEffect(flow, terminalView) {
         if (flow == TerminalFlow.Terminal && terminalView != null && sessionRef == null) {
-            startSession(terminalView!!)
+            startInitialSession(terminalView!!)
         }
     }
 
@@ -380,6 +468,12 @@ fun TerminalScreen(
         NotificationPermissionGate(onDismiss = { flow = TerminalFlow.Terminal })
     }
 
+    val sessionsList = remember(sessionsVersion) { TermuxService.allSessions() }
+    val currentSessionRecord = sessionsList.firstOrNull { it.id == activeSessionId }
+    val sessionDisplayName = currentSessionRecord?.name
+        ?: projectDir?.name?.uppercase()
+        ?: "TERMINAL"
+
     Box(modifier = Modifier.fillMaxSize()) {
         Column(
             modifier = Modifier
@@ -389,135 +483,433 @@ fun TerminalScreen(
                 .imePadding()
                 .navigationBarsPadding()
         ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .background(HeaderBackground)
-                .padding(horizontal = 4.dp, vertical = 4.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            IconButton(onClick = { leaveTerminal() }) {
-                Icon(
-                    painter = painterResource(R.drawable.chevron_left),
-                    contentDescription = stringResource(R.string.back),
-                    tint = KeyForeground,
-                    modifier = Modifier.size(20.dp)
-                )
-            }
-            Text(
-                text = projectDir?.name?.uppercase()
-                    ?: stringResource(R.string.terminal).uppercase(),
-                fontSize = 13.sp,
-                fontWeight = FontWeight.SemiBold,
-                letterSpacing = 1.2.sp,
-                color = SpringGreen,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-                modifier = Modifier.weight(1f)
-            )
-            IconButton(onClick = { writeText(terminalView?.currentSession, "\u001b[2J\u001b[3J\u001b[H") }) {
-                Icon(
-                    painter = painterResource(R.drawable.close),
-                    contentDescription = stringResource(R.string.clear_terminal),
-                    tint = KeyForeground,
-                    modifier = Modifier.size(20.dp)
-                )
-            }
-            IconButton(
-                onClick = { terminalView?.let { restartSession(it) } }
+            // === Top Bar with Custom Hamburger Menu ===
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(44.dp)
+                    .background(HeaderBackground)
+                    .padding(horizontal = 8.dp),
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                Icon(
-                    painter = painterResource(R.drawable.restart),
-                    contentDescription = stringResource(R.string.restart_terminal),
-                    tint = KeyForeground,
-                    modifier = Modifier.size(20.dp)
+                // Custom 3-line horizontal bars (vertical stack)
+                Box(
+                    modifier = Modifier
+                        .size(38.dp)
+                        .clip(RoundedCornerShape(8.dp))
+                        .clickable {
+                            hideKeyboard()
+                            drawerOpen = !drawerOpen
+                        },
+                    contentAlignment = Alignment.Center
+                ) {
+                    TerminalMenuIcon(
+                        modifier = Modifier.size(20.dp, 14.dp)
+                    )
+                }
+
+                Spacer(modifier = Modifier.width(8.dp))
+
+                // Active Session Title + Badge
+                Row(
+                    modifier = Modifier.weight(1f),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    // Pulsing active dot
+                    Box(
+                        modifier = Modifier
+                            .size(7.dp)
+                            .clip(CircleShape)
+                            .background(SpringGreen)
+                    )
+                    Spacer(modifier = Modifier.width(7.dp))
+                    Text(
+                        text = sessionDisplayName.uppercase(),
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.Bold,
+                        letterSpacing = 1.1.sp,
+                        color = SpringGreen,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                    if (sessionsList.size > 1) {
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text(
+                            text = "(${sessionsList.indexOfFirst { it.id == activeSessionId } + 1}/${sessionsList.size})",
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Medium,
+                            color = KeyForeground.copy(alpha = 0.5f)
+                        )
+                    }
+                }
+            }
+
+            // === Terminal View ===
+            Box(modifier = Modifier.weight(1f)) {
+                AndroidView(
+                    modifier = Modifier.fillMaxSize(),
+                    factory = { ctx ->
+                        TerminalView(ctx, null).apply {
+                            isFocusable = true
+                            isFocusableInTouchMode = true
+                            setTerminalViewClient(
+                                EditorEsViewClient(
+                                    context = ctx,
+                                    view = this,
+                                    ctrlArmed = { ctrlArmed },
+                                    altArmed = { altArmed },
+                                    shiftArmed = { false },
+                                    onKeyConsumed = {
+                                        ctrlArmed = false
+                                        altArmed = false
+                                    },
+                                    onZoom = { zoomIn ->
+                                        val delta = if (zoomIn) 1 else -1
+                                        terminalTextSize = (terminalTextSize + delta)
+                                            .coerceIn(MinTerminalTextSize, MaxTerminalTextSize)
+                                    }
+                                )
+                            )
+                            setTextSize(terminalTextSize)
+                            setTypeface(
+                                runCatching {
+                                    Typeface.createFromAsset(ctx.assets, "fonts/JetBrainsMono-Regular.ttf")
+                                }.getOrDefault(Typeface.MONOSPACE)
+                            )
+                            terminalView = this
+                            requestFocus()
+                        }
+                    },
+                    update = { view ->
+                        if (appliedTextSize[0] != terminalTextSize) {
+                            view.setTextSize(terminalTextSize)
+                            appliedTextSize[0] = terminalTextSize
+                        }
+                    }
+                )
+            }
+
+            // === Terminal Extra Keys Toolbar ===
+            Column(modifier = Modifier.background(HeaderBackground)) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(start = 4.dp, end = 4.dp, top = 4.dp),
+                    content = {
+                        FirstRow.forEach { key ->
+                            TerminalKeyChip(
+                                key = key,
+                                armed = (key.modifier == ModifierKey.Ctrl && ctrlArmed) ||
+                                    (key.modifier == ModifierKey.Alt && altArmed),
+                                onTap = { sendKey(key) },
+                                modifier = Modifier.weight(1f)
+                            )
+                        }
+                    }
+                )
+
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(4.dp),
+                    content = {
+                        SecondRow.forEach { key ->
+                            TerminalKeyChip(
+                                key = key,
+                                armed = (key.modifier == ModifierKey.Ctrl && ctrlArmed) ||
+                                    (key.modifier == ModifierKey.Alt && altArmed),
+                                onTap = { sendKey(key) },
+                                modifier = Modifier.weight(1f)
+                            )
+                        }
+                    }
                 )
             }
         }
-        Box(modifier = Modifier.weight(1f)) {
-            AndroidView(
-                modifier = Modifier.fillMaxSize(),
-                factory = { ctx ->
-                    TerminalView(ctx, null).apply {
-                        isFocusable = true
-                        isFocusableInTouchMode = true
-                        setTerminalViewClient(
-                            EditorEsViewClient(
-                                context = ctx,
-                                view = this,
-                                ctrlArmed = { ctrlArmed },
-                                altArmed = { altArmed },
-                                shiftArmed = { false },
-                                onKeyConsumed = {
-                                    ctrlArmed = false
-                                    altArmed = false
+
+        // === Sessions Drawer Overlay ===
+        if (drawerOpen) {
+            // Scrim
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(ScrimColor)
+                    .clickable(
+                        interactionSource = remember { MutableInteractionSource() },
+                        indication = null
+                    ) { drawerOpen = false }
+            )
+
+            // Sliding Panel from Left
+            Box(
+                modifier = Modifier
+                    .fillMaxHeight()
+                    .width(280.dp)
+                    .background(DrawerBackground)
+                    .border(width = 1.dp, color = DrawerBorder)
+                    .statusBarsPadding()
+                    .navigationBarsPadding()
+            ) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(16.dp)
+                ) {
+                    // Drawer Title Row
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(
+                                painter = painterResource(R.drawable.terminal),
+                                contentDescription = null,
+                                tint = SpringGreen,
+                                modifier = Modifier.size(18.dp)
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(
+                                text = "SESSIONS",
+                                fontSize = 14.sp,
+                                fontWeight = FontWeight.Bold,
+                                letterSpacing = 1.5.sp,
+                                color = SpringGreen
+                            )
+                        }
+
+                        // Badge count
+                        Box(
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(6.dp))
+                                .background(Color(0x2602F5A1))
+                                .padding(horizontal = 8.dp, vertical = 2.dp)
+                        ) {
+                            Text(
+                                text = "${sessionsList.size}",
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = SpringGreen
+                            )
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    // "+ New Session" Button
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(40.dp)
+                            .clip(ItemShape)
+                            .background(Color(0x1A02F5A1))
+                            .border(1.dp, SpringGreen, ItemShape)
+                            .clickable {
+                                terminalView?.let { createNewSession(it) }
+                            },
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.Center
+                        ) {
+                            Icon(
+                                painter = painterResource(R.drawable.add),
+                                contentDescription = null,
+                                tint = SpringGreen,
+                                modifier = Modifier.size(16.dp)
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(
+                                text = "New Session",
+                                fontSize = 13.sp,
+                                fontWeight = FontWeight.SemiBold,
+                                color = SpringGreen
+                            )
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    // Sessions List
+                    Text(
+                        text = "ACTIVE SESSIONS",
+                        fontSize = 10.sp,
+                        fontWeight = FontWeight.Bold,
+                        letterSpacing = 1.2.sp,
+                        color = KeyForeground.copy(alpha = 0.4f),
+                        modifier = Modifier.padding(start = 4.dp, bottom = 8.dp)
+                    )
+
+                    LazyColumn(
+                        modifier = Modifier.weight(1f),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        items(sessionsList, key = { it.id }) { record ->
+                            val isActive = record.id == activeSessionId
+                            SessionItemCard(
+                                record = record,
+                                isActive = isActive,
+                                onSelect = {
+                                    terminalView?.let { switchToSession(record, it) }
                                 },
-                                onZoom = { zoomIn ->
-                                    val delta = if (zoomIn) 1 else -1
-                                    terminalTextSize = (terminalTextSize + delta)
-                                        .coerceIn(MinTerminalTextSize, MaxTerminalTextSize)
+                                onKill = {
+                                    killSessionById(record.id)
                                 }
                             )
-                        )
-                        setTextSize(terminalTextSize)
-                        setTypeface(
-                            runCatching {
-                                Typeface.createFromAsset(ctx.assets, "fonts/JetBrainsMono-Regular.ttf")
-                            }.getOrDefault(Typeface.MONOSPACE)
-                        )
-                        terminalView = this
-                        requestFocus()
+                        }
                     }
-                },
-                update = { view ->
-                    if (appliedTextSize[0] != terminalTextSize) {
-                        view.setTextSize(terminalTextSize)
-                        appliedTextSize[0] = terminalTextSize
-                    }
-                }
-            )
-        }
-        Column(modifier = Modifier.background(HeaderBackground)) {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(start = 4.dp, end = 4.dp, top = 4.dp),
-                content = {
-                    FirstRow.forEach { key ->
-                        TerminalKeyChip(
-                            key = key,
-                            armed = (key.modifier == ModifierKey.Ctrl && ctrlArmed) ||
-                                (key.modifier == ModifierKey.Alt && altArmed),
-                            onTap = { sendKey(key) },
-                            modifier = Modifier.weight(1f)
-                        )
-                    }
-                }
-            )
 
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(4.dp),
-                content = {
-                    SecondRow.forEach { key ->
-                        TerminalKeyChip(
-                            key = key,
-                            armed = (key.modifier == ModifierKey.Ctrl && ctrlArmed) ||
-                                (key.modifier == ModifierKey.Alt && altArmed),
-                            onTap = { sendKey(key) },
-                            modifier = Modifier.weight(1f)
-                        )
+                    Spacer(modifier = Modifier.height(12.dp))
+
+                    // Exit Terminal Button
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(38.dp)
+                            .clip(ItemShape)
+                            .background(Color(0x0DFFFFFF))
+                            .clickable { leaveTerminal() },
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.Center
+                        ) {
+                            Icon(
+                                painter = painterResource(R.drawable.chevron_left),
+                                contentDescription = null,
+                                tint = KeyForeground.copy(alpha = 0.7f),
+                                modifier = Modifier.size(16.dp)
+                            )
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text(
+                                text = "Back to Editor",
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.Medium,
+                                color = KeyForeground.copy(alpha = 0.7f)
+                            )
+                        }
                     }
                 }
-            )
-        }
+            }
         }
 
+        // Install flow screens
         if (flow == TerminalFlow.Installing) {
             InstallerScreen(
                 onFinished = { flow = TerminalFlow.AskNotification },
                 onFailed = { leaveTerminal() }
+            )
+        }
+    }
+}
+
+/**
+ * Custom 3-horizontal-lines menu icon (hamburger) with rounded caps and gradient
+ */
+@Composable
+private fun TerminalMenuIcon(modifier: Modifier = Modifier) {
+    Canvas(modifier = modifier) {
+        val strokeWidth = size.height * 0.16f
+        val lineSpacing = size.height * 0.38f
+        for (i in 0..2) {
+            val y = strokeWidth / 2f + i * lineSpacing
+            drawLine(
+                brush = HamburgerBrush,
+                start = Offset(0f, y),
+                end = Offset(size.width, y),
+                strokeWidth = strokeWidth,
+                cap = StrokeCap.Round
+            )
+        }
+    }
+}
+
+/**
+ * Session card item inside the Sessions Drawer
+ */
+@Composable
+private fun SessionItemCard(
+    record: SessionRecord,
+    isActive: Boolean,
+    onSelect: () -> Unit,
+    onKill: () -> Unit
+) {
+    val bg = if (isActive) DrawerCardActive else DrawerCardInactive
+    val border = if (isActive) SpringGreen else Color(0x1A02F5A1)
+
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(ItemShape)
+            .background(bg)
+            .border(1.dp, border, ItemShape)
+            .clickable(onClick = onSelect)
+            .padding(horizontal = 12.dp, vertical = 10.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        // Left active indicator / terminal icon
+        Box(
+            modifier = Modifier
+                .size(28.dp)
+                .clip(RoundedCornerShape(6.dp))
+                .background(if (isActive) Color(0x3302F5A1) else Color(0x1402F5A1)),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(
+                painter = painterResource(R.drawable.terminal),
+                contentDescription = null,
+                tint = if (isActive) SpringGreen else KeyForeground.copy(alpha = 0.5f),
+                modifier = Modifier.size(15.dp)
+            )
+        }
+
+        Spacer(modifier = Modifier.width(10.dp))
+
+        // Session Name and status
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = record.name,
+                fontSize = 13.sp,
+                fontWeight = if (isActive) FontWeight.Bold else FontWeight.Medium,
+                color = if (isActive) Color(0xFFF2FFFA) else KeyForeground.copy(alpha = 0.7f),
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+            Spacer(modifier = Modifier.height(2.dp))
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Box(
+                    modifier = Modifier
+                        .size(5.dp)
+                        .clip(CircleShape)
+                        .background(if (isActive) SpringGreen else Color(0xFF888888))
+                )
+                Spacer(modifier = Modifier.width(4.dp))
+                Text(
+                    text = if (isActive) "active" else "running",
+                    fontSize = 10.sp,
+                    color = if (isActive) SpringGreen else KeyForeground.copy(alpha = 0.4f)
+                )
+            }
+        }
+
+        Spacer(modifier = Modifier.width(8.dp))
+
+        // Kill "x" button
+        Box(
+            modifier = Modifier
+                .size(26.dp)
+                .clip(CircleShape)
+                .background(Color(0x1AFF5252))
+                .clickable(onClick = onKill),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(
+                painter = painterResource(R.drawable.close),
+                contentDescription = "Close session",
+                tint = KillRed,
+                modifier = Modifier.size(13.dp)
             )
         }
     }
