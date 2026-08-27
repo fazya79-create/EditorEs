@@ -1,10 +1,15 @@
 package com.editor.es.agent
 
+import androidx.annotation.DrawableRes
+import com.editor.es.R
+
 data class AgentSpec(
     val id: String,
     val name: String,
     val subtitle: String,
     val binary: String,
+    val docUrl: String,
+    @DrawableRes val iconRes: Int,
     val installScript: String
 )
 
@@ -26,27 +31,42 @@ echo "==> node $(node --version), npm $(npm --version)"
         name: String,
         subtitle: String,
         binary: String,
+        docUrl: String,
+        @DrawableRes iconRes: Int,
         pkg: String
     ) = AgentSpec(
         id = id,
         name = name,
         subtitle = subtitle,
         binary = binary,
+        docUrl = docUrl,
+        iconRes = iconRes,
         installScript = """
 set -e
 $EnsureNode
 echo "==> npm install -g $pkg"
 npm install -g $pkg
-echo "==> installed: ${'$'}(command -v $binary || echo NOT_FOUND)"
+echo "==> installed: $(command -v $binary || echo NOT_FOUND)"
 """
     )
 
     val agents: List<AgentSpec> = listOf(
         npmAgent(
+            id = "deepseek-harness",
+            name = "DeepSeek Harness",
+            subtitle = "DeepSeek agentic harness · npm @deepseek-ai/dsh",
+            binary = "dsh",
+            docUrl = "https://github.com/deepseek-ai/deepseek-harness",
+            iconRes = R.drawable.ic_agent_deepseek,
+            pkg = "@deepseek-ai/dsh"
+        ),
+        npmAgent(
             id = "claude-code",
             name = "Claude Code",
             subtitle = "Anthropic agentic CLI · npm @anthropic-ai/claude-code",
             binary = "claude",
+            docUrl = "https://docs.anthropic.com/en/docs/agents-and-tools/claude-code/overview",
+            iconRes = R.drawable.ic_agent_claude,
             pkg = "@anthropic-ai/claude-code"
         ),
         npmAgent(
@@ -54,6 +74,8 @@ echo "==> installed: ${'$'}(command -v $binary || echo NOT_FOUND)"
             name = "OpenCode",
             subtitle = "Open source terminal agent · npm opencode-ai",
             binary = "opencode",
+            docUrl = "https://github.com/opencode-ai/opencode",
+            iconRes = R.drawable.ic_agent_opencode,
             pkg = "opencode-ai"
         ),
         npmAgent(
@@ -61,6 +83,8 @@ echo "==> installed: ${'$'}(command -v $binary || echo NOT_FOUND)"
             name = "OpenAI Codex",
             subtitle = "OpenAI coding agent · npm @openai/codex",
             binary = "codex",
+            docUrl = "https://github.com/openai/codex",
+            iconRes = R.drawable.ic_agent_codex,
             pkg = "@openai/codex"
         ),
         npmAgent(
@@ -68,6 +92,8 @@ echo "==> installed: ${'$'}(command -v $binary || echo NOT_FOUND)"
             name = "Qoder CLI",
             subtitle = "Alibaba Qoder agent · npm @qoder-ai/qodercli",
             binary = "qodercli",
+            docUrl = "https://qoder.alibabacloud.com",
+            iconRes = R.drawable.ic_agent_qoder,
             pkg = "@qoder-ai/qodercli"
         ),
         npmAgent(
@@ -75,6 +101,8 @@ echo "==> installed: ${'$'}(command -v $binary || echo NOT_FOUND)"
             name = "GitHub Copilot CLI",
             subtitle = "GitHub Copilot agent · npm @github/copilot",
             binary = "copilot",
+            docUrl = "https://docs.github.com/en/copilot",
+            iconRes = R.drawable.ic_agent_copilot,
             pkg = "@github/copilot"
         )
     )

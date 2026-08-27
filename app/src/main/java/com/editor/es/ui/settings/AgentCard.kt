@@ -13,15 +13,18 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -33,11 +36,13 @@ import com.editor.es.agent.AgentStatus
 
 private val CardBackground = Color(0xFF0C242D)
 private val CardBorder = Color(0x2602F5A1)
+private val IconContainerBg = Color(0x1F133E4A)
 private val TextPrimary = Color(0xFFDDF5EA)
 private val TextSecondary = Color(0xFF6E9184)
 private val Accent = Color(0xFF02F5A1)
 private val InstalledColor = Color(0xFF6FD9AE)
 private val FailedColor = Color(0xFFFF6B6B)
+private val DocButtonTint = Color(0xFF8BAAA0)
 private val CardShape = RoundedCornerShape(14.dp)
 private val ButtonShape = RoundedCornerShape(10.dp)
 
@@ -48,6 +53,8 @@ fun AgentCard(
     onInstall: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val uriHandler = LocalUriHandler.current
+
     Row(
         modifier = modifier
             .fillMaxWidth()
@@ -55,19 +62,58 @@ fun AgentCard(
             .clip(CardShape)
             .background(CardBackground)
             .border(1.dp, CardBorder, CardShape)
-            .padding(horizontal = 14.dp, vertical = 12.dp),
+            .padding(horizontal = 12.dp, vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Column(modifier = Modifier.weight(1f)) {
-            Text(
-                text = spec.name,
-                fontSize = 14.sp,
-                fontWeight = FontWeight.SemiBold,
-                color = TextPrimary,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis
+        // Agent Brand Icon
+        Box(
+            modifier = Modifier
+                .size(38.dp)
+                .clip(RoundedCornerShape(10.dp))
+                .background(IconContainerBg),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(
+                painter = painterResource(spec.iconRes),
+                contentDescription = spec.name,
+                tint = Color.Unspecified,
+                modifier = Modifier.size(24.dp)
             )
-            Spacer(modifier = Modifier.height(3.dp))
+        }
+
+        Spacer(modifier = Modifier.width(12.dp))
+
+        // Info
+        Column(modifier = Modifier.weight(1f)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    text = spec.name,
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    color = TextPrimary,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.weight(1f, fill = false)
+                )
+                if (spec.docUrl.isNotEmpty()) {
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Box(
+                        modifier = Modifier
+                            .size(20.dp)
+                            .clip(CircleShape)
+                            .clickable { runCatching { uriHandler.openUri(spec.docUrl) } },
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            painter = painterResource(R.drawable.arrow_outward),
+                            contentDescription = "Docs",
+                            tint = DocButtonTint,
+                            modifier = Modifier.size(12.dp)
+                        )
+                    }
+                }
+            }
+            Spacer(modifier = Modifier.height(2.dp))
             Text(
                 text = spec.subtitle,
                 fontSize = 11.sp,
@@ -77,7 +123,10 @@ fun AgentCard(
                 overflow = TextOverflow.Ellipsis
             )
         }
-        Spacer(modifier = Modifier.width(12.dp))
+
+        Spacer(modifier = Modifier.width(10.dp))
+
+        // Action Button
         StatusButton(status = status, onClick = onInstall)
     }
 }
@@ -106,7 +155,7 @@ private fun StatusButton(status: AgentStatus, onClick: () -> Unit) {
 
     Row(
         modifier = Modifier
-            .width(96.dp)
+            .width(88.dp)
             .height(34.dp)
             .clip(ButtonShape)
             .background(background)
@@ -121,7 +170,7 @@ private fun StatusButton(status: AgentStatus, onClick: () -> Unit) {
                     color = Accent,
                     strokeWidth = 2.dp
                 )
-                Spacer(modifier = Modifier.width(7.dp))
+                Spacer(modifier = Modifier.width(6.dp))
             }
             AgentStatus.Installed -> {
                 Icon(
@@ -130,7 +179,7 @@ private fun StatusButton(status: AgentStatus, onClick: () -> Unit) {
                     tint = InstalledColor,
                     modifier = Modifier.size(13.dp)
                 )
-                Spacer(modifier = Modifier.width(5.dp))
+                Spacer(modifier = Modifier.width(4.dp))
             }
             AgentStatus.Failed -> {
                 Icon(
@@ -139,7 +188,7 @@ private fun StatusButton(status: AgentStatus, onClick: () -> Unit) {
                     tint = FailedColor,
                     modifier = Modifier.size(13.dp)
                 )
-                Spacer(modifier = Modifier.width(5.dp))
+                Spacer(modifier = Modifier.width(4.dp))
             }
             else -> Unit
         }
@@ -147,12 +196,10 @@ private fun StatusButton(status: AgentStatus, onClick: () -> Unit) {
             text = label,
             fontSize = 11.sp,
             fontWeight = FontWeight.Bold,
-            color = labelColor,
-            maxLines = 1
+            color = labelColor
         )
     }
 }
-
 @Composable
 fun AgentNotice(text: String) {
     Box(
