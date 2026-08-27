@@ -261,7 +261,6 @@ object PreferenceSettings {
     const val LspMaxFileKb = "lsp_max_file_kb"
     const val AutoSaveOnBuild = "auto_save_on_build"
     const val KeepTerminalAlive = "keep_terminal_alive"
-    const val BuildAbi = "build_abi"
     const val BuildApiLevel = "build_api_level"
     const val BuildType = "build_type"
     const val ConsoleAutoOpen = "console_auto_open"
@@ -277,13 +276,6 @@ object PreferenceSettings {
         IntSpec(LspMaxFileKb, "Skip files above", "Files larger than this are opened without clangd", 2048, 128, 8192, 128, "KB"),
 
         HeaderSpec("hdr_build", "Build"),
-        ChoiceSpec(
-            BuildAbi,
-            "Target ABI",
-            "Architecture passed to CMake",
-            0,
-            listOf(0 to "arm64-v8a", 1 to "armeabi-v7a", 2 to "x86_64")
-        ),
         ChoiceSpec(
             BuildApiLevel,
             "Android API level",

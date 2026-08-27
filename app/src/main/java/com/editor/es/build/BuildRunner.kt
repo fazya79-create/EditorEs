@@ -191,11 +191,7 @@ class BuildRunner(private val context: Context) {
         onEvent(BuildEvent.Finished(exit))
     }
 
-    fun abi(): String = when (AppSettings.int(PreferenceSettings.BuildAbi, 0)) {
-        1 -> "armeabi-v7a"
-        2 -> "x86_64"
-        else -> "arm64-v8a"
-    }
+    fun abi(): String = "arm64-v8a"
 
     fun apiLevel(): Int = AppSettings.int(PreferenceSettings.BuildApiLevel, 24)
 
