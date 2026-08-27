@@ -53,21 +53,40 @@ echo "==> installed: $(command -v $binary || echo NOT_FOUND)"
     )
 
     private const val DshMobilePatch = """
-echo "==> applying mobile responsive layout patch to deepseek-harness web UI"
+echo "==> adapting deepseek-harness web UI layout for fluid mobile responsiveness"
 node -e "
 const fs = require('fs');
-const globPaths = [
+
+const layoutPaths = [
   '/usr/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/dsh-client-ui-layout/lib/client.js',
   '/usr/local/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/dsh-client-ui-layout/lib/client.js'
 ];
-for (const p of globPaths) {
+const layoutFluidCss = '@media(max-width:768px){.pI_x6G_frame{width:100%!important;max-width:100vw!important;overflow-x:hidden!important}.pI_x6G_sidebarCol{min-width:0!important}.pI_x6G_centerCol{min-width:0!important;flex:1 1 auto!important;width:100%!important;max-width:100%!important}.pI_x6G_detailsCol{min-width:0!important}.pI_x6G_handle{display:none!important}}';
+
+for (const p of layoutPaths) {
   if (fs.existsSync(p)) {
     let code = fs.readFileSync(p, 'utf8');
-    const mobileCss = '@media(max-width:768px){.pI_x6G_frame{display:block!important;position:relative!important;width:100vw!important;height:100%!important}.pI_x6G_handle{display:none!important}.pI_x6G_centerCol{width:100%!important;height:100%!important}.pI_x6G_sidebarCol{position:fixed!important;top:0!important;left:0!important;bottom:0!important;width:280px!important;max-width:85vw!important;z-index:50!important;box-shadow:4px 0 24px rgba(0,0,0,0.45);transition:transform var(--ds-transition-duration-slow) var(--ds-ease-in-out);transform:translateX(0)}.pI_x6G_frame[data-sidebar-collapsed] .pI_x6G_sidebarCol{transform:translateX(-100%)!important;pointer-events:none!important;border-right:none!important}.pI_x6G_detailsCol{position:fixed!important;top:0!important;right:0!important;bottom:0!important;width:100vw!important;max-width:420px!important;z-index:45!important;background:var(--dsw-alias-bg-base);box-shadow:-4px 0 24px rgba(0,0,0,0.45);transition:transform var(--ds-transition-duration-slow) var(--ds-ease-in-out);transform:translateX(0)}.pI_x6G_frame[data-details-collapsed] .pI_x6G_detailsCol{transform:translateX(100%)!important;pointer-events:none!important;border-left:none!important}}';
-    if (!code.includes('@media(max-width:768px)')) {
-      code = code.replace('.pI_x6G_frame{', mobileCss + '.pI_x6G_frame{');
+    if (!code.includes('layoutFluidMarker')) {
+      code = code.replace('.pI_x6G_frame{', '/*layoutFluidMarker*/' + layoutFluidCss + '.pI_x6G_frame{');
       fs.writeFileSync(p, code);
-      console.log('==> successfully patched:', p);
+      console.log('==> fluidly patched layout:', p);
+    }
+  }
+}
+
+const convPaths = [
+  '/usr/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/dsh-client-ui-conversation/lib/client.js',
+  '/usr/local/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/dsh-client-ui-conversation/lib/client.js'
+];
+const convFluidCss = '@media(max-width:768px){:root{--dsh-chat-content-width:100%!important;--dsh-composer-card-max-width:100%!important;--dsh-composer-side-clearance:8px!important}}';
+
+for (const p of convPaths) {
+  if (fs.existsSync(p)) {
+    let code = fs.readFileSync(p, 'utf8');
+    if (!code.includes('convFluidMarker')) {
+      code = code.replace('.dsh-css', '/*convFluidMarker*/' + convFluidCss + '.dsh-css');
+      fs.writeFileSync(p, code);
+      console.log('==> fluidly patched conversation:', p);
     }
   }
 }
