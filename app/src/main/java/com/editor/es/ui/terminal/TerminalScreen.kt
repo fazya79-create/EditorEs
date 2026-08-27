@@ -98,6 +98,7 @@ import com.termux.terminal.TerminalColors
 import com.termux.terminal.TerminalSession
 import com.termux.terminal.TextStyle
 import com.termux.view.TerminalView
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import java.io.File
@@ -177,8 +178,7 @@ internal fun buildShellEnv(home: String): Array<String> = arrayOf(
 
 internal fun installShellProfile(context: Context) {
     val profile = File(context.filesDir, ".editor-es-shrc")
-    val content = "clear() { printf '\033[2J\033[3J\033[H'; }
-"
+    val content = "clear() { printf '\u001b[2J\u001b[3J\u001b[H'; }\n"
     if (!profile.exists() || profile.readText() != content) {
         profile.writeText(content)
     }
@@ -1162,7 +1162,7 @@ private fun NotificationPermissionGate(onDismiss: () -> Unit) {
 }
 
 @Composable
-internal fun TerminalKeyChip(
+private fun TerminalKeyChip(
     key: TerminalKey,
     armed: Boolean,
     onTap: () -> Unit,
