@@ -150,22 +150,24 @@ private data class TerminalKey(
     val repeatable: Boolean = false
 )
 
-private val FirstRow = listOf(
-    TerminalKey("ESC", ""),
-    TerminalKey("TAB", "	"),
-    TerminalKey("CTRL", modifier = ModifierKey.Ctrl),
-    TerminalKey("ALT", modifier = ModifierKey.Alt),
-    TerminalKey("↑", "[A", repeatable = true),
-    TerminalKey("↓", "[B", repeatable = true)
-)
-
-private val SecondRow = listOf(
+internal val FirstRow = listOf(
+    TerminalKey("ESC", "\u001b"),
     TerminalKey("/", "/"),
     TerminalKey("-", "-"),
-    TerminalKey("~", "~"),
-    TerminalKey("|", "|"),
-    TerminalKey("←", "[D", repeatable = true),
-    TerminalKey("→", "[C", repeatable = true)
+    TerminalKey("HOME", "\u001b[H", repeatable = true),
+    TerminalKey("▲", "\u001b[A", repeatable = true),
+    TerminalKey("END", "\u001b[F", repeatable = true),
+    TerminalKey("PGUP", "\u001b[5~", repeatable = true)
+)
+
+internal val SecondRow = listOf(
+    TerminalKey("TAB", "\t"),
+    TerminalKey("CTRL", modifier = ModifierKey.Ctrl),
+    TerminalKey("ALT", modifier = ModifierKey.Alt),
+    TerminalKey("◀", "\u001b[D", repeatable = true),
+    TerminalKey("▼", "\u001b[B", repeatable = true),
+    TerminalKey("▶", "\u001b[C", repeatable = true),
+    TerminalKey("PGDN", "\u001b[6~", repeatable = true)
 )
 
 internal fun buildShellEnv(home: String): Array<String> = arrayOf(

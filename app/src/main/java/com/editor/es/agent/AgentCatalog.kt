@@ -53,10 +53,11 @@ echo "==> installed: $(command -v $binary || echo NOT_FOUND)"
     )
 
     private const val DshMobilePatch = """
-echo "==> adapting deepseek-harness web UI layout for fluid mobile responsiveness"
+echo "==> adapting deepseek-harness web UI layout & settings for mobile responsiveness"
 node -e "
 const fs = require('fs');
 
+// 1. Layout: fluid main container & center column
 const layoutPaths = [
   '/usr/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/dsh-client-ui-layout/lib/client.js',
   '/usr/local/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/dsh-client-ui-layout/lib/client.js'
@@ -74,19 +75,20 @@ for (const p of layoutPaths) {
   }
 }
 
-const convPaths = [
-  '/usr/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/dsh-client-ui-conversation/lib/client.js',
-  '/usr/local/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/dsh-client-ui-conversation/lib/client.js'
+// 2. Settings: horizontal scroll tabs and full-screen vertical content (no crushed columns)
+const settingsPaths = [
+  '/usr/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/dsh-client-ui-settings-general/lib/client.js',
+  '/usr/local/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/dsh-client-ui-settings-general/lib/client.js'
 ];
-const convFluidCss = '@media(max-width:768px){:root{--dsh-chat-content-width:100%!important;--dsh-composer-card-max-width:100%!important;--dsh-composer-side-clearance:8px!important}}';
+const mobileSettingsCss = '@media(max-width:768px){.qA42UA_panel{position:fixed!important;inset:0!important;width:100vw!important;max-width:100vw!important;height:100vh!important;max-height:100vh!important;border-radius:0!important;display:flex!important;flex-direction:column!important}.qA42UA_nav{width:100%!important;flex-direction:row!important;padding:8px 10px 4px!important;gap:8px!important;overflow-x:auto!important}.qA42UA_navTitle{display:none!important}.qA42UA_navList{flex-direction:row!important;gap:6px!important;width:100%!important}.qA42UA_navCell{flex:none!important;width:auto!important;height:34px!important;padding:6px 12px!important;white-space:nowrap!important}.qA42UA_content{width:100%!important;flex:1 1 auto!important;min-height:0!important;overflow-y:auto!important}}';
 
-for (const p of convPaths) {
+for (const p of settingsPaths) {
   if (fs.existsSync(p)) {
     let code = fs.readFileSync(p, 'utf8');
-    if (!code.includes('convFluidMarker')) {
-      code = code.replace('.dsh-css', '/*convFluidMarker*/' + convFluidCss + '.dsh-css');
+    if (!code.includes('mobileSettingsMarker')) {
+      code = code.replace('.qA42UA_panel{', '/*mobileSettingsMarker*/' + mobileSettingsCss + '.qA42UA_panel{');
       fs.writeFileSync(p, code);
-      console.log('==> fluidly patched conversation:', p);
+      console.log('==> fluidly patched settings tabs:', p);
     }
   }
 }
