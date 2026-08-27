@@ -33,7 +33,7 @@ object CmakePresets {
                 JSONObject()
                     .put("name", name)
                     .put("generator", "Ninja")
-                    .put("binaryDir", "\${sourceDir}/build/\${name}")
+                    .put("binaryDir", "\${sourceDir}/build/$name")
                     .put(
                         "toolchainFile",
                         "\$env{ANDROID_NDK_ROOT}/build/cmake/android.toolchain.cmake"
