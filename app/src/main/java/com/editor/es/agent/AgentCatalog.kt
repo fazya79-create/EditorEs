@@ -33,7 +33,8 @@ echo "==> node $(node --version), npm $(npm --version)"
         binary: String,
         docUrl: String,
         @DrawableRes iconRes: Int,
-        pkg: String
+        pkg: String,
+        postInstall: String = ""
     ) = AgentSpec(
         id = id,
         name = name,
@@ -46,9 +47,32 @@ set -e
 $EnsureNode
 echo "==> npm install -g $pkg"
 npm install -g $pkg
+$postInstall
 echo "==> installed: $(command -v $binary || echo NOT_FOUND)"
 """
     )
+
+    private const val DshMobilePatch = """
+echo "==> applying mobile responsive layout patch to deepseek-harness web UI"
+node -e "
+const fs = require('fs');
+const globPaths = [
+  '/usr/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/dsh-client-ui-layout/lib/client.js',
+  '/usr/local/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/dsh-client-ui-layout/lib/client.js'
+];
+for (const p of globPaths) {
+  if (fs.existsSync(p)) {
+    let code = fs.readFileSync(p, 'utf8');
+    const mobileCss = '@media(max-width:768px){.pI_x6G_frame{display:block!important;position:relative!important;width:100vw!important;height:100%!important}.pI_x6G_handle{display:none!important}.pI_x6G_centerCol{width:100%!important;height:100%!important}.pI_x6G_sidebarCol{position:fixed!important;top:0!important;left:0!important;bottom:0!important;width:280px!important;max-width:85vw!important;z-index:50!important;box-shadow:4px 0 24px rgba(0,0,0,0.45);transition:transform var(--ds-transition-duration-slow) var(--ds-ease-in-out);transform:translateX(0)}.pI_x6G_frame[data-sidebar-collapsed] .pI_x6G_sidebarCol{transform:translateX(-100%)!important;pointer-events:none!important;border-right:none!important}.pI_x6G_detailsCol{position:fixed!important;top:0!important;right:0!important;bottom:0!important;width:100vw!important;max-width:420px!important;z-index:45!important;background:var(--dsw-alias-bg-base);box-shadow:-4px 0 24px rgba(0,0,0,0.45);transition:transform var(--ds-transition-duration-slow) var(--ds-ease-in-out);transform:translateX(0)}.pI_x6G_frame[data-details-collapsed] .pI_x6G_detailsCol{transform:translateX(100%)!important;pointer-events:none!important;border-left:none!important}}';
+    if (!code.includes('@media(max-width:768px)')) {
+      code = code.replace('.pI_x6G_frame{', mobileCss + '.pI_x6G_frame{');
+      fs.writeFileSync(p, code);
+      console.log('==> successfully patched:', p);
+    }
+  }
+}
+" || true
+"""
 
     val agents: List<AgentSpec> = listOf(
         npmAgent(
@@ -58,7 +82,8 @@ echo "==> installed: $(command -v $binary || echo NOT_FOUND)"
             binary = "dsh",
             docUrl = "https://github.com/deepseek-ai/deepseek-harness",
             iconRes = R.drawable.ic_agent_deepseek,
-            pkg = "@deepseek-ai/dsh"
+            pkg = "@deepseek-ai/dsh",
+            postInstall = DshMobilePatch
         ),
         npmAgent(
             id = "claude-code",
