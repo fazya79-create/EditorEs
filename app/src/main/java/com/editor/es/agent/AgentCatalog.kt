@@ -53,42 +53,82 @@ echo "==> installed: $(command -v $binary || echo NOT_FOUND)"
     )
 
     private const val DshMobilePatch = """
-echo "==> adapting deepseek-harness web UI layout & settings for mobile responsiveness"
+echo "==> applying comprehensive mobile responsive engine to deepseek-harness web GUI"
 node -e "
 const fs = require('fs');
 
-// 1. Layout: fluid main container & center column
-const layoutPaths = [
-  '/usr/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/dsh-client-ui-layout/lib/client.js',
-  '/usr/local/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/dsh-client-ui-layout/lib/client.js'
+const indexHtmlPaths = [
+  '/usr/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/dsh-web-frontend/dist/index.html',
+  '/usr/local/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/dsh-web-frontend/dist/index.html'
 ];
-const layoutFluidCss = '@media(max-width:768px){.pI_x6G_frame{width:100%!important;max-width:100vw!important;overflow-x:hidden!important}.pI_x6G_sidebarCol{min-width:0!important}.pI_x6G_centerCol{min-width:0!important;flex:1 1 auto!important;width:100%!important;max-width:100%!important}.pI_x6G_detailsCol{min-width:0!important}.pI_x6G_handle{display:none!important}}';
 
-for (const p of layoutPaths) {
-  if (fs.existsSync(p)) {
-    let code = fs.readFileSync(p, 'utf8');
-    if (!code.includes('layoutFluidMarker')) {
-      code = code.replace('.pI_x6G_frame{', '/*layoutFluidMarker*/' + layoutFluidCss + '.pI_x6G_frame{');
-      fs.writeFileSync(p, code);
-      console.log('==> fluidly patched layout:', p);
-    }
+const mobileStyleTag = `<style id="dsh-mobile-responsive-engine">
+@media (max-width: 768px) {
+  *, *::before, *::after { box-sizing: border-box !important; }
+  :root {
+    --dsh-chat-content-width: 100% !important;
+    --dsh-composer-card-max-width: 100% !important;
+    --dsh-composer-side-clearance: 8px !important;
+    --dsh-composer-dock-inset: 4px !important;
   }
+  body, html, #root { width: 100vw !important; max-width: 100vw !important; overflow-x: hidden !important; }
+
+  /* Frame Layout */
+  div[class*="frame"] { width: 100% !important; max-width: 100vw !important; overflow-x: hidden !important; }
+  div[class*="centerCol"] { min-width: 0 !important; flex: 1 1 auto !important; width: 100% !important; max-width: 100% !important; }
+  div[class*="handle"] { display: none !important; }
+
+  /* Settings Modal - Full Screen Mobile Sheet with Top Scrollable Tabs */
+  div[class*="SettingsRoot_overlay"] { padding: 0 !important; align-items: stretch !important; justify-content: stretch !important; }
+  div[class*="SettingsRoot_panel"] {
+    position: fixed !important; inset: 0 !important; width: 100vw !important; max-width: 100vw !important; height: 100vh !important; max-height: 100vh !important;
+    border-radius: 0 !important; display: flex !important; flex-direction: column !important; box-shadow: none !important; overflow: hidden !important;
+  }
+  nav[class*="SettingsRoot_nav"] {
+    flex: none !important; width: 100% !important; display: flex !important; flex-direction: row !important; align-items: center !important;
+    padding: 8px 10px !important; gap: 6px !important; overflow-x: auto !important; overflow-y: hidden !important;
+    border-bottom: 1px solid var(--dsw-alias-border-l2) !important; background: var(--dsw-specific-sidebar-fill) !important;
+  }
+  div[class*="SettingsRoot_navTitle"] { display: none !important; }
+  div[class*="SettingsRoot_navList"] { display: flex !important; flex-direction: row !important; flex-wrap: nowrap !important; gap: 6px !important; width: auto !important; }
+  button[class*="SettingsRoot_navCell"] { flex: 0 0 auto !important; width: auto !important; height: 36px !important; padding: 6px 14px !important; font-size: 13px !important; white-space: nowrap !important; }
+  div[class*="SettingsRoot_content"] { flex: 1 1 auto !important; width: 100% !important; min-height: 0 !important; display: flex !important; flex-direction: column !important; overflow: hidden !important; }
+  div[class*="SettingsRoot_header"] { flex: none !important; height: 48px !important; padding: 8px 14px !important; }
+  div[class*="SettingsRoot_options"] { flex: 1 1 auto !important; width: 100% !important; padding: 12px 14px 28px !important; overflow-y: auto !important; overflow-x: hidden !important; }
+
+  /* Settings Sections Form Controls */
+  div[class*="ModelsSection_section"],
+  div[class*="GeneralSection_section"],
+  div[class*="PluginsSettingsSection_section"],
+  div[class*="PluginInventorySettingsTab_tab"],
+  div[class*="AgentPresetSection_section"] { max-width: 100% !important; width: 100% !important; }
+  div[class*="ModelsSection_rowCard"],
+  div[class*="PluginCard_card"] { max-width: 100% !important; width: 100% !important; padding: 12px 10px !important; }
+  div[class*="ModelsSection_rowHead"],
+  div[class*="PluginCard_head"] { flex-wrap: wrap !important; gap: 8px !important; }
+  div[class*="ProviderEditor_row"],
+  div[class*="fields_row"] { flex-direction: column !important; align-items: stretch !important; gap: 6px !important; }
+  div[class*="ProviderEditor_label"],
+  div[class*="fields_label"] { width: 100% !important; max-width: 100% !important; }
+  input, textarea, select { max-width: 100% !important; }
+
+  /* Modals */
+  div[class*="Modal_root"] { padding: 12px !important; }
+  div[class*="Modal_dialog"] { width: 100% !important; max-width: calc(100vw - 24px) !important; border-radius: 16px !important; }
+
+  /* Chat & Input */
+  div[class*="ChatView_scroll"] { padding: 10px 8px !important; }
+  div[class*="InputBar_card"] { width: 100% !important; max-width: 100% !important; }
 }
+</style>`;
 
-// 2. Settings: horizontal scroll tabs and full-screen vertical content (no crushed columns)
-const settingsPaths = [
-  '/usr/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/dsh-client-ui-settings-general/lib/client.js',
-  '/usr/local/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/dsh-client-ui-settings-general/lib/client.js'
-];
-const mobileSettingsCss = '@media(max-width:768px){.qA42UA_panel{position:fixed!important;inset:0!important;width:100vw!important;max-width:100vw!important;height:100vh!important;max-height:100vh!important;border-radius:0!important;display:flex!important;flex-direction:column!important}.qA42UA_nav{width:100%!important;flex-direction:row!important;padding:8px 10px 4px!important;gap:8px!important;overflow-x:auto!important}.qA42UA_navTitle{display:none!important}.qA42UA_navList{flex-direction:row!important;gap:6px!important;width:100%!important}.qA42UA_navCell{flex:none!important;width:auto!important;height:34px!important;padding:6px 12px!important;white-space:nowrap!important}.qA42UA_content{width:100%!important;flex:1 1 auto!important;min-height:0!important;overflow-y:auto!important}}';
-
-for (const p of settingsPaths) {
+for (const p of indexHtmlPaths) {
   if (fs.existsSync(p)) {
-    let code = fs.readFileSync(p, 'utf8');
-    if (!code.includes('mobileSettingsMarker')) {
-      code = code.replace('.qA42UA_panel{', '/*mobileSettingsMarker*/' + mobileSettingsCss + '.qA42UA_panel{');
-      fs.writeFileSync(p, code);
-      console.log('==> fluidly patched settings tabs:', p);
+    let html = fs.readFileSync(p, 'utf8');
+    if (!html.includes('dsh-mobile-responsive-engine')) {
+      html = html.replace('</head>', mobileStyleTag + '</head>');
+      fs.writeFileSync(p, html);
+      console.log('==> successfully injected mobile engine to:', p);
     }
   }
 }
