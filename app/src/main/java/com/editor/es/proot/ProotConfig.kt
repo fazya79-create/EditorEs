@@ -309,23 +309,29 @@ object ProotConfig {
                 export DEBIAN_FRONTEND=noninteractive
                 """.trimIndent() + "\n"
             )
+            // ponytail: only seed .bashrc/.profile when missing; preserves user edits
             val bashrc = File(rootfs, "root/.bashrc")
             bashrc.parentFile?.mkdirs()
-            bashrc.writeText(
-                """
-                export PS1='\[\e[1;92m\]\u@ubuntu\[\e[0m\]:\[\e[1;36m\]\w\[\e[0m\]\${'$'} '
-                export PATH=$ToolchainPath:$GuestPath
-                export ANDROID_NDK_ROOT=$GuestNdkRoot
-                export ANDROID_NDK_HOME=$GuestNdkRoot
-                export LANG=C.UTF-8
-                export TMPDIR=/tmp
-                export DEBIAN_FRONTEND=noninteractive
-                alias ll='ls -alF'
-                """.trimIndent() + "\n"
-            )
-            File(rootfs, "root/.profile").writeText(
-                "[ -n \"\$BASH_VERSION\" ] && [ -f ~/.bashrc ] && . ~/.bashrc\n"
-            )
+            if (!bashrc.exists()) {
+                bashrc.writeText(
+                    """
+                    export PS1='\[\e[1;92m\]\u@ubuntu\[\e[0m\]:\[\e[1;36m\]\w\[\e[0m\]${'$'} '
+                    export PATH=$ToolchainPath:${'$'}PATH
+                    export ANDROID_NDK_ROOT=$GuestNdkRoot
+                    export ANDROID_NDK_HOME=$GuestNdkRoot
+                    export LANG=C.UTF-8
+                    export TMPDIR=/tmp
+                    export DEBIAN_FRONTEND=noninteractive
+                    alias ll='ls -alF'
+                    """.trimIndent() + "\n"
+                )
+            }
+            val profile = File(rootfs, "root/.profile")
+            if (!profile.exists()) {
+                profile.writeText(
+                    "[ -n \"\$BASH_VERSION\" ] && [ -f ~/.bashrc ] && . ~/.bashrc\n"
+                )
+            }
         }
     }
 
