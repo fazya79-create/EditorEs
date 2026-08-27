@@ -46,7 +46,6 @@ object ProotConfig {
             File(rootfs, "storage/emulated/0").mkdirs()
             File(rootfs, "sdcard").mkdirs()
             File(rootfs, "opt").mkdirs()
-            File(rootfs, "agent-home").mkdirs()
         }
     }
 
@@ -95,20 +94,11 @@ object ProotConfig {
     fun prootArgs(
         context: Context,
         cwd: String = "/root",
-        bootCommand: String? = null,
-        isolation: Isolation = Isolation.None
+        bootCommand: String? = null
     ): Array<String> {
         val rootfs = rootfsDir(context).absolutePath
-        val storage = when (isolation) {
-            Isolation.None -> StorageBinds
-            is Isolation.Workspace -> listOf("${isolation.hostPath}:${isolation.hostPath}")
-        }
-        val extraBinds = (storage + listOfNotNull(toolchainBind(context)))
+        val extraBinds = (StorageBinds + listOfNotNull(toolchainBind(context)))
             .map { "--bind=$it" }
-        val home = when (isolation) {
-            Isolation.None -> "/root"
-            is Isolation.Workspace -> isolation.guestHome
-        }
         return arrayOf(
             "proot",
             "-L",
@@ -136,7 +126,7 @@ object ProotConfig {
             *extraBinds.toTypedArray(),
             "/usr/bin/env",
             "-i",
-            "HOME=$home",
+            "HOME=/root",
             "USER=root",
             "LOGNAME=root",
             "LANG=C.UTF-8",
@@ -145,23 +135,9 @@ object ProotConfig {
             "ANDROID_NDK_HOME=$GuestNdkRoot",
             "TERM=xterm-256color",
             "TMPDIR=/tmp",
-            *isolationEnv(isolation),
             *bootShell(bootCommand)
         )
     }
-
-    sealed interface Isolation {
-        data object None : Isolation
-
-        data class Workspace(val hostPath: String, val guestHome: String) : Isolation
-    }
-
-    private fun isolationEnv(isolation: Isolation): Array<String> =
-        when (isolation) {
-            Isolation.None -> emptyArray()
-            is Isolation.Workspace ->
-                arrayOf("IS_SANDBOX=1", "CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC=1")
-        }
 
     private fun bootShell(bootCommand: String?): Array<String> =
         if (bootCommand == null) {

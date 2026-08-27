@@ -174,12 +174,11 @@ private fun createTerminalSession(
     view: TerminalView,
     projectDir: File?,
     bootCommand: String?,
-    isolation: ProotConfig.Isolation,
     onShellExited: () -> Unit
 ): Pair<TerminalSession, Int> {
     val client = EditorEsSessionClient(context, view, onShellExited)
     val tag = if (bootCommand != null) {
-        "boot:${bootCommand.hashCode()}:${isolation.hashCode()}"
+        "boot:${bootCommand.hashCode()}"
     } else {
         projectDir?.let { "project:${it.absolutePath}" }
     }
@@ -208,7 +207,7 @@ private fun createTerminalSession(
         TerminalSession(
             ProotConfig.prootBinary(context),
             context.filesDir.absolutePath,
-            ProotConfig.prootArgs(context, cwd, bootCommand, isolation),
+            ProotConfig.prootArgs(context, cwd, bootCommand),
             ProotConfig.prootEnv(context),
             null,
             client
@@ -241,8 +240,7 @@ private fun createTerminalSession(
 fun TerminalScreen(
     onBack: () -> Unit,
     projectDir: File? = null,
-    initialCommand: String? = null,
-    isolation: ProotConfig.Isolation = ProotConfig.Isolation.None
+    initialCommand: String? = null
 ) {
     val context = LocalContext.current
     var ctrlArmed by remember { mutableStateOf(false) }
@@ -272,9 +270,9 @@ fun TerminalScreen(
         terminalView?.clearFocus()
     }
 
-    val sessionTag = remember(projectDir, initialCommand, isolation) {
+    val sessionTag = remember(projectDir, initialCommand) {
         if (initialCommand != null) {
-            "boot:${initialCommand.hashCode()}:${isolation.hashCode()}"
+            "boot:${initialCommand.hashCode()}"
         } else {
             projectDir?.let { "project:${it.absolutePath}" }
         }
@@ -321,7 +319,7 @@ fun TerminalScreen(
 
     fun startSession(view: TerminalView) {
         val (session, sessionId) =
-            createTerminalSession(context, view, projectDir, initialCommand, isolation) {
+            createTerminalSession(context, view, projectDir, initialCommand) {
                 terminateTerminal()
             }
         view.attachSession(session)

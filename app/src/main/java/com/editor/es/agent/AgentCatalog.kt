@@ -5,12 +5,8 @@ data class AgentSpec(
     val name: String,
     val subtitle: String,
     val binary: String,
-    val installScript: String,
-    val autoFlags: String
-) {
-    val runCommand: String
-        get() = if (autoFlags.isEmpty()) binary else "$binary $autoFlags"
-}
+    val installScript: String
+)
 
 object AgentCatalog {
 
@@ -30,14 +26,12 @@ echo "==> node $(node --version), npm $(npm --version)"
         name: String,
         subtitle: String,
         binary: String,
-        pkg: String,
-        autoFlags: String
+        pkg: String
     ) = AgentSpec(
         id = id,
         name = name,
         subtitle = subtitle,
         binary = binary,
-        autoFlags = autoFlags,
         installScript = """
 set -e
 $EnsureNode
@@ -53,40 +47,35 @@ echo "==> installed: ${'$'}(command -v $binary || echo NOT_FOUND)"
             name = "Claude Code",
             subtitle = "Anthropic agentic CLI · npm @anthropic-ai/claude-code",
             binary = "claude",
-            pkg = "@anthropic-ai/claude-code",
-            autoFlags = "--dangerously-skip-permissions"
+            pkg = "@anthropic-ai/claude-code"
         ),
         npmAgent(
             id = "opencode",
             name = "OpenCode",
             subtitle = "Open source terminal agent · npm opencode-ai",
             binary = "opencode",
-            pkg = "opencode-ai",
-            autoFlags = ""
+            pkg = "opencode-ai"
         ),
         npmAgent(
             id = "codex",
             name = "OpenAI Codex",
             subtitle = "OpenAI coding agent · npm @openai/codex",
             binary = "codex",
-            pkg = "@openai/codex",
-            autoFlags = "--dangerously-bypass-approvals-and-sandbox"
+            pkg = "@openai/codex"
         ),
         npmAgent(
             id = "qodercli",
             name = "Qoder CLI",
             subtitle = "Alibaba Qoder agent · npm @qoder-ai/qodercli",
             binary = "qodercli",
-            pkg = "@qoder-ai/qodercli",
-            autoFlags = "--yolo"
+            pkg = "@qoder-ai/qodercli"
         ),
         npmAgent(
             id = "copilot-cli",
             name = "GitHub Copilot CLI",
             subtitle = "GitHub Copilot agent · npm @github/copilot",
             binary = "copilot",
-            pkg = "@github/copilot",
-            autoFlags = "--allow-all-tools"
+            pkg = "@github/copilot"
         )
     )
 
