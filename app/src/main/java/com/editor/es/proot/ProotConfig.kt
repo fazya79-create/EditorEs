@@ -275,35 +275,40 @@ object ProotConfig {
         if (!File(rootfs, "etc").isDirectory) return
         runCatching {
             File(rootfs, "etc/profile.d").mkdirs()
-            File(rootfs, "etc/profile.d/00-editores.sh").writeText(
-                """
+            val profileScript = """
                 export PATH=$ToolchainPath:${'$'}PATH
                 export ANDROID_NDK_ROOT=$GuestNdkRoot
                 export ANDROID_NDK_HOME=$GuestNdkRoot
                 export LANG=C.UTF-8
                 export TMPDIR=/tmp
                 export DEBIAN_FRONTEND=noninteractive
-                export PS1='\[\e[1;92m\]\u@ubuntu\[\e[0m\]:\[\e[1;36m\]\w\[\e[0m\]\$ '
+                export PS1='\[\033[01;32m\]\u@ubuntu\[\033[00m\]:\[\033[01;36m\]\w\[\033[00m\]\$ '
                 alias ll='ls -alF'
-                """.trimIndent() + "\n"
-            )
-            // ponytail: only seed .bashrc/.profile when missing; preserves user edits
+            """.trimIndent() + "\n"
+
+            File(rootfs, "etc/profile.d/00-editores.sh").writeText(profileScript)
+
+            // Override Ubuntu default uncolored PS1 in /etc/bash.bashrc
+            val etcBashrc = File(rootfs, "etc/bash.bashrc")
+            if (etcBashrc.exists()) {
+                val current = etcBashrc.readText()
+                if (!current.contains("00-editores")) {
+                    etcBashrc.appendText("\n[ -f /etc/profile.d/00-editores.sh ] && . /etc/profile.d/00-editores.sh # 00-editores\n")
+                }
+            }
+
             val bashrc = File(rootfs, "root/.bashrc")
             bashrc.parentFile?.mkdirs()
             if (!bashrc.exists()) {
-                bashrc.writeText(
-                    """
-                    export PS1='\[\e[1;92m\]\u@ubuntu\[\e[0m\]:\[\e[1;36m\]\w\[\e[0m\]${'$'} '
-                    export PATH=$ToolchainPath:${'$'}PATH
-                    export ANDROID_NDK_ROOT=$GuestNdkRoot
-                    export ANDROID_NDK_HOME=$GuestNdkRoot
-                    export LANG=C.UTF-8
-                    export TMPDIR=/tmp
-                    export DEBIAN_FRONTEND=noninteractive
-                    alias ll='ls -alF'
-                    """.trimIndent() + "\n"
-                )
+                bashrc.writeText(profileScript)
+            } else {
+                // If default Ubuntu .bashrc overwrote PS1 with monochrome, ensure our colored PS1 is sourced at the end
+                val content = bashrc.readText()
+                if (!content.contains("00-editores.sh") && !content.contains("u@ubuntu")) {
+                    bashrc.appendText("\n# EditorEs colored prompt\n[ -f /etc/profile.d/00-editores.sh ] && . /etc/profile.d/00-editores.sh\n")
+                }
             }
+
             val profile = File(rootfs, "root/.profile")
             if (!profile.exists()) {
                 profile.writeText(

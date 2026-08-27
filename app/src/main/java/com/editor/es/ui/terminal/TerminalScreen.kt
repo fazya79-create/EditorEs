@@ -424,7 +424,7 @@ fun TerminalScreen(
         TermuxService.killSession(context, id)
         val remaining = TermuxService.allSessions()
         if (remaining.isEmpty()) {
-            terminalView?.let { createNewSession(it) }
+            terminateTerminal()
         } else if (activeSessionId == id) {
             val next = remaining.last()
             terminalView?.let { attachSessionToView(next.session, next.id, it) }
