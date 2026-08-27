@@ -14,21 +14,32 @@ class RunConfigurations(
     fun hasPresets(): Boolean = CmakePresets.hasAny(projectDir)
 
     fun bootstrap() {
+        val abis = runner.abi()
         CmakePresets.bootstrap(
             projectDir = projectDir,
-            abi = runner.abi(),
+            abis = abis,
             apiLevel = runner.apiLevel(),
             buildType = runner.buildType(),
             ninjaPath = ToolchainPaths.guestNinja()
         )
-        writeClangdDatabase(CmakePresets.defaultPresetName(runner.buildType()))
+        val primary = abis.firstOrNull()?.let { CmakePresets.presetName(it, runner.buildType()) }
+            ?: CmakePresets.defaultPresetName(runner.buildType())
+        writeClangdDatabase(primary)
+    }
+
+    suspend fun activePresets(): List<String> = withContext(Dispatchers.IO) {
+        val fromCmake = runner.listPresets(projectDir, "build")
+        val presets = if (fromCmake.isNotEmpty()) {
+            fromCmake
+        } else {
+            runner.abi().map { CmakePresets.presetName(it, runner.buildType()) }
+        }
+        presets.firstOrNull()?.let { writeClangdDatabase(it) }
+        presets
     }
 
     suspend fun activePreset(): String? = withContext(Dispatchers.IO) {
-        val fromCmake = runner.listPresets(projectDir, "build").firstOrNull()
-        val preset = fromCmake ?: CmakePresets.defaultPresetName(runner.buildType())
-        writeClangdDatabase(preset)
-        preset
+        activePresets().firstOrNull()
     }
 
     private fun writeClangdDatabase(presetName: String) {

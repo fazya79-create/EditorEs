@@ -330,8 +330,8 @@ fun EditorScreen(
         if (consoleLines.size > limit) consoleLines.removeRange(0, consoleLines.size - limit)
     }
 
-    fun execute(request: BuildRequest) {
-        if (building) return
+    fun execute(requests: List<BuildRequest>) {
+        if (building || requests.isEmpty()) return
         if (AppSettings.bool(PreferenceSettings.ConsoleAutoOpen, true)) consoleVisible = true
         building = true
         scope.launch {
@@ -342,23 +342,35 @@ fun EditorScreen(
                     if (savedCount == 1) "> saved 1 file" else "> saved $savedCount files"
                 )
             }
-            buildRunner.run(projectDir, request) { event ->
-                when (event) {
-                    is BuildEvent.Line -> appendConsole(event.text)
-                    is BuildEvent.Finished -> {
-                        building = false
-                        if (event.exitCode == 0) {
-                            appendConsole("> build succeeded", ConsoleLineKind.Success)
-                        } else {
-                            appendConsole("> build failed with exit code ${event.exitCode}", ConsoleLineKind.Error)
+            for ((index, request) in requests.withIndex()) {
+                if (requests.size > 1) {
+                    val name = when (request) {
+                        is BuildRequest.Build -> request.preset
+                        is BuildRequest.CleanBuild -> request.preset
+                    }
+                    appendConsole("> [${index + 1}/${requests.size}] $name")
+                }
+                var failed = false
+                buildRunner.run(projectDir, request) { event ->
+                    when (event) {
+                        is BuildEvent.Line -> appendConsole(event.text)
+                        is BuildEvent.Finished -> {
+                            if (event.exitCode == 0) {
+                                appendConsole("> build succeeded", ConsoleLineKind.Success)
+                            } else {
+                                failed = true
+                                appendConsole("> build failed with exit code ${event.exitCode}", ConsoleLineKind.Error)
+                            }
+                        }
+                        is BuildEvent.Failed -> {
+                            failed = true
+                            appendConsole("> ${event.message}", ConsoleLineKind.Error)
                         }
                     }
-                    is BuildEvent.Failed -> {
-                        building = false
-                        appendConsole("> ${event.message}", ConsoleLineKind.Error)
-                    }
                 }
+                if (failed) break
             }
+            building = false
         }
     }
 
@@ -510,14 +522,15 @@ fun EditorScreen(
                 withContext(Dispatchers.IO) { runConfigurations.bootstrap() }
                 appendConsole("> created ${com.editor.es.build.CmakePresets.ProjectFileName}")
             }
-            val preset = runConfigurations.activePreset()
-            if (preset == null) {
+            val presets = runConfigurations.activePresets()
+            if (presets.isEmpty()) {
                 appendConsole("> no build preset found", ConsoleLineKind.Error)
                 return@launch
             }
-            execute(
+            val requests = presets.map { preset ->
                 if (clean) BuildRequest.CleanBuild(preset) else BuildRequest.Build(preset)
-            )
+            }
+            execute(requests)
         }
     }
 

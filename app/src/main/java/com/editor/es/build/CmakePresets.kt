@@ -20,42 +20,52 @@ object CmakePresets {
 
     fun bootstrap(
         projectDir: File,
-        abi: String,
+        abis: List<String>,
         apiLevel: Int,
         buildType: String,
         ninjaPath: String
     ) {
-        val presetName = defaultPresetName(buildType)
-        val configure = JSONObject()
-            .put("name", presetName)
-            .put("generator", "Ninja")
-            .put("binaryDir", "\${sourceDir}/build/\${presetName}")
-            .put(
-                "toolchainFile",
-                "\$env{ANDROID_NDK_ROOT}/build/cmake/android.toolchain.cmake"
-            )
-            .put(
-                "cacheVariables",
+        val configurePresets = JSONArray()
+        val buildPresets = JSONArray()
+        for (abi in abis) {
+            val name = presetName(abi, buildType)
+            configurePresets.put(
                 JSONObject()
-                    .put("ANDROID_ABI", abi)
-                    .put("ANDROID_PLATFORM", "android-$apiLevel")
-                    .put("CMAKE_BUILD_TYPE", buildType)
-                    .put("CMAKE_EXPORT_COMPILE_COMMANDS", "ON")
-                    .put("CMAKE_MAKE_PROGRAM", ninjaPath)
+                    .put("name", name)
+                    .put("generator", "Ninja")
+                    .put("binaryDir", "\${sourceDir}/build/\${name}")
+                    .put(
+                        "toolchainFile",
+                        "\$env{ANDROID_NDK_ROOT}/build/cmake/android.toolchain.cmake"
+                    )
+                    .put(
+                        "cacheVariables",
+                        JSONObject()
+                            .put("ANDROID_ABI", abi)
+                            .put("ANDROID_PLATFORM", "android-$apiLevel")
+                            .put("CMAKE_BUILD_TYPE", buildType)
+                            .put("CMAKE_EXPORT_COMPILE_COMMANDS", "ON")
+                            .put("CMAKE_MAKE_PROGRAM", ninjaPath)
+                    )
             )
-
-        val build = JSONObject()
-            .put("name", presetName)
-            .put("configurePreset", presetName)
+            buildPresets.put(
+                JSONObject()
+                    .put("name", name)
+                    .put("configurePreset", name)
+            )
+        }
 
         val root = JSONObject()
             .put("version", SchemaVersion)
-            .put("configurePresets", JSONArray().put(configure))
-            .put("buildPresets", JSONArray().put(build))
+            .put("configurePresets", configurePresets)
+            .put("buildPresets", buildPresets)
 
         projectFile(projectDir).writeText(root.toString(2) + "\n")
         ensureGitIgnore(projectDir)
     }
+
+    fun presetName(abi: String, buildType: String): String =
+        "android-${abi}-${buildType.lowercase()}"
 
     fun defaultPresetName(buildType: String): String = "android-${buildType.lowercase()}"
 

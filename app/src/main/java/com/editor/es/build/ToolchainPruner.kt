@@ -78,8 +78,6 @@ object ToolchainPruner {
     )
 
     private val ForeignTargetPrefixes = listOf(
-        "armv7a-linux-android",
-        "arm-linux-android",
         "i686-linux-android",
         "x86_64-linux-android",
         "riscv64-linux-android"
@@ -96,8 +94,7 @@ object ToolchainPruner {
         "riscv64",
         "x86_64",
         "i686",
-        "i386",
-        "arm"
+        "i386"
     )
 
     fun keep(kind: ToolchainKind, relative: String): Boolean = when (kind) {
@@ -127,7 +124,7 @@ object ToolchainPruner {
 
     private fun keepSysrootLib(rest: String): Boolean {
         val head = rest.substringBefore('/')
-        if (head.contains("-linux-android") && !head.startsWith("aarch64")) return false
+        if (head.contains("-linux-android") && !head.startsWith("aarch64") && !head.startsWith("arm")) return false
         return true
     }
 
@@ -138,11 +135,10 @@ object ToolchainPruner {
         val name = rest.substring(index + marker.length)
         if (name.isEmpty()) return true
         val head = name.substringBefore('/')
-        if (head == "aarch64") return true
+        if (head == "aarch64" || head == "arm") return true
         if (head in ForeignRuntimeDirs) return false
-        if (name.contains("aarch64")) return true
+        if (name.contains("aarch64") || name.contains("-arm-android")) return true
         if (ForeignRuntimeTokens.any { name.contains(it) }) return false
-        if (name.contains("-arm-android") || name.contains("armhf")) return false
         return true
     }
 }
