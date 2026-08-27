@@ -11,19 +11,15 @@ import android.os.Looper
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.Animatable
-import androidx.compose.animation.core.tween
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.slideInHorizontally
-import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.animation.core.spring
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
+import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.gestures.waitForUpOrCancellation
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
@@ -37,6 +33,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
@@ -47,7 +44,6 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
@@ -70,6 +66,7 @@ import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
@@ -77,6 +74,7 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
@@ -102,10 +100,12 @@ import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import java.io.File
+import kotlin.math.roundToInt
 
+private val DrawerWidth = 220.dp
 private val TerminalBackground = Color(0xFF0A2129)
 private val HeaderBackground = Color(0xFF071B21)
-private val DrawerBackground = Color(0xFF07191E)
+private val DrawerBackground = Color(0xFF0A222B)
 private val DrawerCardActive = Color(0xFF0D2C35)
 private val DrawerCardInactive = Color(0xFF092027)
 private val DrawerBorder = Color(0x3302F5A1)
@@ -114,7 +114,6 @@ private val KeyForeground = Color(0xFFDDF5EA)
 private val KeyBorder = Color(0x3302F5A1)
 private val ArmedBackground = Color(0x3302F5A1)
 private val CardSurface = Color(0xFF0B2129)
-private val ScrimColor = Color(0x80000000)
 private val KillRed = Color(0xFFFF5252)
 
 private val HamburgerBrush = Brush.linearGradient(
@@ -123,7 +122,8 @@ private val HamburgerBrush = Brush.linearGradient(
 
 private val KeyShape = RoundedCornerShape(6.dp)
 private val CardShape = RoundedCornerShape(16.dp)
-private val ItemShape = RoundedCornerShape(12.dp)
+private val ItemShape = RoundedCornerShape(10.dp)
+private val DrawerShape = RoundedCornerShape(topEnd = 16.dp, bottomEnd = 16.dp)
 
 private const val HoldDelayMs = 280L
 private const val RepeatIntervalMs = 45L
@@ -260,7 +260,9 @@ fun TerminalScreen(
     var sessionRef by remember { mutableStateOf<TerminalSession?>(null) }
     var activeSessionId by remember { mutableIntStateOf(0) }
     var sessionsVersion by remember { mutableIntStateOf(0) }
-    var drawerOpen by remember { mutableStateOf(false) }
+    val drawerAnim = remember { Animatable(0f) }
+    val density = LocalDensity.current
+    val drawerWidthPx = remember(density) { with(density) { DrawerWidth.toPx() } }
     val isFinishing = remember { mutableStateOf(false) }
     val localView = LocalView.current
     var flow by remember {
@@ -272,6 +274,25 @@ fun TerminalScreen(
     remember {
         applyColorScheme()
         installShellProfile(context)
+    }
+
+    fun openDrawer() {
+        coroutineScope.launch {
+            drawerAnim.animateTo(1f, spring(dampingRatio = 0.88f, stiffness = 420f))
+        }
+    }
+
+    fun closeDrawer() {
+        coroutineScope.launch {
+            drawerAnim.animateTo(0f, spring(dampingRatio = 0.95f, stiffness = 500f))
+        }
+    }
+
+    fun settleDrawer() {
+        coroutineScope.launch {
+            val target = if (drawerAnim.value > 0.45f) 1f else 0f
+            drawerAnim.animateTo(target, spring(dampingRatio = 0.9f, stiffness = 450f))
+        }
     }
 
     fun hideKeyboard() {
@@ -308,7 +329,6 @@ fun TerminalScreen(
     // Attach a session to the view
     fun attachSessionToView(session: TerminalSession, id: Int, view: TerminalView) {
         val client = EditorEsSessionClient(context, view) {
-            // When shell exits, switch to next or finish
             TermuxService.killSession(context, id)
             val remaining = TermuxService.allSessions()
             if (remaining.isNotEmpty()) {
@@ -387,7 +407,7 @@ fun TerminalScreen(
         }
         val id = TermuxService.registerSession(context, session, sessionName)
         attachSessionToView(session, id, view)
-        drawerOpen = false
+        closeDrawer()
         sessionsVersion++
     }
 
@@ -395,7 +415,7 @@ fun TerminalScreen(
     fun switchToSession(record: SessionRecord, view: TerminalView) {
         TermuxService.setActiveSession(record.id)
         attachSessionToView(record.session, record.id, view)
-        drawerOpen = false
+        closeDrawer()
         sessionsVersion++
     }
 
@@ -404,7 +424,6 @@ fun TerminalScreen(
         TermuxService.killSession(context, id)
         val remaining = TermuxService.allSessions()
         if (remaining.isEmpty()) {
-            // If all killed, create one fresh session
             terminalView?.let { createNewSession(it) }
         } else if (activeSessionId == id) {
             val next = remaining.last()
@@ -441,9 +460,11 @@ fun TerminalScreen(
         }
     }
 
+    val drawerProgress = drawerAnim.value
+
     BackHandler {
         when {
-            drawerOpen -> drawerOpen = false
+            drawerProgress > 0.05f -> closeDrawer()
             flow == TerminalFlow.AskInstall -> leaveTerminal()
             flow == TerminalFlow.Installing -> leaveTerminal()
             flow == TerminalFlow.AskNotification -> flow = TerminalFlow.Terminal
@@ -499,7 +520,7 @@ fun TerminalScreen(
                         .clip(RoundedCornerShape(8.dp))
                         .clickable {
                             hideKeyboard()
-                            drawerOpen = !drawerOpen
+                            if (drawerProgress > 0.5f) closeDrawer() else openDrawer()
                         },
                     contentAlignment = Alignment.Center
                 ) {
@@ -627,169 +648,176 @@ fun TerminalScreen(
             }
         }
 
-        // === Sessions Drawer Overlay ===
-        if (drawerOpen) {
+        // === Sessions Drawer Overlay (Smooth spring animated) ===
+        if (drawerProgress > 0f) {
             // Scrim
             Box(
                 modifier = Modifier
                     .fillMaxSize()
-                    .background(ScrimColor)
+                    .background(Color.Black.copy(alpha = 0.5f * drawerProgress))
                     .clickable(
                         interactionSource = remember { MutableInteractionSource() },
                         indication = null
-                    ) { drawerOpen = false }
+                    ) { closeDrawer() }
             )
 
-            // Sliding Panel from Left
-            Box(
+            // Sliding Panel from Left (width = 220.dp)
+            Column(
                 modifier = Modifier
+                    .width(DrawerWidth)
                     .fillMaxHeight()
-                    .width(280.dp)
+                    .offset { IntOffset(((drawerProgress - 1f) * drawerWidthPx).roundToInt(), 0) }
+                    .clip(DrawerShape)
                     .background(DrawerBackground)
-                    .border(width = 1.dp, color = DrawerBorder)
+                    .border(width = 1.dp, color = DrawerBorder, shape = DrawerShape)
+                    .pointerInput(Unit) {
+                        detectHorizontalDragGestures(
+                            onDragEnd = { settleDrawer() },
+                            onDragCancel = { settleDrawer() }
+                        ) { change, drag ->
+                            change.consume()
+                            val next = (drawerAnim.value + drag / drawerWidthPx).coerceIn(0f, 1f)
+                            coroutineScope.launch { drawerAnim.snapTo(next) }
+                        }
+                    }
                     .statusBarsPadding()
                     .navigationBarsPadding()
+                    .padding(12.dp)
             ) {
-                Column(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(16.dp)
+                // Drawer Title Row
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween
                 ) {
-                    // Drawer Title Row
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(
+                            painter = painterResource(R.drawable.terminal),
+                            contentDescription = null,
+                            tint = SpringGreen,
+                            modifier = Modifier.size(16.dp)
+                        )
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text(
+                            text = "SESSIONS",
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.Bold,
+                            letterSpacing = 1.2.sp,
+                            color = SpringGreen
+                        )
+                    }
+
+                    // Badge count
+                    Box(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(6.dp))
+                            .background(Color(0x2602F5A1))
+                            .padding(horizontal = 6.dp, vertical = 2.dp)
+                    ) {
+                        Text(
+                            text = "${sessionsList.size}",
+                            fontSize = 10.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = SpringGreen
+                        )
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(12.dp))
+
+                // "+ New Session" Button
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(36.dp)
+                        .clip(ItemShape)
+                        .background(Color(0x1A02F5A1))
+                        .border(1.dp, SpringGreen, ItemShape)
+                        .clickable {
+                            terminalView?.let { createNewSession(it) }
+                        },
+                    contentAlignment = Alignment.Center
+                ) {
                     Row(
-                        modifier = Modifier.fillMaxWidth(),
                         verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.SpaceBetween
+                        horizontalArrangement = Arrangement.Center
                     ) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Icon(
-                                painter = painterResource(R.drawable.terminal),
-                                contentDescription = null,
-                                tint = SpringGreen,
-                                modifier = Modifier.size(18.dp)
-                            )
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Text(
-                                text = "SESSIONS",
-                                fontSize = 14.sp,
-                                fontWeight = FontWeight.Bold,
-                                letterSpacing = 1.5.sp,
-                                color = SpringGreen
-                            )
-                        }
-
-                        // Badge count
-                        Box(
-                            modifier = Modifier
-                                .clip(RoundedCornerShape(6.dp))
-                                .background(Color(0x2602F5A1))
-                                .padding(horizontal = 8.dp, vertical = 2.dp)
-                        ) {
-                            Text(
-                                text = "${sessionsList.size}",
-                                fontSize = 11.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = SpringGreen
-                            )
-                        }
+                        Icon(
+                            painter = painterResource(R.drawable.add),
+                            contentDescription = null,
+                            tint = SpringGreen,
+                            modifier = Modifier.size(14.dp)
+                        )
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text(
+                            text = "New Session",
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            color = SpringGreen
+                        )
                     }
+                }
 
-                    Spacer(modifier = Modifier.height(16.dp))
+                Spacer(modifier = Modifier.height(12.dp))
 
-                    // "+ New Session" Button
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(40.dp)
-                            .clip(ItemShape)
-                            .background(Color(0x1A02F5A1))
-                            .border(1.dp, SpringGreen, ItemShape)
-                            .clickable {
-                                terminalView?.let { createNewSession(it) }
+                // Sessions List
+                Text(
+                    text = "ACTIVE",
+                    fontSize = 9.5.sp,
+                    fontWeight = FontWeight.Bold,
+                    letterSpacing = 1.2.sp,
+                    color = KeyForeground.copy(alpha = 0.4f),
+                    modifier = Modifier.padding(start = 2.dp, bottom = 6.dp)
+                )
+
+                LazyColumn(
+                    modifier = Modifier.weight(1f),
+                    verticalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    items(sessionsList, key = { it.id }) { record ->
+                        val isActive = record.id == activeSessionId
+                        SessionItemCard(
+                            record = record,
+                            isActive = isActive,
+                            onSelect = {
+                                terminalView?.let { switchToSession(record, it) }
                             },
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.Center
-                        ) {
-                            Icon(
-                                painter = painterResource(R.drawable.add),
-                                contentDescription = null,
-                                tint = SpringGreen,
-                                modifier = Modifier.size(16.dp)
-                            )
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Text(
-                                text = "New Session",
-                                fontSize = 13.sp,
-                                fontWeight = FontWeight.SemiBold,
-                                color = SpringGreen
-                            )
-                        }
+                            onKill = {
+                                killSessionById(record.id)
+                            }
+                        )
                     }
+                }
 
-                    Spacer(modifier = Modifier.height(16.dp))
+                Spacer(modifier = Modifier.height(8.dp))
 
-                    // Sessions List
-                    Text(
-                        text = "ACTIVE SESSIONS",
-                        fontSize = 10.sp,
-                        fontWeight = FontWeight.Bold,
-                        letterSpacing = 1.2.sp,
-                        color = KeyForeground.copy(alpha = 0.4f),
-                        modifier = Modifier.padding(start = 4.dp, bottom = 8.dp)
-                    )
-
-                    LazyColumn(
-                        modifier = Modifier.weight(1f),
-                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                // Exit Terminal Button
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(34.dp)
+                        .clip(ItemShape)
+                        .background(Color(0x0DFFFFFF))
+                        .clickable { leaveTerminal() },
+                    contentAlignment = Alignment.Center
+                ) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.Center
                     ) {
-                        items(sessionsList, key = { it.id }) { record ->
-                            val isActive = record.id == activeSessionId
-                            SessionItemCard(
-                                record = record,
-                                isActive = isActive,
-                                onSelect = {
-                                    terminalView?.let { switchToSession(record, it) }
-                                },
-                                onKill = {
-                                    killSessionById(record.id)
-                                }
-                            )
-                        }
-                    }
-
-                    Spacer(modifier = Modifier.height(12.dp))
-
-                    // Exit Terminal Button
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(38.dp)
-                            .clip(ItemShape)
-                            .background(Color(0x0DFFFFFF))
-                            .clickable { leaveTerminal() },
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.Center
-                        ) {
-                            Icon(
-                                painter = painterResource(R.drawable.chevron_left),
-                                contentDescription = null,
-                                tint = KeyForeground.copy(alpha = 0.7f),
-                                modifier = Modifier.size(16.dp)
-                            )
-                            Spacer(modifier = Modifier.width(6.dp))
-                            Text(
-                                text = "Back to Editor",
-                                fontSize = 12.sp,
-                                fontWeight = FontWeight.Medium,
-                                color = KeyForeground.copy(alpha = 0.7f)
-                            )
-                        }
+                        Icon(
+                            painter = painterResource(R.drawable.chevron_left),
+                            contentDescription = null,
+                            tint = KeyForeground.copy(alpha = 0.7f),
+                            modifier = Modifier.size(14.dp)
+                        )
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text(
+                            text = "Back to Editor",
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Medium,
+                            color = KeyForeground.copy(alpha = 0.7f)
+                        )
                     }
                 }
             }
@@ -846,14 +874,14 @@ private fun SessionItemCard(
             .background(bg)
             .border(1.dp, border, ItemShape)
             .clickable(onClick = onSelect)
-            .padding(horizontal = 12.dp, vertical = 10.dp),
+            .padding(horizontal = 10.dp, vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         // Left active indicator / terminal icon
         Box(
             modifier = Modifier
-                .size(28.dp)
-                .clip(RoundedCornerShape(6.dp))
+                .size(24.dp)
+                .clip(RoundedCornerShape(5.dp))
                 .background(if (isActive) Color(0x3302F5A1) else Color(0x1402F5A1)),
             contentAlignment = Alignment.Center
         ) {
@@ -861,45 +889,45 @@ private fun SessionItemCard(
                 painter = painterResource(R.drawable.terminal),
                 contentDescription = null,
                 tint = if (isActive) SpringGreen else KeyForeground.copy(alpha = 0.5f),
-                modifier = Modifier.size(15.dp)
+                modifier = Modifier.size(13.dp)
             )
         }
 
-        Spacer(modifier = Modifier.width(10.dp))
+        Spacer(modifier = Modifier.width(8.dp))
 
         // Session Name and status
         Column(modifier = Modifier.weight(1f)) {
             Text(
                 text = record.name,
-                fontSize = 13.sp,
+                fontSize = 12.sp,
                 fontWeight = if (isActive) FontWeight.Bold else FontWeight.Medium,
                 color = if (isActive) Color(0xFFF2FFFA) else KeyForeground.copy(alpha = 0.7f),
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
             )
-            Spacer(modifier = Modifier.height(2.dp))
+            Spacer(modifier = Modifier.height(1.dp))
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Box(
                     modifier = Modifier
-                        .size(5.dp)
+                        .size(4.dp)
                         .clip(CircleShape)
                         .background(if (isActive) SpringGreen else Color(0xFF888888))
                 )
-                Spacer(modifier = Modifier.width(4.dp))
+                Spacer(modifier = Modifier.width(3.dp))
                 Text(
                     text = if (isActive) "active" else "running",
-                    fontSize = 10.sp,
+                    fontSize = 9.5.sp,
                     color = if (isActive) SpringGreen else KeyForeground.copy(alpha = 0.4f)
                 )
             }
         }
 
-        Spacer(modifier = Modifier.width(8.dp))
+        Spacer(modifier = Modifier.width(6.dp))
 
         // Kill "x" button
         Box(
             modifier = Modifier
-                .size(26.dp)
+                .size(22.dp)
                 .clip(CircleShape)
                 .background(Color(0x1AFF5252))
                 .clickable(onClick = onKill),
@@ -909,7 +937,7 @@ private fun SessionItemCard(
                 painter = painterResource(R.drawable.close),
                 contentDescription = "Close session",
                 tint = KillRed,
-                modifier = Modifier.size(13.dp)
+                modifier = Modifier.size(11.dp)
             )
         }
     }
