@@ -283,6 +283,8 @@ object ProotConfig {
                 export LANG=C.UTF-8
                 export TMPDIR=/tmp
                 export DEBIAN_FRONTEND=noninteractive
+                export PS1='\[\e[1;92m\]\u@ubuntu\[\e[0m\]:\[\e[1;36m\]\w\[\e[0m\]\$ '
+                alias ll='ls -alF'
                 """.trimIndent() + "\n"
             )
             // ponytail: only seed .bashrc/.profile when missing; preserves user edits
