@@ -150,7 +150,7 @@ private data class TerminalKey(
     val repeatable: Boolean = false
 )
 
-internal val FirstRow = listOf(
+private val FirstRow = listOf(
     TerminalKey("ESC", "\u001b"),
     TerminalKey("/", "/"),
     TerminalKey("-", "-"),
@@ -160,7 +160,7 @@ internal val FirstRow = listOf(
     TerminalKey("PGUP", "\u001b[5~", repeatable = true)
 )
 
-internal val SecondRow = listOf(
+private val SecondRow = listOf(
     TerminalKey("TAB", "\t"),
     TerminalKey("CTRL", modifier = ModifierKey.Ctrl),
     TerminalKey("ALT", modifier = ModifierKey.Alt),
