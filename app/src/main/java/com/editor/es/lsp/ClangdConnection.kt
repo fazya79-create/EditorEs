@@ -14,6 +14,7 @@ class ClangdConnection(
     private val projectDir: File
 ) : StreamConnectionProvider {
 
+    @Volatile
     private var process: Process? = null
 
     override fun start() {
@@ -42,10 +43,12 @@ class ClangdConnection(
     }
 
     override val inputStream: InputStream
-        get() = process!!.inputStream
+        get() = process?.inputStream
+            ?: throw IllegalStateException("LSP connection not started. Call start() first.")
 
     override val outputStream: OutputStream
-        get() = process!!.outputStream
+        get() = process?.outputStream
+            ?: throw IllegalStateException("LSP connection not started. Call start() first.")
 
     override val isClosed: Boolean
         get() = process?.isAlive != true

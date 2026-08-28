@@ -10,8 +10,8 @@ object FileOps {
         val clean = name.trim()
         require(namePattern.matches(clean)) { "Invalid file name" }
         val target = File(parent, clean)
-        require(!target.exists()) { "A file or folder named $clean already exists" }
-        require(target.createNewFile()) { "Unable to create the file" }
+        // Remove TOCTOU race: just check if creation succeeds
+        require(target.createNewFile()) { "Unable to create file or file already exists" }
         target
     }
 

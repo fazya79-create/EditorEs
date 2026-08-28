@@ -176,10 +176,19 @@ class BuildRunner(private val context: Context) {
 
     private fun execute(projectDir: File, script: String, onEvent: (BuildEvent) -> Unit) {
         val builder = ProcessBuilder(prootArgsFor(projectDir, script))
-        builder.redirectErrorStream(true)
+        // Keep stderr separate to avoid deadlock when output is large
+        builder.redirectErrorProcess()
         builder.environment().putAll(ProotConfig.prootEnvMap(context))
         val started = builder.start()
         process = started
+        
+        // Read stdout in a coroutine to avoid blocking
+        kotlinx.coroutines.GlobalScope.launch(kotlinx.coroutines.Dispatchers.IO) {
+            started.errorStream.bufferedReader().forEachLine { line ->
+                onEvent(BuildEvent.Line("[stderr] $line"))
+            }
+        }
+        
         BufferedReader(InputStreamReader(started.inputStream)).use { reader ->
             while (true) {
                 val line = reader.readLine() ?: break
