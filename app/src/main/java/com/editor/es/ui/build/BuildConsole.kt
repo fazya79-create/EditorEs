@@ -20,7 +20,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Close
 import androidx.compose.material.icons.outlined.CloseFullscreen
 import androidx.compose.material.icons.outlined.ContentCopy
-import androidx.compose.material.icons.outlined.DeleteSweep
 import androidx.compose.material.icons.outlined.OpenInFull
 import androidx.compose.material.icons.outlined.Stop
 import androidx.compose.material3.Icon
@@ -67,7 +66,7 @@ fun BuildConsole(
     onToggleMaximize: () -> Unit,
     onCopy: () -> Unit,
     onStop: () -> Unit,
-    onClear: () -> Unit,
+
     onClose: () -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -123,14 +122,7 @@ fun BuildConsole(
                     modifier = Modifier.size(16.dp)
                 )
             }
-            IconButton(onClick = onClear, modifier = Modifier.size(30.dp)) {
-                Icon(
-                    painter = painterResource(R.drawable.close),
-                    contentDescription = "Clear console",
-                    tint = ConsoleForeground,
-                    modifier = Modifier.size(17.dp)
-                )
-            }
+
             IconButton(onClick = onToggleMaximize, modifier = Modifier.size(30.dp)) {
                 Icon(
                     painter = painterResource(
