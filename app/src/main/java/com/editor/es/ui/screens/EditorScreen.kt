@@ -930,7 +930,7 @@ fun EditorScreen(
                         building = false
                         appendConsole("> build stopped", ConsoleLineKind.Error)
                     },
-                    onClear = { consoleLines.clear() },
+
                     onClose = {
                         consoleVisible = false
                         consoleMaximized = false
