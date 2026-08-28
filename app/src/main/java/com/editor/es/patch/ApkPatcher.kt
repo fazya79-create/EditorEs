@@ -5,21 +5,24 @@ import com.android.apksig.ApkSigner
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import com.android.tools.smali.dexlib2.DexFileFactory
+import com.android.tools.smali.dexlib2.HiddenApiRestriction
 import com.android.tools.smali.dexlib2.Opcodes
 import com.android.tools.smali.dexlib2.Opcode
 import com.android.tools.smali.dexlib2.builder.MutableMethodImplementation
 import com.android.tools.smali.dexlib2.builder.instruction.BuilderInstruction10x
 import com.android.tools.smali.dexlib2.builder.instruction.BuilderInstruction21c
 import com.android.tools.smali.dexlib2.builder.instruction.BuilderInstruction35c
+import com.android.tools.smali.dexlib2.iface.Annotation
 import com.android.tools.smali.dexlib2.iface.ClassDef
 import com.android.tools.smali.dexlib2.iface.DexFile
 import com.android.tools.smali.dexlib2.iface.Method
+import com.android.tools.smali.dexlib2.iface.MethodParameter
 import com.android.tools.smali.dexlib2.immutable.ImmutableClassDef
+import com.android.tools.smali.dexlib2.immutable.ImmutableDexFile
 import com.android.tools.smali.dexlib2.immutable.ImmutableMethod
 import com.android.tools.smali.dexlib2.immutable.ImmutableMethodImplementation
 import com.android.tools.smali.dexlib2.immutable.reference.ImmutableMethodReference
 import com.android.tools.smali.dexlib2.immutable.reference.ImmutableStringReference
-import com.android.tools.smali.dexlib2.writer.pool.DexPool
 import java.io.File
 import java.io.FileOutputStream
 import java.io.OutputStream
@@ -155,12 +158,12 @@ object ApkPatcher {
                     virtualMethods
                 )
                 val patchedDex = File(workDir, "patched-" + dexName)
-                val pool = DexPool(opcodes)
+                val combined = LinkedHashSet<ClassDef>()
                 for (cls in dexFile.classes) {
-                    pool.internClass(if (cls.type == targetType) patchedClass else cls)
+                    combined.add(if (cls.type == targetType) patchedClass else cls)
                 }
-                pool.internClass(injectorClass)
-                FileOutputStream(patchedDex).use { pool.writeTo(it) }
+                combined.add(injectorClass)
+                DexFileFactory.writeDexFile(patchedDex.absolutePath, ImmutableDexFile(opcodes, combined))
                 patchedEntryName = dexName
                 patchedDexFile = patchedDex
                 onLine("injected loadLibrary(" + lib.name + ") into onCreate")
@@ -270,7 +273,16 @@ object ApkPatcher {
             emptyList(),
             emptyList()
         )
-        val method = ImmutableMethod(loaderType, "load", emptyList(), "V", 0x9, emptySet(), implementation)
+        val method = ImmutableMethod(
+            loaderType,
+            "load",
+            emptyList<MethodParameter>(),
+            "V",
+            0x9,
+            emptySet<Annotation>(),
+            emptySet<HiddenApiRestriction>(),
+            implementation
+        )
         return ImmutableClassDef(
             loaderType,
             0x11,
@@ -293,6 +305,7 @@ object ApkPatcher {
             method.returnType,
             method.accessFlags,
             method.annotations,
+            emptySet<HiddenApiRestriction>(),
             ImmutableMethodImplementation(
                 mutable.registerCount,
                 mutable.instructions,

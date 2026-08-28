@@ -17,7 +17,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.OutlinedButtonDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -31,6 +30,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
+import com.editor.es.R
 import com.editor.es.patch.PatchPhase
 import com.editor.es.ui.dialogs.DialogCard
 import com.editor.es.ui.theme.DeepOnyx
@@ -106,10 +106,7 @@ fun PatchConsoleDialog(
                 is PatchPhase.Running -> {
                     OutlinedButton(
                         onClick = onCancel,
-                        modifier = Modifier.fillMaxWidth().height(46.dp),
-                        colors = OutlinedButtonDefaults.outlinedButtonColors(
-                            contentColor = EditorEsPalette.textPrimary
-                        )
+                        modifier = Modifier.fillMaxWidth().height(46.dp)
                     ) {
                         Text(text = stringResource(R.string.cancel), fontWeight = FontWeight.Bold)
                     }
@@ -121,10 +118,7 @@ fun PatchConsoleDialog(
                     ) {
                         OutlinedButton(
                             onClick = onDismiss,
-                            modifier = Modifier.weight(1f).height(46.dp),
-                            colors = OutlinedButtonDefaults.outlinedButtonColors(
-                                contentColor = EditorEsPalette.textPrimary
-                            )
+                            modifier = Modifier.weight(1f).height(46.dp)
                         ) {
                             Text(text = stringResource(R.string.close), fontWeight = FontWeight.Bold)
                         }
