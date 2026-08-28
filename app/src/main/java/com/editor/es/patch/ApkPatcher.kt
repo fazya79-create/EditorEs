@@ -14,6 +14,9 @@ import com.android.tools.smali.dexlib2.builder.instruction.BuilderInstruction21c
 import com.android.tools.smali.dexlib2.builder.instruction.BuilderInstruction35c
 import com.android.tools.smali.dexlib2.iface.Annotation
 import com.android.tools.smali.dexlib2.iface.ClassDef
+import com.android.tools.smali.dexlib2.iface.instruction.ReferenceInstruction
+import com.android.tools.smali.dexlib2.iface.reference.MethodReference
+import com.android.tools.smali.dexlib2.iface.reference.StringReference
 import com.android.tools.smali.dexlib2.iface.DexFile
 import com.android.tools.smali.dexlib2.iface.Method
 import com.android.tools.smali.dexlib2.iface.MethodParameter
@@ -49,6 +52,7 @@ object ApkPatcher {
 
     private const val LoaderBase = "Leditorespatch"
     private const val LibraryAlignment = 16384
+    private val HelperPattern = Regex("^Leditorespatch\\d+;$")
     private val KnownAbis = listOf("arm64-v8a", "armeabi-v7a", "x86_64", "x86", "riscv64")
 
     fun outputDir(context: Context): File = File(context.cacheDir, "patch").apply { mkdirs() }
@@ -104,73 +108,86 @@ object ApkPatcher {
                     .sorted()
             }
             val opcodes = Opcodes.getDefault()
-            var patchedEntryName: String? = null
-            var patchedDexFile: File? = null
+            val oldLibraries = LinkedHashSet<String>()
+            val replacedDexes = LinkedHashMap<String, File>()
+            val marker = "editorespatch".toByteArray(Charsets.US_ASCII)
+            var patchedTarget = false
             for (dexName in dexNames) {
                 if (cancelled.get()) throw PatchCancelledException()
                 onLine("scanning " + dexName)
+                val raw = ZipFile(apkFile).use { zip ->
+                    val entry = zip.getEntry(dexName) ?: return@use null
+                    zip.getInputStream(entry).use { input -> input.readBytes() }
+                } ?: continue
+                if (patchedTarget && !containsBytes(raw, marker)) continue
                 val extracted = File(workDir, dexName.replace("/", "_"))
-                ZipFile(apkFile).use { zip ->
-                    val entry = zip.getEntry(dexName) ?: return@use
-                    zip.getInputStream(entry).use { input ->
-                        extracted.outputStream().use { output -> input.copyTo(output) }
-                    }
-                }
+                extracted.outputStream().use { output -> output.write(raw) }
                 val dexFile = DexFileFactory.loadDexFile(extracted, opcodes)
-                val targetClass = dexFile.classes.firstOrNull { it.type == targetType }
-                if (targetClass == null) {
-                    onLine("no " + launcher + " in " + dexName + ", skipping")
-                    continue
-                }
-                onLine("target class found in " + dexName)
-                val onCreate = targetClass.methods.firstOrNull {
-                    it.name == "onCreate" && it.parameterTypes == listOf("Landroid/os/Bundle;") && it.returnType == "V"
-                } ?: throw IllegalArgumentException("onCreate(Landroid/os/Bundle;)V not found in " + launcher)
-                val implementation = onCreate.implementation
-                    ?: throw IllegalArgumentException("onCreate has no implementation in " + launcher)
-                val mutable = MutableMethodImplementation(implementation)
-                val loaderType = findLoaderType(dexFile)
-                val injectorClass = buildInjector(loaderType, variant.name)
-                mutable.addInstruction(
-                    0,
-                    BuilderInstruction35c(
-                        Opcode.INVOKE_STATIC, 0, 0, 0, 0, 0, 0,
-                        ImmutableMethodReference(loaderType, "load", emptyList(), "V")
+                var patchedClass: ClassDef? = null
+                var injectorClass: ClassDef? = null
+                val targetClass = if (patchedTarget) null else dexFile.classes.firstOrNull { it.type == targetType }
+                if (targetClass != null) {
+                    onLine("target class found in " + dexName)
+                    val onCreate = targetClass.methods.firstOrNull {
+                        it.name == "onCreate" && it.parameterTypes == listOf("Landroid/os/Bundle;") && it.returnType == "V"
+                    } ?: throw IllegalArgumentException("onCreate(Landroid/os/Bundle;)V not found in " + launcher)
+                    val implementation = onCreate.implementation
+                        ?: throw IllegalArgumentException("onCreate has no implementation in " + launcher)
+                    val mutable = MutableMethodImplementation(implementation)
+                    val removed = removeHelperInvokes(mutable)
+                    if (removed > 0) onLine("removed " + removed + " previous patch call(s) from onCreate")
+                    val loaderType = findLoaderType(dexFile)
+                    injectorClass = buildInjector(loaderType, variant.name)
+                    mutable.addInstruction(
+                        0,
+                        BuilderInstruction35c(
+                            Opcode.INVOKE_STATIC, 0, 0, 0, 0, 0, 0,
+                            ImmutableMethodReference(loaderType, "load", emptyList(), "V")
+                        )
                     )
-                )
-                val directMethods = targetClass.directMethods.map { method ->
-                    if (method === onCreate) patchMethod(method, mutable) else method
+                    val directMethods = targetClass.directMethods.map { method ->
+                        if (method.name == "onCreate" && method.parameterTypes == listOf("Landroid/os/Bundle;") && method.returnType == "V") patchMethod(method, mutable) else method
+                    }
+                    val virtualMethods = targetClass.virtualMethods.map { method ->
+                        if (method.name == "onCreate" && method.parameterTypes == listOf("Landroid/os/Bundle;") && method.returnType == "V") patchMethod(method, mutable) else method
+                    }
+                    patchedClass = ImmutableClassDef(
+                        targetClass.type,
+                        targetClass.accessFlags,
+                        targetClass.superclass,
+                        targetClass.interfaces,
+                        targetClass.sourceFile,
+                        targetClass.annotations,
+                        targetClass.staticFields,
+                        targetClass.instanceFields,
+                        directMethods,
+                        virtualMethods
+                    )
+                    patchedTarget = true
                 }
-                val virtualMethods = targetClass.virtualMethods.map { method ->
-                    if (method === onCreate) patchMethod(method, mutable) else method
-                }
-                val patchedClass = ImmutableClassDef(
-                    targetClass.type,
-                    targetClass.accessFlags,
-                    targetClass.superclass,
-                    targetClass.interfaces,
-                    targetClass.sourceFile,
-                    targetClass.annotations,
-                    targetClass.staticFields,
-                    targetClass.instanceFields,
-                    directMethods,
-                    virtualMethods
-                )
-                val patchedDex = File(workDir, "patched-" + dexName)
+                var stripped = false
                 val combined = LinkedHashSet<ClassDef>()
                 for (cls in dexFile.classes) {
-                    combined.add(if (cls.type == targetType) patchedClass else cls)
+                    when {
+                        HelperPattern.matches(cls.type) -> {
+                            helperLibraryName(cls)?.let { oldLibraries.add(it) }
+                            stripped = true
+                        }
+                        cls.type == targetType && patchedClass != null -> combined.add(patchedClass!!)
+                        else -> combined.add(cls)
+                    }
                 }
-                combined.add(injectorClass)
-                DexFileFactory.writeDexFile(patchedDex.absolutePath, ImmutableDexFile(opcodes, combined))
-                patchedEntryName = dexName
-                patchedDexFile = patchedDex
-                onLine("injected loadLibrary(" + variant.name + ") into onCreate")
-                break
+                if (patchedClass != null) combined.add(injectorClass!!)
+                if (patchedClass != null || stripped) {
+                    val patchedDex = File(workDir, "patched-" + dexName)
+                    DexFileFactory.writeDexFile(patchedDex.absolutePath, ImmutableDexFile(opcodes, combined))
+                    replacedDexes[dexName] = patchedDex
+                    if (patchedClass != null) onLine("injected loadLibrary(" + variant.name + ") into onCreate")
+                    if (stripped) onLine("removed previous patch from " + dexName)
+                }
             }
-            val targetDexEntry = patchedEntryName
-                ?: throw IllegalArgumentException("target class " + launcher + " not found in any dex")
-            val targetDexFile = patchedDexFile ?: throw IllegalStateException("patched dex missing")
+            if (!patchedTarget) throw IllegalArgumentException("target class " + launcher + " not found in any dex")
+            if (oldLibraries.isNotEmpty()) onLine("removing previous libraries: " + oldLibraries.joinToString(", "))
             onLine("packing apk")
             val counter = CountingOutputStream(FileOutputStream(unsigned))
             val zipOut = ZipOutputStream(counter)
@@ -186,16 +203,20 @@ object ApkPatcher {
                                 zipOut.closeEntry()
                             }
                             name.startsWith("META-INF/") -> Unit
-                            name == targetDexEntry -> Unit
+                            replacedDexes.containsKey(name) -> Unit
+                            isOldLibraryEntry(name, oldLibraries) -> Unit
+                            name == "lib/" + variant.abi + "/lib" + variant.name + ".so" -> Unit
                             else -> copyEntry(source, entry, zipOut, counter)
                         }
                     }
                 }
-                val dexEntry = ZipEntry(targetDexEntry)
-                dexEntry.method = ZipEntry.DEFLATED
-                zipOut.putNextEntry(dexEntry)
-                targetDexFile.inputStream().use { it.copyTo(zipOut) }
-                zipOut.closeEntry()
+                for ((dexEntryName, patchedDexFile) in replacedDexes) {
+                    val dexEntry = ZipEntry(dexEntryName)
+                    dexEntry.method = ZipEntry.DEFLATED
+                    zipOut.putNextEntry(dexEntry)
+                    patchedDexFile.inputStream().use { it.copyTo(zipOut) }
+                    zipOut.closeEntry()
+                }
                 val target = "lib/" + variant.abi + "/lib" + variant.name + ".so"
                 val bytes = variant.file.readBytes()
                 val crc = CRC32().apply { update(bytes) }
@@ -247,13 +268,51 @@ object ApkPatcher {
     }
 
     private fun findLoaderType(dexFile: DexFile): String {
-        val existing = dexFile.classes.map { it.type }.toHashSet()
+        val existing = dexFile.classes.filter { !HelperPattern.matches(it.type) }.map { it.type }.toHashSet()
         var index = 0
         while (true) {
             val candidate = LoaderBase + index + ";"
             if (candidate !in existing) return candidate
             index++
         }
+    }
+
+    private fun removeHelperInvokes(mutable: MutableMethodImplementation): Int {
+        val instructions = mutable.instructions.toList()
+        val targets = mutableListOf<Int>()
+        for (index in instructions.indices) {
+            val reference = (instructions[index] as? ReferenceInstruction)?.reference as? MethodReference ?: continue
+            if (HelperPattern.matches(reference.definingClass) && reference.name == "load") targets.add(index)
+        }
+        for (index in targets.asReversed()) mutable.removeInstruction(index)
+        return targets.size
+    }
+
+    private fun helperLibraryName(cls: ClassDef): String? {
+        val load = cls.methods.firstOrNull { it.name == "load" } ?: return null
+        val implementation = load.implementation ?: return null
+        for (instruction in implementation.instructions) {
+            val reference = (instruction as? ReferenceInstruction)?.reference as? StringReference ?: continue
+            return reference.string
+        }
+        return null
+    }
+
+    private fun isOldLibraryEntry(name: String, oldLibraries: Set<String>): Boolean {
+        if (oldLibraries.isEmpty() || !name.startsWith("lib/") || !name.endsWith(".so")) return false
+        val fileName = name.substringAfterLast('/').removePrefix("lib").removeSuffix(".so")
+        return fileName in oldLibraries
+    }
+
+    private fun containsBytes(data: ByteArray, marker: ByteArray): Boolean {
+        if (data.size < marker.size) return false
+        outer@ for (index in 0..data.size - marker.size) {
+            for (offset in marker.indices) {
+                if (data[index + offset] != marker[offset]) continue@outer
+            }
+            return true
+        }
+        return false
     }
 
     private fun buildInjector(loaderType: String, libName: String): ClassDef {

@@ -97,7 +97,6 @@ object AxmlParser {
 
     fun launcherActivity(bytes: ByteArray): String {
         val (root, packageName) = parse(bytes)
-        val packageId = packageName ?: throw AxmlException("package attribute missing in manifest")
         val candidates = root.all().filter { it.name == "activity" || it.name == "activity-alias" }
         val launchable = candidates.filter { hasLauncherFilter(it) }
         val plain = launchable.firstOrNull { it.name == "activity" }
@@ -105,7 +104,7 @@ object AxmlParser {
         val name = plain?.attributes?.get("name")
             ?: alias?.attributes?.get("targetActivity")
             ?: throw AxmlException("launcher activity not found in manifest")
-        return resolveClassName(name, packageId)
+        return resolveClassName(name, packageName)
     }
 
     private fun hasLauncherFilter(element: AxmlElement): Boolean {
@@ -118,10 +117,10 @@ object AxmlParser {
         return action && category
     }
 
-    private fun resolveClassName(name: String, packageName: String): String = when {
-        name.startsWith(".") -> packageName + name
+    private fun resolveClassName(name: String, packageName: String?): String = when {
+        name.startsWith(".") -> (packageName ?: throw AxmlException("package attribute missing in manifest")) + name
         name.contains(".") -> name
-        else -> packageName + "." + name
+        else -> (packageName ?: throw AxmlException("package attribute missing in manifest")) + "." + name
     }
 
     private fun readStringPool(buffer: ByteBuffer, chunkOffset: Int): List<String> {
@@ -155,11 +154,17 @@ object AxmlParser {
     }
 
     private fun readUtf16String(buffer: ByteBuffer): String {
-        val length = readVarint(buffer)
+        val length = readUtf16Length(buffer)
         val builder = StringBuilder(length)
         for (index in 0 until length) builder.append(buffer.char)
         buffer.short
         return builder.toString()
+    }
+
+    private fun readUtf16Length(buffer: ByteBuffer): Int {
+        val first = buffer.short.toInt() and 0xFFFF
+        if (first and 0x8000 == 0) return first
+        return ((first and 0x7FFF) shl 16) or (buffer.short.toInt() and 0xFFFF)
     }
 
     private fun readVarint(buffer: ByteBuffer): Int {
