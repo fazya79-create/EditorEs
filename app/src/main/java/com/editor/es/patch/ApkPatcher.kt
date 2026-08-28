@@ -4,25 +4,26 @@ import android.content.Context
 import com.android.apksig.ApkSigner
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import org.jf.dexlib2.DexFileFactory
-import org.jf.dexlib2.Opcodes
-import org.jf.dexlib2.Opcode
-import org.jf.dexlib2.builder.MutableMethodImplementation
-import org.jf.dexlib2.builder.instruction.BuilderInstruction10x
-import org.jf.dexlib2.builder.instruction.BuilderInstruction21c
-import org.jf.dexlib2.builder.instruction.BuilderInstruction35c
-import org.jf.dexlib2.iface.ClassDef
-import org.jf.dexlib2.iface.DexFile
-import org.jf.dexlib2.iface.Method
-import org.jf.dexlib2.immutable.ImmutableClassDef
-import org.jf.dexlib2.immutable.ImmutableMethod
-import org.jf.dexlib2.immutable.ImmutableMethodImplementation
-import org.jf.dexlib2.immutable.reference.ImmutableMethodReference
-import org.jf.dexlib2.immutable.reference.ImmutableStringReference
-import org.jf.dexlib2.writer.pool.DexPool
+import com.android.tools.smali.dexlib2.DexFileFactory
+import com.android.tools.smali.dexlib2.Opcodes
+import com.android.tools.smali.dexlib2.Opcode
+import com.android.tools.smali.dexlib2.builder.MutableMethodImplementation
+import com.android.tools.smali.dexlib2.builder.instruction.BuilderInstruction10x
+import com.android.tools.smali.dexlib2.builder.instruction.BuilderInstruction21c
+import com.android.tools.smali.dexlib2.builder.instruction.BuilderInstruction35c
+import com.android.tools.smali.dexlib2.iface.ClassDef
+import com.android.tools.smali.dexlib2.iface.DexFile
+import com.android.tools.smali.dexlib2.iface.Method
+import com.android.tools.smali.dexlib2.immutable.ImmutableClassDef
+import com.android.tools.smali.dexlib2.immutable.ImmutableMethod
+import com.android.tools.smali.dexlib2.immutable.ImmutableMethodImplementation
+import com.android.tools.smali.dexlib2.immutable.reference.ImmutableMethodReference
+import com.android.tools.smali.dexlib2.immutable.reference.ImmutableStringReference
+import com.android.tools.smali.dexlib2.writer.pool.DexPool
 import java.io.File
 import java.io.FileOutputStream
 import java.io.OutputStream
+import java.security.cert.X509Certificate
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.zip.CRC32
 import java.util.zip.ZipEntry
@@ -214,10 +215,11 @@ object ApkPatcher {
             }
             onLine("signing v1 v2 v3")
             val signerEntry = PatcherKeystore.entry(context)
+            val signerCertificate = signerEntry.certificate as X509Certificate
             val signerConfig = ApkSigner.SignerConfig.Builder(
                 "EditorEs Patcher",
                 signerEntry.privateKey,
-                listOf(signerEntry.certificate)
+                listOf(signerCertificate)
             ).build()
             ApkSigner.Builder(listOf(signerConfig))
                 .setInputApk(unsigned)
