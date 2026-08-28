@@ -107,7 +107,7 @@ import com.editor.es.ui.icons.XedIcons
 import com.editor.es.ui.theme.EditorEsPalette
 import com.editor.es.ui.theme.SpringGreen
 import com.editor.es.patch.ApkPatcher
-import com.editor.es.patch.PatchLib
+import com.editor.es.patch.PatchLibVariant
 import com.editor.es.patch.PatchPhase
 import com.editor.es.ui.inject.InjectDialog
 import com.editor.es.ui.inject.PatchConsoleDialog
@@ -237,7 +237,7 @@ fun EditorScreen(
         }
     }
 
-    fun startPatch(apkPath: String, lib: PatchLib) {
+    fun startPatch(apkPath: String, variant: PatchLibVariant) {
         showInjectDialog = false
         patchConsoleLines.clear()
         patchedOutput = null
@@ -245,7 +245,7 @@ fun EditorScreen(
         patchPhase = PatchPhase.Running
         showPatchConsole = true
         scope.launch {
-            val output = ApkPatcher.patch(context, File(apkPath), lib, patchCancelled, { line -> patchConsoleLines.add(line) }, { phase -> patchPhase = phase })
+            val output = ApkPatcher.patch(context, File(apkPath), variant, patchCancelled, { line -> patchConsoleLines.add(line) }, { phase -> patchPhase = phase })
             if (output != null) patchedOutput = output
         }
     }
@@ -1049,7 +1049,7 @@ fun EditorScreen(
         InjectDialog(
             projectDir = projectDir,
             onDismiss = { showInjectDialog = false },
-            onPatch = { apkPath, lib -> startPatch(apkPath, lib) }
+            onPatch = { apkPath, variant -> startPatch(apkPath, variant) }
         )
     }
 

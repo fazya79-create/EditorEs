@@ -42,7 +42,7 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import com.editor.es.R
 import com.editor.es.patch.ApkPatcher
-import com.editor.es.patch.PatchLib
+import com.editor.es.patch.PatchLibVariant
 import com.editor.es.ui.dialogs.DialogCard
 import com.editor.es.ui.theme.DeepOnyx
 import com.editor.es.ui.theme.EditorEsPalette
@@ -56,13 +56,13 @@ private val FieldBackground = Color(0x1402F5A1)
 fun InjectDialog(
     projectDir: File,
     onDismiss: () -> Unit,
-    onPatch: (String, PatchLib) -> Unit
+    onPatch: (String, PatchLibVariant) -> Unit
 ) {
     var apkPath by remember { mutableStateOf("") }
     var showPicker by remember { mutableStateOf(false) }
     var expanded by remember { mutableStateOf(false) }
     val libraries = remember(projectDir) { ApkPatcher.scanLibraries(projectDir) }
-    var selected by remember { mutableStateOf<PatchLib?>(null) }
+    var selected by remember { mutableStateOf<PatchLibVariant?>(null) }
 
     Dialog(onDismissRequest = onDismiss) {
         DialogCard {
@@ -130,7 +130,7 @@ fun InjectDialog(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(
-                        text = selected?.name ?: stringResource(R.string.no_libraries),
+                        text = selected?.let { it.name + " (" + it.abi + ")" } ?: stringResource(R.string.no_libraries),
                         fontSize = 13.sp,
                         color = if (selected != null) EditorEsPalette.textPrimary else EditorEsPalette.textSecondary,
                         maxLines = 1,
@@ -150,20 +150,20 @@ fun InjectDialog(
                             onClick = { expanded = false }
                         )
                     }
-                    for (lib in libraries) {
+                    for (variant in libraries) {
                         DropdownMenuItem(
                             text = {
                                 Column {
-                                    Text(text = lib.name, fontSize = 13.sp, fontWeight = FontWeight.Bold)
+                                    Text(text = variant.name, fontSize = 13.sp, fontWeight = FontWeight.Bold)
                                     Text(
-                                        text = lib.variants.joinToString(", ") { it.abi },
+                                        text = variant.abi,
                                         fontSize = 10.sp,
                                         color = EditorEsPalette.textSecondary
                                     )
                                 }
                             },
                             onClick = {
-                                selected = lib
+                                selected = variant
                                 expanded = false
                             }
                         )

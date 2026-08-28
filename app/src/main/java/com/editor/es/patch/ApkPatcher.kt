@@ -43,38 +43,37 @@ sealed class PatchPhase {
 
 class PatchCancelledException : Exception("patch cancelled")
 
-data class PatchLibVariant(val abi: String, val file: File)
-
-data class PatchLib(val name: String, val variants: List<PatchLibVariant>)
+data class PatchLibVariant(val name: String, val abi: String, val file: File)
 
 object ApkPatcher {
 
     private const val LoaderBase = "Leditorespatch"
     private const val LibraryAlignment = 16384
+    private val KnownAbis = listOf("arm64-v8a", "armeabi-v7a", "x86_64", "x86", "riscv64")
 
     fun outputDir(context: Context): File = File(context.cacheDir, "patch").apply { mkdirs() }
 
-    fun scanLibraries(projectDir: File): List<PatchLib> {
+    fun scanLibraries(projectDir: File): List<PatchLibVariant> {
         val buildDir = File(projectDir, "build")
         if (!buildDir.isDirectory) return emptyList()
-        val grouped = LinkedHashMap<String, MutableList<PatchLibVariant>>()
         val presets = buildDir.listFiles { file -> file.isDirectory }?.sortedBy { it.name } ?: return emptyList()
+        val variants = mutableListOf<PatchLibVariant>()
+        val seen = mutableSetOf<String>()
         for (preset in presets) {
-            val parts = preset.name.split("-")
-            val abi = if (parts.size > 3) parts.subList(1, parts.size - 1).joinToString("-") else preset.name
+            val abi = KnownAbis.firstOrNull { preset.name.startsWith("android-$it-") } ?: continue
             val libs = preset.listFiles { file -> file.isFile && file.name.startsWith("lib") && file.name.endsWith(".so") } ?: continue
-            for (lib in libs) {
+            for (lib in libs.sortedBy { it.name }) {
                 val name = lib.name.removePrefix("lib").removeSuffix(".so")
-                grouped.getOrPut(name) { mutableListOf() }.add(PatchLibVariant(abi, lib))
+                if (seen.add(name + "|" + abi)) variants.add(PatchLibVariant(name, abi, lib))
             }
         }
-        return grouped.map { (name, variants) -> PatchLib(name, variants.sortedBy { it.abi }) }
+        return variants.sortedWith(compareBy({ it.name }, { it.abi }))
     }
 
     suspend fun patch(
         context: Context,
         apkFile: File,
-        lib: PatchLib,
+        variant: PatchLibVariant,
         cancelled: AtomicBoolean,
         onLine: (String) -> Unit,
         onPhase: (PatchPhase) -> Unit
@@ -131,7 +130,7 @@ object ApkPatcher {
                     ?: throw IllegalArgumentException("onCreate has no implementation in " + launcher)
                 val mutable = MutableMethodImplementation(implementation)
                 val loaderType = findLoaderType(dexFile)
-                val injectorClass = buildInjector(loaderType, lib.name)
+                val injectorClass = buildInjector(loaderType, variant.name)
                 mutable.addInstruction(
                     0,
                     BuilderInstruction35c(
@@ -166,7 +165,7 @@ object ApkPatcher {
                 DexFileFactory.writeDexFile(patchedDex.absolutePath, ImmutableDexFile(opcodes, combined))
                 patchedEntryName = dexName
                 patchedDexFile = patchedDex
-                onLine("injected loadLibrary(" + lib.name + ") into onCreate")
+                onLine("injected loadLibrary(" + variant.name + ") into onCreate")
                 break
             }
             val targetDexEntry = patchedEntryName
@@ -197,24 +196,22 @@ object ApkPatcher {
                 zipOut.putNextEntry(dexEntry)
                 targetDexFile.inputStream().use { it.copyTo(zipOut) }
                 zipOut.closeEntry()
-                for (variant in lib.variants) {
-                    val target = "lib/" + variant.abi + "/lib" + lib.name + ".so"
-                    val bytes = variant.file.readBytes()
-                    val crc = CRC32().apply { update(bytes) }
-                    val nameBytes = target.toByteArray(Charsets.UTF_8)
-                    val pad = alignmentPad(counter.count + 30L + nameBytes.size, LibraryAlignment)
-                    val libEntry = ZipEntry(target).apply {
-                        method = ZipEntry.STORED
-                        size = bytes.size.toLong()
-                        compressedSize = bytes.size.toLong()
-                        this.crc = crc.value
-                        extra = pad
-                    }
-                    zipOut.putNextEntry(libEntry)
-                    zipOut.write(bytes)
-                    zipOut.closeEntry()
-                    onLine("added " + target)
+                val target = "lib/" + variant.abi + "/lib" + variant.name + ".so"
+                val bytes = variant.file.readBytes()
+                val crc = CRC32().apply { update(bytes) }
+                val nameBytes = target.toByteArray(Charsets.UTF_8)
+                val pad = alignmentPad(counter.count + 30L + nameBytes.size, LibraryAlignment)
+                val libEntry = ZipEntry(target).apply {
+                    method = ZipEntry.STORED
+                    size = bytes.size.toLong()
+                    compressedSize = bytes.size.toLong()
+                    this.crc = crc.value
+                    extra = pad
                 }
+                zipOut.putNextEntry(libEntry)
+                zipOut.write(bytes)
+                zipOut.closeEntry()
+                onLine("added " + target)
             }
             onLine("signing v1 v2 v3")
             val signerEntry = PatcherKeystore.entry(context)
