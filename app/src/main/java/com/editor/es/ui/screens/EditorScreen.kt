@@ -1,9 +1,14 @@
 package com.editor.es.ui.screens
 
+import android.app.Activity
 import android.content.ClipData
 import android.content.ClipboardManager
+import android.content.Intent
 import android.view.inputmethod.InputMethodManager
 import androidx.activity.compose.BackHandler
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.core.content.FileProvider
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.spring
 import androidx.compose.foundation.Canvas
@@ -101,6 +106,11 @@ import com.editor.es.ui.explorer.NodeActionSheet
 import com.editor.es.ui.icons.XedIcons
 import com.editor.es.ui.theme.EditorEsPalette
 import com.editor.es.ui.theme.SpringGreen
+import com.editor.es.patch.ApkPatcher
+import com.editor.es.patch.PatchLib
+import com.editor.es.patch.PatchPhase
+import com.editor.es.ui.inject.InjectDialog
+import com.editor.es.ui.inject.PatchConsoleDialog
 import io.github.rosemoe.sora.text.Content
 import io.github.rosemoe.sora.text.ContentListener
 import io.github.rosemoe.sora.widget.CodeEditor
@@ -112,6 +122,7 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import java.util.concurrent.atomic.AtomicBoolean
 
 private val ErrorTint = Color(0xFFEF6767)
 private val DisabledTint = Color(0xFF3F5F58)
@@ -211,6 +222,43 @@ fun EditorScreen(
     var consoleVisible by remember { mutableStateOf(false) }
     var building by remember { mutableStateOf(false) }
     var showToolchainDialog by remember { mutableStateOf(false) }
+    var showInjectDialog by remember { mutableStateOf(false) }
+    var showPatchConsole by remember { mutableStateOf(false) }
+    var patchPhase by remember { mutableStateOf<PatchPhase>(PatchPhase.Idle) }
+    var patchedOutput by remember { mutableStateOf<File?>(null) }
+    val patchConsoleLines = remember { mutableStateListOf<String>() }
+    val patchCancelled = remember { AtomicBoolean(false) }
+
+    val installLauncher = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
+        val output = patchedOutput
+        if (result.resultCode == Activity.RESULT_OK && output != null) {
+            output.delete()
+            patchConsoleLines.add("patched apk removed from cache")
+        }
+    }
+
+    fun startPatch(apkPath: String, lib: PatchLib) {
+        showInjectDialog = false
+        patchConsoleLines.clear()
+        patchedOutput = null
+        patchCancelled.set(false)
+        patchPhase = PatchPhase.Running
+        showPatchConsole = true
+        scope.launch {
+            val output = ApkPatcher.patch(context, File(apkPath), lib, patchCancelled, { line -> patchConsoleLines.add(line) }, { phase -> patchPhase = phase })
+            if (output != null) patchedOutput = output
+        }
+    }
+
+    fun installPatched() {
+        val output = patchedOutput ?: return
+        val uri = FileProvider.getUriForFile(context, context.packageName + ".fileprovider", output)
+        val intent = Intent(Intent.ACTION_INSTALL_PACKAGE)
+        intent.setDataAndType(uri, "application/vnd.android.package-archive")
+        intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        installLauncher.launch(intent)
+    }
     var historyRevision by remember { mutableStateOf(0) }
 
     val dirtyMarker = remember {
@@ -963,6 +1011,10 @@ fun EditorScreen(
                     onOpenTerminal = {
                         closeDrawer()
                         onOpenTerminal()
+                    },
+                    onOpenInject = {
+                        closeDrawer()
+                        showInjectDialog = true
                     }
                 )
             }
@@ -990,6 +1042,24 @@ fun EditorScreen(
                 showToolchainDialog = false
                 openRunMenu()
             }
+        )
+    }
+
+    if (showInjectDialog) {
+        InjectDialog(
+            projectDir = projectDir,
+            onDismiss = { showInjectDialog = false },
+            onPatch = { apkPath, lib -> startPatch(apkPath, lib) }
+        )
+    }
+
+    if (showPatchConsole) {
+        PatchConsoleDialog(
+            lines = patchConsoleLines,
+            phase = patchPhase,
+            onDismiss = { showPatchConsole = false },
+            onCancel = { patchCancelled.set(true) },
+            onInstall = { installPatched() }
         )
     }
 

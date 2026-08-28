@@ -20,3 +20,15 @@
 -dontwarn org.eclipse.lsp4j.**
 -dontwarn com.google.gson.**
 -keep class com.termux.view.** { *; }
+-keep class org.jf.** { *; }
+-keep class com.android.apksig.** { *; }
+-keep class org.bouncycastle.** { *; }
+-dontwarn org.jf.**
+-dontwarn com.android.apksig.**
+-dontwarn org.bouncycastle.**
+-keep class org.jf.** { *; }
+-keep class com.android.apksig.** { *; }
+-keep class org.bouncycastle.** { *; }
+-dontwarn org.jf.**
+-dontwarn com.android.apksig.**
+-dontwarn org.bouncycastle.**

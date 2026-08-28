@@ -48,4 +48,16 @@
     <string name="notification_permission_message">Allow notifications to see active terminal sessions and stop them from the notification panel.</string>
     <string name="session_notification_exit">Exit</string>
     <string name="session_notification_channel">Terminal sessions</string>
+    <string name="inject">Inject</string>
+    <string name="inject_title">Inject Library</string>
+    <string name="apk_path">APK path</string>
+    <string name="select_apk">Select APK</string>
+    <string name="select_library">Library</string>
+    <string name="no_libraries">No built libraries found</string>
+    <string name="patch">Patch</string>
+    <string name="patching">Patching</string>
+    <string name="patch_complete">Patch complete</string>
+    <string name="patch_cancelled">Patch cancelled</string>
+    <string name="patch_failed">Patch failed</string>
+    <string name="install">Install</string>
 </resources>

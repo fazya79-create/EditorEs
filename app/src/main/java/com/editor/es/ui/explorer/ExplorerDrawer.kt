@@ -21,6 +21,8 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Vaccines
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
@@ -31,6 +33,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -69,7 +72,8 @@ fun ExplorerDrawerContent(
     onMenuRequested: (File) -> Unit,
     onQuickAction: (NodeAction, File) -> Unit,
     onOpenSettings: () -> Unit,
-    onOpenTerminal: () -> Unit
+    onOpenTerminal: () -> Unit,
+    onOpenInject: () -> Unit
 ) {
     Column(
         modifier = Modifier
@@ -186,12 +190,52 @@ fun ExplorerDrawerContent(
                 modifier = Modifier.weight(1f)
             )
             FooterAction(
+                label = stringResource(R.string.inject),
+                icon = Icons.Filled.Vaccines,
+                onClick = onOpenInject,
+                modifier = Modifier.weight(1f)
+            )
+            FooterAction(
                 label = stringResource(R.string.settings),
                 iconRes = R.drawable.settings,
                 onClick = onOpenSettings,
                 modifier = Modifier.weight(1f)
             )
         }
+    }
+}
+
+@Composable
+private fun FooterAction(
+    label: String,
+    icon: ImageVector,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Column(
+        modifier = modifier
+            .height(54.dp)
+            .clip(RoundedCornerShape(10.dp))
+            .clickable(onClick = onClick)
+            .padding(horizontal = 2.dp, vertical = 6.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center
+    ) {
+        Icon(
+            imageVector = icon,
+            contentDescription = null,
+            tint = SpringGreen,
+            modifier = Modifier.size(19.dp)
+        )
+        Spacer(modifier = Modifier.height(4.dp))
+        Text(
+            text = label,
+            fontSize = 10.sp,
+            color = ItemForeground,
+            maxLines = 1,
+            softWrap = false,
+            overflow = TextOverflow.Visible
+        )
     }
 }
 
