@@ -2,9 +2,9 @@ package com.editor.es.patch
 
 import android.content.Context
 import org.bouncycastle.asn1.x500.X500Name
-import org.bouncycastle.cert.jcajce.JcaContentSignerBuilder
 import org.bouncycastle.cert.jcajce.JcaX509CertificateConverter
 import org.bouncycastle.cert.jcajce.JcaX509v3CertificateBuilder
+import org.bouncycastle.operator.jcajce.JcaContentSignerBuilder
 import org.bouncycastle.jce.provider.BouncyCastleProvider
 import java.io.File
 import java.io.FileInputStream
