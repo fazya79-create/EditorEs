@@ -565,6 +565,8 @@ fun EditorScreen(
     }
 
     fun runBuild(clean: Boolean) {
+        if (building) return
+        consoleLines.clear()
         scope.launch {
             if (!runConfigurations.hasPresets()) {
                 withContext(Dispatchers.IO) { runConfigurations.bootstrap() }
