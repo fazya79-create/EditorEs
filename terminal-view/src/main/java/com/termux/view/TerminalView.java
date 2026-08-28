@@ -1010,6 +1010,13 @@ public final class TerminalView extends View {
         if (mEmulator == null) {
             canvas.drawColor(0XFF000000);
         } else {
+            final int maxHistory = mEmulator.getScreen().getActiveTranscriptRows();
+            if (mTopRow < -maxHistory) {
+                mTopRow = -maxHistory;
+            } else if (mTopRow > 0) {
+                mTopRow = 0;
+            }
+
             // render the terminal view and highlight any selected text
             int[] sel = mDefaultSelectors;
             if (mTextSelectionCursorController != null) {
