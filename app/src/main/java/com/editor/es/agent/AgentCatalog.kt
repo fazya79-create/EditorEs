@@ -45,24 +45,26 @@ echo "==> node $(node --version), npm $(npm --version)"
         installScript = """
 set -e
 $EnsureNode
-echo "==> npm install -g $pkg"
-npm install -g $pkg
+if command -v $binary >/dev/null 2>&1; then
+  echo "==> $binary is already installed, skipping npm download"
+else
+  echo "==> npm install -g $pkg"
+  npm install -g $pkg
+fi
 $postInstall
-echo "==> installed: $(command -v $binary || echo NOT_FOUND)"
+echo "==> ready: $(command -v $binary || echo NOT_FOUND)"
 """
     )
 
-    private const val DshMobilePatch = """
-echo "==> applying comprehensive mobile responsive engine to deepseek-harness web GUI"
-node -e "
+    private val DshMobilePatch = """
+cat << 'EOF_DSH_PATCH' > /tmp/dsh_patch.js
 const fs = require('fs');
-
-const indexHtmlPaths = [
+const paths = [
   '/usr/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/dsh-web-frontend/dist/index.html',
   '/usr/local/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/dsh-web-frontend/dist/index.html'
 ];
-
-const mobileStyleTag = `<style id="dsh-mobile-responsive-engine">
+const style = `
+<style id="dsh-mobile-responsive-engine">
 @media (max-width: 768px) {
   *, *::before, *::after { box-sizing: border-box !important; }
   :root {
@@ -72,13 +74,9 @@ const mobileStyleTag = `<style id="dsh-mobile-responsive-engine">
     --dsh-composer-dock-inset: 4px !important;
   }
   body, html, #root { width: 100vw !important; max-width: 100vw !important; overflow-x: hidden !important; }
-
-  /* Frame Layout */
   div[class*="frame"] { width: 100% !important; max-width: 100vw !important; overflow-x: hidden !important; }
   div[class*="centerCol"] { min-width: 0 !important; flex: 1 1 auto !important; width: 100% !important; max-width: 100% !important; }
   div[class*="handle"] { display: none !important; }
-
-  /* Settings Modal - Full Screen Mobile Sheet with Top Scrollable Tabs */
   div[class*="SettingsRoot_overlay"] { padding: 0 !important; align-items: stretch !important; justify-content: stretch !important; }
   div[class*="SettingsRoot_panel"] {
     position: fixed !important; inset: 0 !important; width: 100vw !important; max-width: 100vw !important; height: 100vh !important; max-height: 100vh !important;
@@ -95,8 +93,6 @@ const mobileStyleTag = `<style id="dsh-mobile-responsive-engine">
   div[class*="SettingsRoot_content"] { flex: 1 1 auto !important; width: 100% !important; min-height: 0 !important; display: flex !important; flex-direction: column !important; overflow: hidden !important; }
   div[class*="SettingsRoot_header"] { flex: none !important; height: 48px !important; padding: 8px 14px !important; }
   div[class*="SettingsRoot_options"] { flex: 1 1 auto !important; width: 100% !important; padding: 12px 14px 28px !important; overflow-y: auto !important; overflow-x: hidden !important; }
-
-  /* Settings Sections Form Controls */
   div[class*="ModelsSection_section"],
   div[class*="GeneralSection_section"],
   div[class*="PluginsSettingsSection_section"],
@@ -111,28 +107,25 @@ const mobileStyleTag = `<style id="dsh-mobile-responsive-engine">
   div[class*="ProviderEditor_label"],
   div[class*="fields_label"] { width: 100% !important; max-width: 100% !important; }
   input, textarea, select { max-width: 100% !important; }
-
-  /* Modals */
   div[class*="Modal_root"] { padding: 12px !important; }
   div[class*="Modal_dialog"] { width: 100% !important; max-width: calc(100vw - 24px) !important; border-radius: 16px !important; }
-
-  /* Chat & Input */
   div[class*="ChatView_scroll"] { padding: 10px 8px !important; }
   div[class*="InputBar_card"] { width: 100% !important; max-width: 100% !important; }
 }
 </style>`;
-
-for (const p of indexHtmlPaths) {
+for (const p of paths) {
   if (fs.existsSync(p)) {
     let html = fs.readFileSync(p, 'utf8');
     if (!html.includes('dsh-mobile-responsive-engine')) {
-      html = html.replace('</head>', mobileStyleTag + '</head>');
+      html = html.replace('</head>', style + '\n</head>');
       fs.writeFileSync(p, html);
-      console.log('==> successfully injected mobile engine to:', p);
+      console.log('==> applied mobile engine to:', p);
     }
   }
 }
-" || true
+EOF_DSH_PATCH
+node /tmp/dsh_patch.js || true
+rm -f /tmp/dsh_patch.js
 """
 
     val agents: List<AgentSpec> = listOf(
