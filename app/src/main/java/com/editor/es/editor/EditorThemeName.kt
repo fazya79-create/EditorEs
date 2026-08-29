@@ -4,29 +4,22 @@ import io.github.rosemoe.sora.widget.CodeEditor
 
 /**
  * Editor color themes. Names are persisted via AppSettings (key "editor_theme").
+ * All themes are TextMate theme JSONs - see EditorTheme.applyTheme.
  */
 enum class EditorThemeName(
     val displayName: String,
     val description: String
 ) {
-    TEXTMATE("TextMate (VS Code)", "Grammar-aware dark_plus highlighting"),
-    DRACULA("Dracula", "Purple / pink / cyan palette on #282a36"),
-    DARCOLA("Darcula", "Android Studio classic dark"),
-    VS2019("VS 2019 Dark", "Visual Studio 2019 dark"),
-    ECLIPSE("Eclipse", "Classic light IDE"),
-    GITHUB("GitHub Dark", "GitHub's official dark"),
-    NOTEPADXX("Notepad++", "Classic Notepad++ styling");
+    TEXTMATE("TextMate (VS Code)", "EditorEs green-on-teal dark"),
+    DRACULA("Dracula", "Pink / purple / cyan on #282a36"),
+    DARCOLA("Darcula", "Android Studio: orange keywords, amber functions"),
+    VS2019("VS 2019 Dark", "Blue keywords, teal types, orange strings"),
+    ECLIPSE("Eclipse", "Classic light IDE, maroon keywords"),
+    GITHUB("GitHub Dark", "Red keywords, purple functions on #0d1117"),
+    NOTEPADXX("Notepad++", "Classic light, blue keywords, purple strings");
 
     fun apply(editor: CodeEditor) {
-        when (this) {
-            TEXTMATE -> EditorTheme.applyTextMate(editor)
-            DRACULA -> EditorTheme.applyDracula(editor)
-            DARCOLA -> EditorTheme.applyDarcula(editor)
-            VS2019 -> EditorTheme.applyVS2019(editor)
-            ECLIPSE -> EditorTheme.applyEclipse(editor)
-            GITHUB -> EditorTheme.applyGitHub(editor)
-            NOTEPADXX -> EditorTheme.applyNotepadXX(editor)
-        }
+        EditorTheme.applyTheme(editor, name)
     }
 
     companion object {
