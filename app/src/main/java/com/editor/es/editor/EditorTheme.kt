@@ -62,7 +62,6 @@ object EditorTheme {
                 setColor(IDENTIFIER_NAME, 0xFFF8F8F2.toInt())
                 setColor(IDENTIFIER_VAR, 0xFF8BE9FD.toInt())    // cyan
                 setColor(LITERAL, 0xFFF1FA8C.toInt())           // yellow
-                setColor(NUMBER_LITERAL, 0xFFBD93F9.toInt())    // purple
                 setColor(ANNOTATION, 0xFF8BE9FD.toInt())
                 setColor(LINE_NUMBER, 0xFF6272A4.toInt())
                 setColor(LINE_NUMBER_CURRENT, 0xFFF8F8F2.toInt())
