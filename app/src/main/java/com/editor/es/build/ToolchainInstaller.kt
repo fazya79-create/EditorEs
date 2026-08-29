@@ -94,8 +94,9 @@ class ToolchainInstaller(private val context: Context, private val kind: Toolcha
         root.mkdirs()
         val pendingLinks = mutableListOf<Pair<File, String>>()
         var count = 0
+        // Use larger buffer and stream properly to avoid OOM on large archives
         TarArchiveInputStream(
-            XZCompressorInputStream(BufferedInputStream(archive.inputStream(), 512 * 1024))
+            XZCompressorInputStream(BufferedInputStream(archive.inputStream(), 1024 * 1024))
         ).use { tar ->
             while (true) {
                 if (cancelled.get()) throw DownloadCancelledException()
@@ -123,7 +124,8 @@ class ToolchainInstaller(private val context: Context, private val kind: Toolcha
                     else -> {
                         target.parentFile?.mkdirs()
                         FileOutputStream(target).use { out ->
-                            val buffer = ByteArray(128 * 1024)
+                            // Stream with smaller chunks to reduce memory pressure
+                            val buffer = ByteArray(32 * 1024)
                             while (true) {
                                 val read = tar.read(buffer)
                                 if (read == -1) break
@@ -142,7 +144,7 @@ class ToolchainInstaller(private val context: Context, private val kind: Toolcha
             if (!source.exists()) continue
             target.delete()
             if (!runCatching {
-                    java.nio.file.Files.createLink(target.toPath(), source.toPath())
+                    java.nio.file.Files.createLink(target.toPath(), source.toPath()
                 }.isSuccess
             ) {
                 runCatching { source.copyTo(target, overwrite = true) }
