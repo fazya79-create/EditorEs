@@ -27,9 +27,7 @@ object EditorTheme {
     const val THEME_DRACULA = "DRACULA"     // dracula.json
     const val THEME_DARCOLA = "DARCOLA"     // darcula.json
     const val THEME_VS2019 = "VS2019"       // vs2019.json
-    const val THEME_ECLIPSE = "ECLIPSE"     // eclipse.json
     const val THEME_GITHUB = "GITHUB"       // github.json
-    const val THEME_NOTEPADXX = "NOTEPADXX" // notepadxx.json
 
     private val loadedThemes = mutableSetOf<String>()
 
@@ -37,9 +35,7 @@ object EditorTheme {
         THEME_DRACULA -> "textmate/dracula.json"
         THEME_DARCOLA -> "textmate/darcula.json"
         THEME_VS2019 -> "textmate/vs2019.json"
-        THEME_ECLIPSE -> "textmate/eclipse.json"
         THEME_GITHUB -> "textmate/github.json"
-        THEME_NOTEPADXX -> "textmate/notepadxx.json"
         else -> "textmate/dark_plus.json"
     }
 
@@ -47,9 +43,7 @@ object EditorTheme {
         THEME_DRACULA -> "dracula"
         THEME_DARCOLA -> "Darcula"
         THEME_VS2019 -> "VS2019 Dark"
-        THEME_ECLIPSE -> "Eclipse Light"
         THEME_GITHUB -> "GitHub Dark"
-        THEME_NOTEPADXX -> "Notepad++"
         else -> "dark_plus"
     }
 
@@ -64,9 +58,7 @@ object EditorTheme {
                 assetThemeFile(themeName),
                 null
             )
-            registry.loadTheme(ThemeModel(source, registryName).apply {
-                isDark = themeName != THEME_ECLIPSE && themeName != THEME_NOTEPADXX
-            })
+            registry.loadTheme(ThemeModel(source, registryName).apply { isDark = true })
             loadedThemes.add(registryName)
         }
     }
@@ -109,9 +101,5 @@ object EditorTheme {
 
     fun applyVS2019(editor: CodeEditor) = applyTheme(editor, THEME_VS2019)
 
-    fun applyEclipse(editor: CodeEditor) = applyTheme(editor, THEME_ECLIPSE)
-
     fun applyGitHub(editor: CodeEditor) = applyTheme(editor, THEME_GITHUB)
-
-    fun applyNotepadXX(editor: CodeEditor) = applyTheme(editor, THEME_NOTEPADXX)
 }

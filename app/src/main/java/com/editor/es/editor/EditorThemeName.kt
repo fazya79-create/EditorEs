@@ -14,9 +14,7 @@ enum class EditorThemeName(
     DRACULA("Dracula", "Pink / purple / cyan on #282a36"),
     DARCOLA("Darcula", "Android Studio: orange keywords, amber functions"),
     VS2019("VS 2019 Dark", "Blue keywords, teal types, orange strings"),
-    ECLIPSE("Eclipse", "Classic light IDE, maroon keywords"),
-    GITHUB("GitHub Dark", "Red keywords, purple functions on #0d1117"),
-    NOTEPADXX("Notepad++", "Classic light, blue keywords, purple strings");
+    GITHUB("GitHub Dark", "Red keywords, purple functions on #0d1117");
 
     fun apply(editor: CodeEditor) {
         EditorTheme.applyTheme(editor, name)
