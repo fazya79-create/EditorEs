@@ -130,14 +130,14 @@ if ! command -v curl >/dev/null 2>&1; then
 fi
 curl -fsSL https://hermes-agent.nousresearch.com/install.sh | bash
 if ! command -v hermes >/dev/null 2>&1; then
-  for candidate in "\$HOME/.local/bin" "\$HOME/.hermes/bin" "\$HOME/bin"; do
-    if [ -x "\$candidate/hermes" ]; then
-      ln -sf "\$candidate/hermes" /usr/local/bin/hermes || true
+  for candidate in "${'$'}HOME/.local/bin" "${'$'}HOME/.hermes/bin" "${'$'}HOME/bin"; do
+    if [ -x "${'$'}candidate/hermes" ]; then
+      ln -sf "${'$'}candidate/hermes" /usr/local/bin/hermes || true
       break
     fi
   done
 fi
-echo "==> ready: \$(command -v hermes || echo NOT_FOUND)"
+echo "==> ready: ${'$'}(command -v hermes || echo NOT_FOUND)"
 hermes --version || true
 echo "==> next: run 'hermes setup' to configure a model provider"
 """
