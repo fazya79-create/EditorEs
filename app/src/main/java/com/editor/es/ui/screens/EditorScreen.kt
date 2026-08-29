@@ -23,6 +23,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.imePadding
@@ -35,7 +36,6 @@ import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
@@ -864,8 +864,14 @@ fun EditorScreen(
                                         active = tab.path == activePath,
                                         menuExpanded = tabMenuFor == tab.path,
                                         onClick = {
-                                            switchTab(tab.path)
-                                            tabMenuFor = tab.path
+                                            if (tab.path == activePath) {
+                                                // Already on this tab → open the tab menu
+                                                tabMenuFor = tab.path
+                                            } else {
+                                                // Clicking another tab = just switch, no menu
+                                                switchTab(tab.path)
+                                                tabMenuFor = null
+                                            }
                                         },
                                         onDismissMenu = { tabMenuFor = null },
                                         onCloseFile = {
@@ -1314,43 +1320,38 @@ private fun TabDropdownMenu(
     DropdownMenu(
         expanded = expanded,
         onDismissRequest = onDismiss,
-        modifier = Modifier.background(TabMenuBackground)
+        modifier = Modifier
+            .background(TabMenuBackground)
+            .width(IntrinsicSize.Max)
     ) {
-        DropdownMenuItem(
-            text = { Text(text = stringResource(R.string.close_file), fontSize = 13.sp, color = TabMenuText) },
-            leadingIcon = {
-                Icon(
-                    painter = painterResource(R.drawable.close),
-                    contentDescription = null,
-                    tint = TabMenuIcon,
-                    modifier = Modifier.size(16.dp)
-                )
-            },
-            onClick = onCloseFile
+        CompactEntry(stringResource(R.string.close_file), R.drawable.close, onCloseFile)
+        CompactEntry(stringResource(R.string.close_other_tabs), R.drawable.circle, onCloseOthers)
+        CompactEntry(stringResource(R.string.close_all_tabs), R.drawable.drag_indicator, onCloseAll)
+    }
+}
+
+@Composable
+private fun CompactEntry(label: String, iconRes: Int, onClick: () -> Unit) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(34.dp)
+            .clickable(onClick = onClick)
+            .padding(horizontal = 10.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Icon(
+            painter = painterResource(iconRes),
+            contentDescription = null,
+            tint = TabMenuIcon,
+            modifier = Modifier.size(13.dp)
         )
-        DropdownMenuItem(
-            text = { Text(text = stringResource(R.string.close_other_tabs), fontSize = 13.sp, color = TabMenuText) },
-            leadingIcon = {
-                Icon(
-                    painter = painterResource(R.drawable.circle),
-                    contentDescription = null,
-                    tint = TabMenuIcon,
-                    modifier = Modifier.size(16.dp)
-                )
-            },
-            onClick = onCloseOthers
-        )
-        DropdownMenuItem(
-            text = { Text(text = stringResource(R.string.close_all_tabs), fontSize = 13.sp, color = TabMenuText) },
-            leadingIcon = {
-                Icon(
-                    painter = painterResource(R.drawable.drag_indicator),
-                    contentDescription = null,
-                    tint = TabMenuIcon,
-                    modifier = Modifier.size(16.dp)
-                )
-            },
-            onClick = onCloseAll
+        Spacer(modifier = Modifier.width(8.dp))
+        Text(
+            text = label,
+            fontSize = 12.sp,
+            color = TabMenuText,
+            maxLines = 1
         )
     }
 }
