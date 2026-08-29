@@ -82,6 +82,7 @@ import com.editor.es.build.ToolchainPaths
 import com.editor.es.data.FileOps
 import com.editor.es.data.ProjectCreator
 import com.editor.es.editor.EditorConfigurator
+import com.editor.es.editor.EditorThemeName
 import com.editor.es.editor.EditorSearch
 import com.editor.es.editor.EditorLanguageResolver
 import com.editor.es.editor.EditorPane
@@ -662,6 +663,14 @@ fun EditorScreen(
 
     LaunchedEffect(editorRef) {
         editorRef?.let { EditorConfigurator.apply(it) }
+    }
+
+    // Re-apply the selected editor theme when returning from Settings
+    val themeName = AppSettings.string(EditorThemeName.PREF_KEY, EditorThemeName.DEFAULT.name)
+    LaunchedEffect(themeName) {
+        editorRef?.let { ref ->
+            EditorThemeName.fromName(themeName).apply(ref)
+        }
     }
 
     DisposableEffect(Unit) {

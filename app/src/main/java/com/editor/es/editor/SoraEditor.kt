@@ -4,6 +4,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.viewinterop.AndroidView
+import android.graphics.Typeface
 import io.github.rosemoe.sora.widget.CodeEditor
 
 @Composable
@@ -16,8 +17,13 @@ fun EditorPane(
         factory = { viewContext ->
             TextMateSetup.ensureInitialized(viewContext)
             CodeEditor(viewContext).apply {
-                EditorTheme.apply(this, viewContext)
-                EditorConfigurator.apply(this)
+                EditorThemeName.current().apply(this)
+                runCatching {
+                    typefaceText = Typeface.createFromAsset(
+                        viewContext.assets,
+                        "fonts/JetBrainsMono-Regular.ttf"
+                    )
+                }
             }.also(onEditorCreated)
         },
         onRelease = { editor ->

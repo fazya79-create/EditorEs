@@ -163,6 +163,11 @@ fun SettingsScreen(onBack: () -> Unit, onInstallAgent: (String) -> Unit = {}) {
                 items(specs, key = { it.key }) { spec ->
                     SettingRow(spec = spec, revision = revision)
                 }
+                if (tab == SettingsTab.Editor) {
+                    item(key = "editor_theme") {
+                        ThemeSelectorRow()
+                    }
+                }
             }
         }
     }
