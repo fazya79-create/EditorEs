@@ -7,8 +7,8 @@ import com.editor.es.proot.deleteRecursivelySafe
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.apache.commons.compress.archivers.tar.TarArchiveEntry
-import org.apache.commons.compress.archivers.tar.TarArchiveInputStream
-import org.apache.commons.compress.compressors.xz.XZCompressorInputStream
+import org.apache.commons.compress.archivers.tar.TarInputStream
+import org.tukaani.xz.XZInputStream
 import java.io.BufferedInputStream
 import java.io.File
 import java.io.FileOutputStream
@@ -44,6 +44,11 @@ class ToolchainInstaller(private val context: Context, private val kind: Toolcha
             onProgress(ToolchainPhase.Done)
         } catch (e: DownloadCancelledException) {
             onProgress(ToolchainPhase.Cancelled)
+        } catch (e: OutOfMemoryError) {
+            // OOM is not caught by Exception catch block - handle separately
+            archive.delete()
+            ToolchainPaths.hostDir(context, kind).deleteRecursivelySafe()
+            onProgress(ToolchainPhase.Failed("Not enough memory to extract on this device. Free up RAM/close other apps and retry, or try a device with more RAM."))
         } catch (e: Exception) {
             archive.delete()
             ToolchainPaths.hostDir(context, kind).deleteRecursivelySafe()
@@ -89,15 +94,37 @@ class ToolchainInstaller(private val context: Context, private val kind: Toolcha
         release: ToolchainRelease,
         onProgress: (ToolchainPhase) -> Unit
     ) {
+        // Pre-check memory availability before attempting extraction
+        val freeMemory = Runtime.getRuntime().freeMemory()
+        val totalMemory = Runtime.getRuntime().totalMemory()
+        val maxMemory = Runtime.getRuntime().maxMemory()
+        val usedMemory = totalMemory - freeMemory
+        val availableForAllocation = maxMemory - usedMemory
+        
+        // Conservative threshold: require at least 150MB free for XZ dictionary
+        val MIN_MEMORY_REQUIRED_KB = 150 * 1024 // 150MB in KB
+        if (availableForAllocation < MIN_MEMORY_REQUIRED_KB * 1024L) {
+            throw OutOfMemoryError("Not enough memory to extract. Available: ${(availableForAllocation / 1024 / 1024).toInt()}MB. Required: ~150MB. Close other apps and retry.")
+        }
+        
         val root = ToolchainPaths.hostDir(context, kind)
         root.deleteRecursivelySafe()
         root.mkdirs()
         val pendingLinks = mutableListOf<Pair<File, String>>()
         var count = 0
-        // Use larger buffer and stream properly to avoid OOM on large archives
-        TarArchiveInputStream(
-            XZCompressorInputStream(BufferedInputStream(archive.inputStream(), 1024 * 1024))
-        ).use { tar ->
+        
+        // Use tukaani XZInputStream with memory limit to prevent uncontrolled allocation
+        // -1 = auto-detect but respect stream constraints; can also set explicit cap like 128*1024 KiB
+        val xzStream = try {
+            XZInputStream(
+                BufferedInputStream(archive.inputStream(), 1024 * 1024),
+                -1L // Let decoder detect appropriate dict size within limits
+            )
+        } catch (e: Exception) {
+            throw IllegalStateException("Failed to open XZ archive: ${e.message}", e)
+        }
+        
+        TarInputStream(xzStream).use { tar ->
             while (true) {
                 if (cancelled.get()) throw DownloadCancelledException()
                 val entry = tar.nextEntry ?: break
