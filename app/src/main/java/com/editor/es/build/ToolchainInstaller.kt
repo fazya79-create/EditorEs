@@ -115,10 +115,8 @@ class ToolchainInstaller(private val context: Context, private val kind: Toolcha
         
         // Wrap XZInputStream in TarArchiveInputStream for proper tar extraction
         val xzStream = try {
-            XZInputStream(
-                BufferedInputStream(archive.inputStream(), 1024 * 1024),
-                -1L // Let decoder detect appropriate dict size within limits
-            )
+            // Use simple constructor with just InputStream - lets tukaani auto-detect dict size
+            XZInputStream(BufferedInputStream(archive.inputStream(), 1024 * 1024))
         } catch (e: Exception) {
             throw IllegalStateException("Failed to open XZ archive: ${e.message}", e)
         }
