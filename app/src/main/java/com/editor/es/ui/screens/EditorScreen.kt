@@ -34,6 +34,8 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
@@ -135,6 +137,9 @@ private val TabActiveForeground = Color(0xFFF2FFFA)
 private val TabInactiveForeground = Color(0xFF7FA898)
 private val DirtyDot = SpringGreen
 private val AccentGreen = SpringGreen
+private val TabMenuBackground = Color(0xFF0A222B)
+private val TabMenuText = Color(0xFFDDF5EA)
+private val TabMenuIcon = Color(0xFF6E9184)
 private val LspStatusColor = Color(0xFF6FD9AE)
 private val LspStatusBackground = Color(0xFF08202A)
 private val DrawerWidth = 220.dp
@@ -212,6 +217,8 @@ fun EditorScreen(
         RunConfigurations(context, projectDir, buildRunner)
     }
     var menuExpanded by remember { mutableStateOf(false) }
+    var tabMenuFor by remember { mutableStateOf<String?>(null) }
+    var pendingCloseQueue by remember { mutableStateOf<List<String>>(emptyList()) }
     var consoleMaximized by remember { mutableStateOf(false) }
     var toolsExpanded by remember { mutableStateOf(false) }
     var findState by remember { mutableStateOf(FindState()) }
@@ -336,6 +343,36 @@ fun EditorScreen(
             tabs.removeAt(index)
         }
     }
+
+    // Close tabs one by one; dirty files queue the existing per-file
+    // "Save changes?" dialog, then the batch resumes automatically.
+    fun closeTabs(paths: List<String>) {
+        var queue = paths
+        while (queue.isNotEmpty()) {
+            val path = queue.first()
+            val tab = tabs.firstOrNull { it.path == path }
+            queue = queue.drop(1)
+            if (tab == null) continue
+            if (tab.dirty) {
+                pendingCloseQueue = queue
+                dialog = ExplorerDialog.UnsavedClose(path, tab.name)
+                return
+            }
+            removeTab(path)
+        }
+    }
+
+    fun resumePendingClose() {
+        val pending = pendingCloseQueue
+        if (pending.isEmpty()) return
+        pendingCloseQueue = emptyList()
+        closeTabs(pending)
+    }
+
+    fun closeOtherTabs(keepPath: String) =
+        closeTabs(tabs.filter { it.path != keepPath }.map { it.path })
+
+    fun closeAllTabs() = closeTabs(tabs.map { it.path })
 
     fun saveActive() {
         val editor = editorRef ?: return
@@ -825,13 +862,27 @@ fun EditorScreen(
                                     TabChip(
                                         tab = tab,
                                         active = tab.path == activePath,
-                                        onClick = { switchTab(tab.path) },
-                                        onClose = {
+                                        menuExpanded = tabMenuFor == tab.path,
+                                        onClick = {
+                                            switchTab(tab.path)
+                                            tabMenuFor = tab.path
+                                        },
+                                        onDismissMenu = { tabMenuFor = null },
+                                        onCloseFile = {
+                                            tabMenuFor = null
                                             if (tab.dirty) {
                                                 dialog = ExplorerDialog.UnsavedClose(tab.path, tab.name)
                                             } else {
                                                 removeTab(tab.path)
                                             }
+                                        },
+                                        onCloseOthers = {
+                                            tabMenuFor = null
+                                            closeOtherTabs(tab.path)
+                                        },
+                                        onCloseAll = {
+                                            tabMenuFor = null
+                                            closeAllTabs()
                                         }
                                     )
                                 }
@@ -1155,7 +1206,11 @@ fun EditorScreen(
         )
         is ExplorerDialog.UnsavedClose -> UnsavedChangesDialog(
             fileName = current.name,
-            onDismiss = { dialog = null },
+            onDismiss = {
+                // Cancel stops the whole batch; only Save/Don't save continue it.
+                pendingCloseQueue = emptyList()
+                dialog = null
+            },
             onSave = {
                 val path = current.path
                 val editor = editorRef
@@ -1166,15 +1221,18 @@ fun EditorScreen(
                         withContext(Dispatchers.IO) { runCatching { File(path).writeText(text) } }
                         removeTab(path)
                         dialog = null
+                        resumePendingClose()
                     }
                 } else {
                     removeTab(path)
                     dialog = null
+                    resumePendingClose()
                 }
             },
             onDontSave = {
                 removeTab(current.path)
                 dialog = null
+                resumePendingClose()
             }
         )
         null -> Unit
@@ -1185,8 +1243,12 @@ fun EditorScreen(
 private fun TabChip(
     tab: TabItem,
     active: Boolean,
+    menuExpanded: Boolean,
     onClick: () -> Unit,
-    onClose: () -> Unit
+    onDismissMenu: () -> Unit,
+    onCloseFile: () -> Unit,
+    onCloseOthers: () -> Unit,
+    onCloseAll: () -> Unit
 ) {
     Column(
         modifier = Modifier
@@ -1230,16 +1292,66 @@ private fun TabChip(
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
             )
-            Spacer(modifier = Modifier.width(7.dp))
-            Icon(
-                painter = painterResource(R.drawable.close),
-                contentDescription = stringResource(R.string.close),
-                tint = if (active) Color(0xFFE4F5EC) else TabInactiveForeground,
-                modifier = Modifier
-                    .size(15.dp)
-                    .clickable(onClick = onClose)
-            )
         }
+        TabDropdownMenu(
+            expanded = menuExpanded,
+            onDismiss = onDismissMenu,
+            onCloseFile = onCloseFile,
+            onCloseOthers = onCloseOthers,
+            onCloseAll = onCloseAll
+        )
+    }
+}
+
+@Composable
+private fun TabDropdownMenu(
+    expanded: Boolean,
+    onDismiss: () -> Unit,
+    onCloseFile: () -> Unit,
+    onCloseOthers: () -> Unit,
+    onCloseAll: () -> Unit
+) {
+    DropdownMenu(
+        expanded = expanded,
+        onDismissRequest = onDismiss,
+        modifier = Modifier.background(TabMenuBackground)
+    ) {
+        DropdownMenuItem(
+            text = { Text(text = stringResource(R.string.close_file), fontSize = 13.sp, color = TabMenuText) },
+            leadingIcon = {
+                Icon(
+                    painter = painterResource(R.drawable.close),
+                    contentDescription = null,
+                    tint = TabMenuIcon,
+                    modifier = Modifier.size(16.dp)
+                )
+            },
+            onClick = onCloseFile
+        )
+        DropdownMenuItem(
+            text = { Text(text = stringResource(R.string.close_other_tabs), fontSize = 13.sp, color = TabMenuText) },
+            leadingIcon = {
+                Icon(
+                    painter = painterResource(R.drawable.circle),
+                    contentDescription = null,
+                    tint = TabMenuIcon,
+                    modifier = Modifier.size(16.dp)
+                )
+            },
+            onClick = onCloseOthers
+        )
+        DropdownMenuItem(
+            text = { Text(text = stringResource(R.string.close_all_tabs), fontSize = 13.sp, color = TabMenuText) },
+            leadingIcon = {
+                Icon(
+                    painter = painterResource(R.drawable.drag_indicator),
+                    contentDescription = null,
+                    tint = TabMenuIcon,
+                    modifier = Modifier.size(16.dp)
+                )
+            },
+            onClick = onCloseAll
+        )
     }
 }
 

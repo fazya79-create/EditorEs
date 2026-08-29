@@ -18,6 +18,9 @@
     <string name="create">Create</string>
     <string name="creating">Creating…</string>
     <string name="close">Close</string>
+    <string name="close_file">Close file</string>
+    <string name="close_other_tabs">Close other tabs</string>
+    <string name="close_all_tabs">Close all tabs</string>
     <string name="save">Save</string>
     <string name="undo">Undo</string>
     <string name="redo">Redo</string>
