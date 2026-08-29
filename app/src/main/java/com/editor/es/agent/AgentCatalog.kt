@@ -60,7 +60,7 @@ echo "==> ready: $(command -v $binary || echo NOT_FOUND)"
             name = "DeepSeek Harness",
             subtitle = "DeepSeek agentic harness · npm @deepseek-ai/dsh",
             binary = "dsh",
-            docUrl = "https://github.com/deepseek-ai/deepseek-harness",
+            docUrl = "https://api-docs.deepseek.com/guides/agent_harness",
             iconRes = R.drawable.ic_agent_deepseek,
             pkg = "@deepseek-ai/dsh"
         ),
@@ -69,7 +69,7 @@ echo "==> ready: $(command -v $binary || echo NOT_FOUND)"
             name = "Claude Code",
             subtitle = "Anthropic agentic CLI · npm @anthropic-ai/claude-code",
             binary = "claude",
-            docUrl = "https://docs.anthropic.com/en/docs/agents-and-tools/claude-code/overview",
+            docUrl = "https://code.claude.com/docs/en/overview",
             iconRes = R.drawable.ic_agent_claude,
             pkg = "@anthropic-ai/claude-code"
         ),
@@ -78,7 +78,7 @@ echo "==> ready: $(command -v $binary || echo NOT_FOUND)"
             name = "OpenCode",
             subtitle = "Open source terminal agent · npm opencode-ai",
             binary = "opencode",
-            docUrl = "https://github.com/opencode-ai/opencode",
+            docUrl = "https://opencode.ai/docs",
             iconRes = R.drawable.ic_agent_opencode,
             pkg = "opencode-ai"
         ),
@@ -87,7 +87,7 @@ echo "==> ready: $(command -v $binary || echo NOT_FOUND)"
             name = "OpenAI Codex",
             subtitle = "OpenAI coding agent · npm @openai/codex",
             binary = "codex",
-            docUrl = "https://github.com/openai/codex",
+            docUrl = "https://developers.openai.com/codex/cli",
             iconRes = R.drawable.ic_agent_codex,
             pkg = "@openai/codex"
         ),
@@ -96,7 +96,7 @@ echo "==> ready: $(command -v $binary || echo NOT_FOUND)"
             name = "Qoder CLI",
             subtitle = "Alibaba Qoder agent · npm @qoder-ai/qodercli",
             binary = "qodercli",
-            docUrl = "https://qoder.alibabacloud.com",
+            docUrl = "https://qoder.com/cli",
             iconRes = R.drawable.ic_agent_qoder,
             pkg = "@qoder-ai/qodercli"
         ),
@@ -105,7 +105,7 @@ echo "==> ready: $(command -v $binary || echo NOT_FOUND)"
             name = "GitHub Copilot CLI",
             subtitle = "GitHub Copilot agent · npm @github/copilot",
             binary = "copilot",
-            docUrl = "https://docs.github.com/en/copilot",
+            docUrl = "https://docs.github.com/en/copilot/how-tos/copilot-cli",
             iconRes = R.drawable.ic_agent_copilot,
             pkg = "@github/copilot"
         )
