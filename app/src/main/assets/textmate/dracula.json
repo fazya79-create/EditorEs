@@ -1,0 +1,135 @@
+{
+  "name": "Dracula",
+  "type": "dark",
+  "colors": {
+    "editor.background": "#282A36",
+    "editor.foreground": "#F8F8F2",
+    "editorLineNumber.foreground": "#6272A4",
+    "editorLineNumber.activeForeground": "#F8F8F2",
+    "editor.lineHighlightBackground": "#44475A",
+    "editor.selectionBackground": "#44475A",
+    "editorCursor.foreground": "#F8F8F2",
+    "editorIndentGuide.background": "#44475A",
+    "editorIndentGuide.activeBackground": "#6272A4",
+    "editorWidget.background": "#21222C",
+    "editorSuggestWidget.background": "#21222C",
+    "editorSuggestWidget.selectedBackground": "#44475A"
+  },
+  "tokenColors": [
+    {
+      "scope": ["comment", "punctuation.definition.comment"],
+      "settings": {
+        "foreground": "#6272A4",
+        "fontStyle": "italic"
+      }
+    },
+    {
+      "scope": ["string", "punctuation.definition.string", "string.quoted.double.include"],
+      "settings": {
+        "foreground": "#F1FA8C"
+      }
+    },
+    {
+      "scope": ["constant.numeric"],
+      "settings": {
+        "foreground": "#BD93F9"
+      }
+    },
+    {
+      "scope": ["constant.character.escape"],
+      "settings": {
+        "foreground": "#FF79C6"
+      }
+    },
+    {
+      "scope": ["constant.language", "constant.character", "constant.other"],
+      "settings": {
+        "foreground": "#BD93F9"
+      }
+    },
+    {
+      "scope": [
+        "keyword",
+        "keyword.control",
+        "keyword.operator.new",
+        "storage.type",
+        "storage.modifier"
+      ],
+      "settings": {
+        "foreground": "#FF79C6"
+      }
+    },
+    {
+      "scope": ["keyword.operator"],
+      "settings": {
+        "foreground": "#FF79C6"
+      }
+    },
+    {
+      "scope": ["keyword.control.directive", "punctuation.definition.directive"],
+      "settings": {
+        "foreground": "#FF79C6"
+      }
+    },
+    {
+      "scope": [
+        "entity.name.function",
+        "support.function",
+        "meta.function-call",
+        "entity.name.function.preprocessor"
+      ],
+      "settings": {
+        "foreground": "#50FA7B"
+      }
+    },
+    {
+      "scope": [
+        "entity.name.type",
+        "entity.name.class",
+        "entity.name.struct",
+        "entity.name.namespace",
+        "support.type",
+        "support.class"
+      ],
+      "settings": {
+        "foreground": "#8BE9FD"
+      }
+    },
+    {
+      "scope": ["variable.parameter"],
+      "settings": {
+        "foreground": "#FFB86C"
+      }
+    },
+    {
+      "scope": ["variable", "variable.other"],
+      "settings": {
+        "foreground": "#F8F8F2"
+      }
+    },
+    {
+      "scope": ["variable.other.property", "meta.member"],
+      "settings": {
+        "foreground": "#F8F8F2"
+      }
+    },
+    {
+      "scope": ["punctuation.separator", "punctuation.terminator", "punctuation.definition.block"],
+      "settings": {
+        "foreground": "#F8F8F2"
+      }
+    },
+    {
+      "scope": ["meta.preprocessor"],
+      "settings": {
+        "foreground": "#FFB86C"
+      }
+    },
+    {
+      "scope": ["entity.name.tag"],
+      "settings": {
+        "foreground": "#FF79C6"
+      }
+    }
+  ]
+}

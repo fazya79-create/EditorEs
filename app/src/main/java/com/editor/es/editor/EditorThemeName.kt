@@ -4,7 +4,6 @@ import io.github.rosemoe.sora.widget.CodeEditor
 
 /**
  * Editor color themes. Names are persisted via AppSettings (key "editor_theme").
- * Extension-name style, avoids clashing with the existing `EditorTheme` object.
  */
 enum class EditorThemeName(
     val displayName: String,
