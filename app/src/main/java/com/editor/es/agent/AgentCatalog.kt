@@ -60,7 +60,7 @@ echo "==> ready: $(command -v $binary || echo NOT_FOUND)"
             name = "DeepSeek Harness",
             subtitle = "DeepSeek agentic harness · npm @deepseek-ai/dsh",
             binary = "dsh",
-            docUrl = "https://api-docs.deepseek.com/guides/agent_harness",
+            docUrl = "https://deepseek-harness.github.io/deepseek-harness/",
             iconRes = R.drawable.ic_agent_deepseek,
             pkg = "@deepseek-ai/dsh"
         ),
