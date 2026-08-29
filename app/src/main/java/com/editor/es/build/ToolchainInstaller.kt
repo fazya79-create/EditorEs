@@ -7,7 +7,7 @@ import com.editor.es.proot.deleteRecursivelySafe
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.apache.commons.compress.archivers.tar.TarArchiveEntry
-import org.apache.commons.compress.archivers.tar.TarInputStream
+import org.apache.commons.compress.archivers.tar.TarArchiveInputStream
 import org.tukaani.xz.XZInputStream
 import java.io.BufferedInputStream
 import java.io.File
@@ -113,8 +113,7 @@ class ToolchainInstaller(private val context: Context, private val kind: Toolcha
         val pendingLinks = mutableListOf<Pair<File, String>>()
         var count = 0
         
-        // Use tukaani XZInputStream with memory limit to prevent uncontrolled allocation
-        // -1 = auto-detect but respect stream constraints; can also set explicit cap like 128*1024 KiB
+        // Wrap XZInputStream in TarArchiveInputStream for proper tar extraction
         val xzStream = try {
             XZInputStream(
                 BufferedInputStream(archive.inputStream(), 1024 * 1024),
@@ -124,7 +123,7 @@ class ToolchainInstaller(private val context: Context, private val kind: Toolcha
             throw IllegalStateException("Failed to open XZ archive: ${e.message}", e)
         }
         
-        TarInputStream(xzStream).use { tar ->
+        TarArchiveInputStream(xzStream).use { tar ->
             while (true) {
                 if (cancelled.get()) throw DownloadCancelledException()
                 val entry = tar.nextEntry ?: break
