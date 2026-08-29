@@ -144,7 +144,7 @@ class ToolchainInstaller(private val context: Context, private val kind: Toolcha
             if (!source.exists()) continue
             target.delete()
             if (!runCatching {
-                    java.nio.file.Files.createLink(target.toPath(), source.toPath()
+                    java.nio.file.Files.createLink(target.toPath(), source.toPath())
                 }.isSuccess
             ) {
                 runCatching { source.copyTo(target, overwrite = true) }
