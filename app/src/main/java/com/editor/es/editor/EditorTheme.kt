@@ -1,5 +1,6 @@
 package com.editor.es.editor
 
+import android.content.Context
 import android.graphics.Typeface
 import io.github.rosemoe.sora.langs.textmate.TextMateColorScheme
 import io.github.rosemoe.sora.langs.textmate.registry.FileProviderRegistry
