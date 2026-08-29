@@ -108,6 +108,39 @@ echo "==> ready: $(command -v $binary || echo NOT_FOUND)"
             docUrl = "https://docs.github.com/en/copilot/how-tos/copilot-cli",
             iconRes = R.drawable.ic_agent_copilot,
             pkg = "@github/copilot"
+        ),
+        AgentSpec(
+            id = "hermes-agent",
+            name = "Hermes Agent",
+            subtitle = "Nous Research self-improving agent · curl installer",
+            binary = "hermes",
+            docUrl = "https://hermes-agent.nousresearch.com/docs/",
+            iconRes = R.drawable.ic_agent_hermes,
+            installScript = """
+set -e
+echo "==> installing Hermes Agent (Nous Research)"
+if command -v hermes >/dev/null 2>&1; then
+  echo "==> hermes is already installed"
+  hermes --version || true
+  exit 0
+fi
+if ! command -v curl >/dev/null 2>&1; then
+  apt-get update -y
+  apt-get install -y curl ca-certificates
+fi
+curl -fsSL https://hermes-agent.nousresearch.com/install.sh | bash
+if ! command -v hermes >/dev/null 2>&1; then
+  for candidate in "\$HOME/.local/bin" "\$HOME/.hermes/bin" "\$HOME/bin"; do
+    if [ -x "\$candidate/hermes" ]; then
+      ln -sf "\$candidate/hermes" /usr/local/bin/hermes || true
+      break
+    fi
+  done
+fi
+echo "==> ready: \$(command -v hermes || echo NOT_FOUND)"
+hermes --version || true
+echo "==> next: run 'hermes setup' to configure a model provider"
+"""
         )
     )
 
