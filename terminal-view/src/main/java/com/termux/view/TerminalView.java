@@ -971,17 +971,33 @@ public final class TerminalView extends View {
         return true;
     }
 
+    private final Runnable mDebouncedUpdateSize = new Runnable() {
+        @Override
+        public void run() {
+            updateSizeNow();
+        }
+    };
+
     /**
      * This is called during layout when the size of this view has changed. If you were just added to the view
      * hierarchy, you're called with the old values of 0.
      */
     @Override
     protected void onSizeChanged(int w, int h, int oldw, int oldh) {
-        updateSize();
+        if (oldw == 0 && oldh == 0) {
+            updateSizeNow();
+        } else {
+            removeCallbacks(mDebouncedUpdateSize);
+            postDelayed(mDebouncedUpdateSize, 80);
+        }
     }
 
     /** Check if the terminal size in rows and columns should be updated. */
     public void updateSize() {
+        updateSizeNow();
+    }
+
+    private void updateSizeNow() {
         int viewWidth = getWidth();
         int viewHeight = getHeight();
         if (viewWidth == 0 || viewHeight == 0 || mTermSession == null) return;

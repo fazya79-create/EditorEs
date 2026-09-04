@@ -502,6 +502,7 @@ fun TerminalScreen(
                 .fillMaxSize()
                 .background(TerminalBackground)
                 .statusBarsPadding()
+                .imePadding()
                 .navigationBarsPadding()
         ) {
             // === Top Bar with Custom Hamburger Menu ===
