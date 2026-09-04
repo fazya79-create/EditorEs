@@ -106,7 +106,7 @@ import com.editor.es.ui.explorer.ExplorerDrawerContent
 import com.editor.es.ui.explorer.ExplorerState
 import com.editor.es.ui.explorer.NodeAction
 import com.editor.es.ui.explorer.NodeActionSheet
-import com.editor.es.ui.icons.XedIcons
+import com.editor.es.ui.icons.Icons
 import com.editor.es.ui.theme.EditorEsPalette
 import com.editor.es.ui.theme.SpringGreen
 import com.editor.es.patch.ApkPatcher
@@ -1284,7 +1284,7 @@ private fun TabChip(
                 Spacer(modifier = Modifier.width(7.dp))
             }
             Icon(
-                painter = painterResource(XedIcons.fileType(tab.name)),
+                painter = painterResource(Icons.fileType(tab.name)),
                 contentDescription = null,
                 tint = if (active) AccentGreen else Color(0xFF9BC4B4),
                 modifier = Modifier.size(16.dp)

@@ -1,5 +1,6 @@
 Portions of this app bundle vector icon assets from Xed-Editor
-(https://github.com/Xed-Editor/Xed-Editor), which is licensed under the
+(https://github.com/Xed-Editor/Xed-Editor) and AndroidIDE
+(https://github.com/AndroidIDEOfficial/AndroidIDE), both licensed under the
 GNU General Public License version 3.
 
 Files affected: app/src/main/res/drawable/*.xml (file type and UI action icons)

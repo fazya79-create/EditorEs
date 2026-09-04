@@ -41,7 +41,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.editor.es.R
-import com.editor.es.ui.icons.XedIcons
+import com.editor.es.ui.icons.Icons
 import com.editor.es.ui.theme.SpringGreen
 import java.io.File
 
@@ -332,7 +332,7 @@ private fun TreeRowItem(
         } else {
             Spacer(modifier = Modifier.width(18.dp))
             Icon(
-                painter = painterResource(XedIcons.fileType(row.file.name)),
+                painter = painterResource(Icons.fileType(row.file.name)),
                 contentDescription = null,
                 tint = FileTint,
                 modifier = Modifier.size(17.dp)

@@ -8,7 +8,7 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.graphics.painter.Painter
 import com.editor.es.R
 
-object XedIcons {
+object Icons {
 
     @DrawableRes
     fun fileType(fileName: String): Int {
@@ -60,7 +60,7 @@ object XedIcons {
         "java" to R.drawable.java,
         "jav" to R.drawable.java,
         "kt" to R.drawable.kotlin,
-        "kts" to R.drawable.kotlin,
+        "kts" to R.drawable.kts,
         "json" to R.drawable.json,
         "jsonc" to R.drawable.json,
         "jsonl" to R.drawable.json,
@@ -172,8 +172,8 @@ object XedIcons {
 
 @Composable
 fun rememberFileIcon(fileName: String): ImageVector =
-    ImageVector.vectorResource(XedIcons.fileType(fileName))
+    ImageVector.vectorResource(Icons.fileType(fileName))
 
 @Composable
 fun fileIconPainter(fileName: String): Painter =
-    painterResource(XedIcons.fileType(fileName))
+    painterResource(Icons.fileType(fileName))
