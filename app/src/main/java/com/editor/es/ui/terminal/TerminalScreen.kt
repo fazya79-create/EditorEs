@@ -335,9 +335,7 @@ fun TerminalScreen(
             val remaining = TermuxService.allSessions()
             if (remaining.isNotEmpty()) {
                 val next = remaining.last()
-                sessionRef = next.session
-                activeSessionId = next.id
-                view.attachSession(next.session)
+                attachSessionToView(next.session, next.id, view)
             } else {
                 terminateTerminal()
             }
@@ -369,22 +367,21 @@ fun TerminalScreen(
             return
         }
 
+        var sessionId = 0
         val session = instantiateSession(context, view, projectDir, initialCommand) {
+            TermuxService.killSession(context, sessionId)
             val remaining = TermuxService.allSessions()
-            if (remaining.size <= 1) {
-                terminateTerminal()
+            if (remaining.isNotEmpty()) {
+                val next = remaining.last()
+                terminalView?.let { attachSessionToView(next.session, next.id, it) }
             } else {
-                TermuxService.killSession(context, activeSessionId)
-                val next = TermuxService.allSessions().lastOrNull()
-                if (next != null) {
-                    terminalView?.let { attachSessionToView(next.session, next.id, it) }
-                }
+                terminateTerminal()
             }
             sessionsVersion++
         }
 
         val sessionName = projectDir?.name ?: "Session ${TermuxService.sessionCount() + 1}"
-        val sessionId = if (tag != null) {
+        sessionId = if (tag != null) {
             TermuxService.registerTagged(context, tag, session, sessionName)
         } else {
             TermuxService.registerSession(context, session, sessionName)
@@ -397,17 +394,19 @@ fun TerminalScreen(
     fun createNewSession(view: TerminalView) {
         val newSessionNumber = TermuxService.allSessions().size + 1
         val sessionName = "Session $newSessionNumber"
+        var id = 0
         val session = instantiateSession(context, view, projectDir, null) {
-            TermuxService.killSession(context, activeSessionId)
-            val next = TermuxService.allSessions().lastOrNull()
-            if (next != null) {
+            TermuxService.killSession(context, id)
+            val remaining = TermuxService.allSessions()
+            if (remaining.isNotEmpty()) {
+                val next = remaining.last()
                 terminalView?.let { attachSessionToView(next.session, next.id, it) }
             } else {
                 terminateTerminal()
             }
             sessionsVersion++
         }
-        val id = TermuxService.registerSession(context, session, sessionName)
+        id = TermuxService.registerSession(context, session, sessionName)
         attachSessionToView(session, id, view)
         closeDrawer()
         sessionsVersion++

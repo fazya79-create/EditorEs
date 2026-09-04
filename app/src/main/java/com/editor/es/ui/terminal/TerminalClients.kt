@@ -28,7 +28,7 @@ class EditorEsSessionClient(
 
     override fun onSessionFinished(finishedSession: TerminalSession) {
         view.post {
-            if (finishedSession == view.currentSession) onShellExited()
+            onShellExited()
         }
     }
 
