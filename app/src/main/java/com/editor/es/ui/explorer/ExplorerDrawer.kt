@@ -21,7 +21,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.Icons as MaterialIcons
 import androidx.compose.material.icons.filled.Vaccines
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -191,7 +191,7 @@ fun ExplorerDrawerContent(
             )
             FooterAction(
                 label = stringResource(R.string.inject),
-                icon = Icons.Filled.Vaccines,
+                icon = MaterialIcons.Filled.Vaccines,
                 onClick = onOpenInject,
                 modifier = Modifier.weight(1f)
             )
