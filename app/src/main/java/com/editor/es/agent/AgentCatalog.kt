@@ -33,7 +33,8 @@ echo "==> node $(node --version), npm $(npm --version)"
         binary: String,
         docUrl: String,
         @DrawableRes iconRes: Int,
-        pkg: String
+        pkg: String,
+        postInstallHook: String = ""
     ) = AgentSpec(
         id = id,
         name = name,
@@ -49,6 +50,7 @@ if command -v $binary >/dev/null 2>&1; then
 else
   echo "==> npm install -g $pkg"
   npm install -g $pkg
+$postInstallHook
 fi
 echo "==> ready: $(command -v $binary || echo NOT_FOUND)"
 """
@@ -80,7 +82,8 @@ echo "==> ready: $(command -v $binary || echo NOT_FOUND)"
             binary = "opencode",
             docUrl = "https://opencode.ai/docs",
             iconRes = R.drawable.ic_agent_opencode,
-            pkg = "opencode-ai"
+            pkg = "opencode-ai",
+            postInstallHook = "  [ -f /usr/lib/node_modules/opencode-ai/postinstall.mjs ] && node /usr/lib/node_modules/opencode-ai/postinstall.mjs"
         ),
         npmAgent(
             id = "codex",
