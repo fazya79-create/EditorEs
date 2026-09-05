@@ -69,6 +69,10 @@ android {
 
     packaging {
         resources.excludes += "/META-INF/{AL2.0,LGPL2.1}"
+        resources.excludes += "src/*"
+        resources.excludes += "bundle.properties"
+        resources.excludes += "DebugProbesKt.bin"
+        resources.excludes += "org/apache/commons/codec/language/*"
         resources.pickFirsts += listOf(
             "license/README.dom.txt",
             "license/LICENSE.dom-documentation.txt",
