@@ -397,16 +397,17 @@ fun EditorScreen(
         captureActiveText()
         val pending = tabs.filter { it.dirty }
         if (pending.isEmpty()) return 0
-        val failures = withContext(Dispatchers.IO) {
-            pending.count { tab ->
+        val failed = withContext(Dispatchers.IO) {
+            pending.filter { tab ->
                 runCatching { File(tab.path).writeText(tab.text) }.isFailure
-            }
+            }.map { it.path }.toSet()
         }
         for (tab in pending) {
+            if (tab.path in failed) continue
             val index = tabs.indexOfFirst { it.path == tab.path }
             if (index >= 0) tabs[index] = tabs[index].copy(dirty = false)
         }
-        if (failures == 0) saveState = SaveState.Saved
+        saveState = if (failed.isEmpty()) SaveState.Saved else SaveState.Failed
         return pending.size
     }
 
@@ -1221,18 +1222,28 @@ fun EditorScreen(
                 val path = current.path
                 val editor = editorRef
                 val index = tabs.indexOfFirst { it.path == path }
-                if (editor != null && index >= 0 && path == activePath) {
+                if (index < 0) {
+                    dialog = null
+                    resumePendingClose()
+                } else {
                     scope.launch {
-                        val text = editor.text.toString()
-                        withContext(Dispatchers.IO) { runCatching { File(path).writeText(text) } }
-                        removeTab(path)
+                        val text = if (editor != null && path == activePath) {
+                            editor.text.toString()
+                        } else {
+                            tabs[index].text
+                        }
+                        val saved = withContext(Dispatchers.IO) {
+                            runCatching { File(path).writeText(text) }.isSuccess
+                        }
+                        if (saved) {
+                            tabs[index] = tabs[index].copy(dirty = false, text = text)
+                            removeTab(path)
+                        } else {
+                            saveState = SaveState.Failed
+                        }
                         dialog = null
                         resumePendingClose()
                     }
-                } else {
-                    removeTab(path)
-                    dialog = null
-                    resumePendingClose()
                 }
             },
             onDontSave = {

@@ -39,12 +39,16 @@ class UbuntuInstaller(private val context: Context) {
                 return@withContext
             }
             downloadTarball(onProgress)
-            extractRootfs(onProgress)
+            val staging = ProotConfig.stagingDir(context)
+            staging.deleteRecursivelySafe()
+            extractRootfs(staging, onProgress)
+            preserveUserData(ProotConfig.rootfsDir(context), staging)
+            activateStaging(staging)
             finalizeRootfs(onProgress)
             onProgress(InstallPhase.Done)
         } catch (e: Exception) {
             ProotConfig.tarballFile(context).delete()
-            ProotConfig.rootfsDir(context).deleteRecursivelySafe()
+            ProotConfig.stagingDir(context).deleteRecursivelySafe()
             onProgress(InstallPhase.Failed(e.message ?: "Installation failed"))
         }
     }
@@ -126,9 +130,7 @@ class UbuntuInstaller(private val context: Context) {
         return hex == ProotConfig.tarballSha256(context)
     }
 
-    private fun extractRootfs(onProgress: (InstallPhase) -> Unit) {
-        val rootfs = ProotConfig.rootfsDir(context)
-        rootfs.deleteRecursivelySafe()
+    private fun extractRootfs(rootfs: File, onProgress: (InstallPhase) -> Unit) {
         rootfs.mkdirs()
         val tarball = ProotConfig.tarballFile(context)
         val pendingLinks = mutableListOf<Pair<File, String>>()
@@ -211,6 +213,31 @@ class UbuntuInstaller(private val context: Context) {
         target.setReadable(true, false)
         if (mode and 128 != 0) target.setWritable(true, false)
         if (mode and 64 != 0) target.setExecutable(true, false)
+    }
+
+    private fun preserveUserData(previous: File, fresh: File) {
+        if (!previous.isDirectory) return
+        for (relative in listOf("root", "usr/local")) {
+            val from = File(previous, relative)
+            if (!from.isDirectory) continue
+            runCatching {
+                from.copyRecursively(File(fresh, relative), overwrite = true)
+            }
+        }
+    }
+
+    private fun activateStaging(staging: File) {
+        val rootfs = ProotConfig.rootfsDir(context)
+        val backup = File(rootfs.parentFile, "${ProotConfig.RootfsName}.bak")
+        backup.deleteRecursivelySafe()
+        if (rootfs.exists() && !rootfs.renameTo(backup)) {
+            throw IllegalStateException("Unable to stage previous install")
+        }
+        if (!staging.renameTo(rootfs)) {
+            runCatching { backup.renameTo(rootfs) }
+            throw IllegalStateException("Unable to activate install")
+        }
+        backup.deleteRecursivelySafe()
     }
 
     private fun finalizeRootfs(onProgress: (InstallPhase) -> Unit) {

@@ -61,6 +61,8 @@ object ProotConfig {
 
     fun rootfsDir(context: Context): File = File(context.filesDir, RootfsName)
 
+    fun stagingDir(context: Context): File = File(context.filesDir, "$RootfsName.new")
+
     fun isInstalled(context: Context): Boolean {
         val rootfs = rootfsDir(context)
         return File(rootfs, InstallMarker).readTextOrNull() == RootfsVersion &&
@@ -78,14 +80,14 @@ object ProotConfig {
 
     fun isAvailable(context: Context): Boolean = File(prootBinary(context)).exists()
 
-    private fun isArm64(context: Context): Boolean =
-        context.applicationInfo.nativeLibraryDir.contains("64")
+    private fun isArm64(): Boolean =
+        android.os.Build.SUPPORTED_ABIS.firstOrNull()?.startsWith("arm64") == true
 
     fun tarballUrl(context: Context): String =
-        if (isArm64(context)) TarballUrlArm64 else TarballUrlArm
+        if (isArm64()) TarballUrlArm64 else TarballUrlArm
 
     fun tarballSha256(context: Context): String =
-        if (isArm64(context)) TarballSha256Arm64 else TarballSha256Arm
+        if (isArm64()) TarballSha256Arm64 else TarballSha256Arm
 
     fun tarballFile(context: Context): File = File(context.cacheDir, "ubuntu-rootfs.tar.gz")
 
