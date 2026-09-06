@@ -1,0 +1,303 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources xmlns:tools="http://schemas.android.com/tools" tools:ignore="MissingTranslation">
+
+  <!-- AndroidIDE -->
+  <string name="copy" tools:override="true">Copy</string>
+  <string name="terminal_more">More…</string>
+  <string name="text_to_search">Text to search</string>
+  <string name="app_name" translatable="false">AndroidIDE</string>
+  <string name="about_option_email">Email</string>
+  <string name="about_option_website">Website</string>
+  <string name="msg_need_help">If you\'re facing issues while using AndroidIDE or with building Android Apps, you can join the Telegram Group ask for help there.\n\nYou can also send suggesstions on our email.</string>
+  <string name="need_help">Need Help?</string>
+  <string name="ide_preferences">IDE preferences</string>
+  <string name="discussions_on_telegram">Discussions on Telegram</string>
+  <string name="official_tg_channel">Official Telegram Channel</string>
+  <string name="msg_empty_view">No data</string>
+  <string name="title_terminal">Terminal</string>
+  <string name="reset">Reset</string>
+  <string name="ide_logs">IDE Logs</string>
+
+  <!-- LSP, Diagnostics & Completions -->
+  <string name="get_started">Get started</string>
+  <string name="msg_cannot_perform_fix">Unable to perform quick fix</string>
+  <string name="msg_performing_actions">Performing code action…</string>
+  <string name="msg_finding_references">Finding references…</string>
+  <string name="msg_finding_definition">Finding definition…</string>
+  <string name="msg_no_definition">Definition not found</string>
+
+  <!-- Build Tools Installation -->
+  <string name="msg_no_references">No references found</string>
+  <string name="view_diags">Diagnostics</string>
+  <string name="msg_picked_isnt_dir">Picked file is not a directory!</string>
+  <string name="please_wait">Please wait for a moment …</string>
+
+  <!-- Project Builder -->
+  <string name="title_unsupported_device">Device Not Supported</string>
+  <string name="msg_unsupported_device">You are using %1$s variant of AndroidIDE on a %2$s-only device. This configuration is not supported. Please install the %2$s variant of AndroidIDE.</string>
+  <string name="title_clear_output">Clear output</string>
+  <string name="build_output">Build output</string>
+  <string name="run">Run</string>
+
+  <!-- Project -->
+  <string name="create_project">Create project</string>
+  <string name="new_project">New project</string>
+  <string name="project_app_name">App name</string>
+  <string name="msg_create_new_project_greeting">Start your new awesome project!</string>
+  <string name="title_confirm_open_project">Open last project?</string>
+  <string name="msg_confirm_open_project">Do you want to open last opened project? Opened project was:\n%s</string>
+  <string name="title_close_project">Close this project</string>
+  <string name="msg_opened_project_does_not_exist">Last opened project doesn\'t exist!</string>
+  <string name="msg_create_new_project">Create new project</string>
+  <string name="msg_open_existing_project">Open existing project</string>
+  <string name="title_confirm_project_close">Close project</string>
+
+  <!-- Templates -->
+  <string name="msg_confirm_project_close">Are you sure you want to close this project?</string>
+
+  <!-- Files -->
+  <string name="save">Save</string>
+  <string name="menu_find">Find</string>
+  <string name="menu_find_file">Find in file</string>
+  <string name="menu_find_project">Find in project</string>
+  <string name="msg_search_modules">Search in modules</string>
+  <string name="hint_find_project_filter">Filter file extensions (optional)</string>
+  <string name="msg_find_project_filter">Separated by \'|\'</string>
+  <string name="msg_empty_search_query">Please enter text</string>
+  <string name="msg_select_search_modules">Select modules to search</string>
+  <string name="msg_searching_project">Finding in project, please wait…</string>
+  <string name="view_search_results">Search results</string>
+  <string name="project_created_successfully">Project created successfully!</string>
+  <string name="project_creation_failed">Failed to create project</string>
+  <string name="msg_folder_creation_failed">Failed to create folder!</string>
+  <string name="msg_file_creation_failed">Failed to create file!</string>
+  <string name="msg_folder_created">Folder created successfully!</string>
+  <string name="msg_file_created">File created successfully!</string>
+  <string name="msg_folder_exists">Folder already exists!</string>
+  <string name="msg_file_exists">File already exists!</string>
+  <string name="msg_invalid_name">Invalid Name!</string>
+  <string name="text_create">Create</string>
+  <string name="msg_can_contain_slashes">If the path contains File separator (\'/\'), then the required (parent) directories will be created if they don\'t exist.</string>
+  <string name="folder_name">Folder Name</string>
+  <string name="file_name">File Name</string>
+  <string name="new_name">New name</string>
+  <string name="new_file">New file</string>
+  <string name="new_folder">New folder</string>
+  <string name="title_confirm_delete">Confirm delete</string>
+  <string name="msg_confirm_delete">Are you sure you want to delete:\n%s?</string>
+  <string name="copied">Copied successfully!</string>
+  <string name="msg_rename_file">Enter new name for file/folder.</string>
+  <string name="renamed">Renamed successfully!</string>
+  <string name="rename_failed">Unable to rename file!</string>
+  <string name="deleted">Deleted successfully!</string>
+  <string name="delete_failed">Unable to delete file!</string>
+  <string name="copy_path">Copy path</string>
+  <string name="rename_file">Rename</string>
+  <string name="delete_file">Delete</string>
+  <string name="action_closeAll">Close all</string>
+  <string name="action_closeOthers">Close others</string>
+  <string name="action_closeThis">Close this</string>
+  <string name="all_saved">All files saved!</string>
+  <string name="save_failed">Failed to save files</string>
+  <string name="msg_newfile_dest">Destination: %s/</string>
+  <string name="title_interface">Interface</string>
+  <string name="msg_failed_list_files">Failed to list project files!</string>
+
+  <!-- Code Editor -->
+  <string name="open_with">Open with...</string>
+
+  <string name="undo">Undo</string>
+  <string name="redo">Redo</string>
+
+  <!-- Preferences -->
+  <string name="title_change_text_size">Editor font size</string>
+  <string name="idepref_about_title">About AndroidIDE</string>
+  <string name="idepref_editor_fontsize_title">Font size</string>
+  <string name="idepref_editor_fontsize_summary">Font size of the editor</string>
+  <string name="idepref_editor_paintingflags_title">Non-printable painting flags</string>
+  <string name="idepref_editor_paintingflags_summary">Choose what non-printable characters should be drawn by the editor</string>
+  <string name="idepref_editor_word_wrap_title">Word Wrap</string>
+  <string name="idepref_editor_word_wrap_summary">Use wordwrap of the editor</string>
+  <string name="idepref_editor_use_magnifier_title">Enable Magnifier</string>
+  <string name="idepref_editor_use_magnifier_summary">Magnify text at cursor position while selecting text in editor</string>
+  <string name="idepref_editor_title">Editor</string>
+  <string name="title_open_projects">Open last project</string>
+  <string name="msg_open_projects">If checked, the IDE will remember the last opened project and it will be reopened on next startup.</string>
+  <string name="title_confirm_project_open">Confirm project opening</string>
+  <string name="msg_confirm_project_open">Ask before opening last opened project.</string>
+  <string name="title_default_shell">Use system shell in terminal</string>
+  <string name="msg_default_shell">If checked, \'/system/bin/sh\' will be used in terminal.</string>
+  <string name="title_general">General</string>
+  <string name="title_tab_size">Tab size</string>
+  <string name="msg_tab_size">Specify number of spaces for TAB</string>
+  <string name="msg_preferences">Preferences</string>
+  <string name="pref_changelog">Changelog</string>
+  <string name="msg_editor_font_size">Please choose default font size of editor :</string>
+
+  <!-- Layout preview and designer -->
+  <string name="msg_yesno_def_title">Please confirm</string>
+  <string name="msg_yesno_def_message">Are you sure?</string>
+  <string name="msg_swipe_up">Swipe up or click for build output, logs and more.</string>
+  <string name="msg_ide_crashed">AndroidIDE crashed</string>
+  <string name="msg_report_crash">Please open an issue on github with the following stacktrace :</string>
+  <string name="msg_crash_report_hint">Click on the button below to copy log and open issues page.</string>
+  <string name="msg_copy_report_action">Copy and report</string>
+  <string name="action_expand_selection">Expand selection</string>
+  <string name="idepref_java_matchLower_title">Match completions in lower case</string>
+  <string name="title_common">Common</string>
+  <string name="idepref_editor_category_common" translatable="false">@string/title_common</string>
+  <string name="title_files_unsaved">Unsaved files</string>
+  <string name="msg_files_unsaved">Some files are not saved. Would you like to save them before closing? Unsaved files are: \n%s</string>
+  <string name="idepref_editor_autoSave_title">Save before closing files</string>
+  <string name="idepref_editor_autoSave_summary">Save files before closing them. This is an EXPERIMENTAL feature. You are expected to save the files yourself.</string>
+  <string name="idepref_java_matchLower_summary">If enabled, then typing a lower case or upper case letters will suggest class names as well as scope members.</string>
+  <string name="idepref_editor_ligatures_title">Font ligatures</string>
+  <string name="idepref_editor_ligatures_summary">Enable/disable font ligatures</string>
+  <string name="yes">Yes</string>
+  <string name="no">No</string>
+  <string name="msg_file_tree">File tree</string>
+  <string name="title_format_code">Format code</string>
+  <string name="idepref_visiblePassword_title">Visible password flag</string>
+  <string name="idepref_visiblePassword_summary">Use for visible password input type flag in editor. This makes sure that no suggestions are proposed by soft keyboard.</string>
+  <string name="previous">Previous</string>
+  <string name="msg_replacement">Replacement</string>
+  <string name="wizard_save_location">Save location</string>
+  <string name="next">Next</string>
+  <string name="exit">Exit</string>
+
+  <string name="msg_output_text_extraction_failed">Failed to get text from editor</string>
+  <string name="err_invalid_data_by_intent">Intent returned invalid data</string>
+  <string name="msg_select_from_primary_storage">Select a directory from primary storage</string>
+  <string name="err_authority_not_allowed">Authority \'%s\' not allowed</string>
+  <string name="idepref_useIcu_title">Use ICU lib</string>
+  <string name="idepref_useIcu_summary">Use ICU library to use retrive word edges for double-tap and long-press word selection.</string>
+
+  <!--The text sorrounded with '@@' is spanned as clickable.-->
+  <!--There must be exactly two '@@' sorrounding the text that should be clickable.-->
+  <string name="msg_drawer_for_files">Open the left drawer for @@files@@.</string>
+  <string name="msg_swipe_for_output">Swipe up for @@build output@@.</string>
+  <string name="idepref_editor_useSoftTabs_title">Use soft tab</string>
+  <string name="idepref_editor_useSoftTabs_summary">Choose whether to use spaces instead of tab character (\\t).</string>
+  <string name="btn_donate">Donate</string>
+  <string name="btn_docs">Documentation</string>
+  <string name="btn_close">Close</string>
+  <string name="msg_ignore_case">Ignore case</string>
+  <string name="msg_use_regex">Use regex</string>
+  <string name="configure">Configure</string>
+  <string name="about">About</string>
+  <string name="idepref_changelog_summary">What\'s new in this version?</string>
+  <string name="idepref_about_summary">More about AndroidIDE.</string>
+  <string name="idepref_general_summary">General IDE configuration.</string>
+  <string name="idepref_editor_summary">Configure the editor.</string>
+  <string name="idepref_customFont_title">Use custom font</string>
+  <string name="idepref_customFont_summary">If enabled, the file at \"/data/data/com.itsaky.androidide/files/home/.androidide/ui/font.ttf\" will be used as Editor font.</string>
+  <string name="msg_installing_apk">Installing APK...</string>
+
+  <string name="msg_empty_package">Package name is empty</string>
+  <string name="msg_package_is_not_valid">Package name is not a valid</string>
+  <string name="msg_package_is_to_long">Package name is to long</string>
+  <string name="msg_package_not_valid_char_1">The character \'_\' cannot be the first character in a package segment</string>
+  <string name="msg_package_not_use_digit_first">A digit cannot be the first character in a package segment</string>
+  <string name="msg_package_not_valid_char_2">The character "%1$s" is not allowed in Android application package names</string>
+  <string name="msg_package_mus_have_dot">The package must have at least one \'.\' separator</string>
+
+
+  <string name="replace">Replace</string>
+  <string name="replaceAll">Replace all</string>
+
+
+
+  <!-- GIT -->
+  <string name="git_clone">Clone</string>
+  <string name="git_clone_repo">Clone git repository</string>
+  <string name="git_clone_repo_url">Repository URL</string>
+  <string name="git_clone_in_progress">Cloning repository</string>
+  <string name="git_clone_success">Git clone successful</string>
+  <string name="git_clone_failed">Failed to clone git repository</string>
+  <string name="idepref_editor_colorScheme">Color Scheme</string>
+  <string name="idepref_editor_colorScheme_summary">Choose color scheme to use in editor</string>
+  <string name="idepref_general_uiMode">UI Mode</string>
+  <string name="idepref_general_uiMode_summary">Choose UI mode for the IDE</string>
+  <string name="uiMode_light">Light</string>
+  <string name="uiMode_dark">Dark</string>
+  <string name="uiMode_system">Follow system</string>
+  <string name="idepref_general_themeSelector_title">Theme</string>
+  <string name="idepref_general_themeSelector_summary">Select a theme for AndroidIDE (requires restart).</string>
+  <string name="idepref_general_projectConfig">Project configuration</string>
+  <string name="msg_app_launch_failed">Launch failed. Install the application first.</string>
+  <string name="title_reload_color_schemes">Reload color schemes</string>
+  <string name="msg_dir_picker_failed">Failed to start directory picker : %1$s</string>
+  <string name="idepref_deleteEmptyLines_title">Delete empty lines on backspace</string>
+  <string name="idepref_deleteEmptyLines_summary">Whether the editor should delete empty lines on a single backspace key event.</string>
+  <string name="idepref_deleteTabs_title">Delete tab on backspace</string>
+  <string name="idepref_deleteTabs_summary">When enabled, the editor will delete spaces equal to the tab width when the backspace key is pressed.</string>
+
+
+  <string name="msg_invalid_module_name">Invalid Gradle module name</string>
+  <string name="msg_value_empty">Value is empty</string>
+  <string name="msg_file_not_exist">File does not exist</string>
+  <string name="msg_path_must_be_file">Must be path to a file</string>
+  <string name="msg_path_must_be_dir">Must be path to a directory</string>
+  <string name="msg_invalid_project_details">Invalid project details</string>
+  <string name="title_developer_options">Developer options</string>
+  <string name="idepref_devOptions_summary">Experimental/debugging options for AndroidIDE</string>
+  <string name="idepref_group_debugging">Debugging</string>
+  <string name="idepref_devOptions_dumpLogs_title">Dump logs</string>
+  <string name="idepref_devOptions_dumpLogs_summary">Dump AndroidIDE logs to $HOME/.androidide/logs</string>
+  <string name="msg_emptyview_applogs">Run the debug variant of your application to view its logs here.</string>
+  <string name="msg_emptyview_idelogs">Logs from the IDE are shown here.</string>
+  <string name="msg_emptyview_diagnostics">Open a file to show its diagnostic results</string>
+  <string name="msg_emptyview_buildoutput">"Build the application or run a task to see its build output here. "</string>
+  <string name="title_begin_long_select">Begin long select</string>
+  <string name="idepref_editor_stickScroll_title">Sticky scroll</string>
+  <string name="idepref_editor_stickyScroll_summary">Show the current scope at the top while scrolling the editor.</string>
+  <string name="title_experiment_flavor">Experimental</string>
+  <string name="msg_experimental_flavor">You are using %1$s variant of AndroidIDE on a %2$s device. This configuration may work, but it\'ll result in reduced performance and possible security vulnerabilities. Please avoid using this configuration whenever possible.</string>
+  <string name="idepref_editor_pinLineNumbers_title">Pin line numbers</string>
+  <string name="idepref_editor_pinLineNumbers_summary">Whether the editor should pin line number panel when scrolled horizontally.</string>
+  <string name="theme_blue_wave">Blue Wave</string>
+  <string name="theme_sunny_glow">Sunny Glow</string>
+  <string name="theme_material_you">Material You</string>
+  <string name="idepref_general_localeSelector_title">Language</string>
+  <string name="idepref_general_localeSelector_summary">Select a language for AndroidIDE.</string>
+  <string name="locale_system_default">System Default</string>
+  <string name="msg_files_being_saved">A file save operation is already in progress!</string>
+  <string name="greeting_title">Welcome</string>
+  <string name="greeting_subtitle">Learn, build, launch. All on your Android.</string>
+  <string name="title_grant">Grant</string>
+  <string name="permission_title_storage">Storage</string>
+  <string name="permission_desc_storage">Required to access project files.</string>
+  <string name="permission_title_install_ubuntu">Install Ubuntu</string>
+  <string name="permission_desc_install_ubuntu">Download and set up the Ubuntu environment (required).</string>
+  <string name="onboarding_title_permissions">Permissions</string>
+  <string name="onboarding_subtitle_permissions">AndroidIDE requires the following permissions</string>
+  <string name="msg_grant_permissions">Please grant the permissions to continue.</string>
+  <string name="msg_no_internet">It seems you\'re offline. Check your internet connection.</string>
+  <string name="msg_terminal_new_sessions_disabled">Cannot create session. New sessions are disabled!</string>
+  <string name="title_install_location_error">Install location error</string>
+  <string name="title_unsupported_user">Unsupported user</string>
+  <string name="title_socials">Socials</string>
+  <string name="title_misc">Misc</string>
+  <string name="title_contribute">Contribute</string>
+  <string name="summary_contribute">It\'s not just an IDE, it\'s a community. Contribute code, ideas, and passion to AndroidIDE.</string>
+  <string name="msg_app_unavailable_for_intent">No application available to handle intent.</string>
+  <string name="idepref_backend_title">Native backend</string>
+  <string name="idepref_backend_summary">Ubuntu environment, toolchains and CMake build options.</string>
+  <string name="idepref_backend_env">Environment</string>
+  <string name="idepref_backend_install_ubuntu">Install Ubuntu (required)</string>
+  <string name="idepref_backend_install_ndk">Install NDK (optional)</string>
+  <string name="idepref_backend_install_cmake">Install CMake (optional)</string>
+  <string name="idepref_backend_installed">Installed (%1$s)</string>
+  <string name="idepref_backend_missing">Not installed</string>
+  <string name="idepref_backend_install_started">Installation started in background</string>
+  <string name="idepref_backend_install_done">Installation finished</string>
+  <string name="idepref_backend_install_failed_simple">Installation failed</string>
+  <string name="idepref_backend_build_options">Build options</string>
+  <string name="idepref_backend_abi">Target ABI</string>
+  <string name="idepref_backend_api">API level</string>
+  <string name="idepref_backend_buildtype">Build type</string>
+  <string name="idepref_backend_current">Current: %1$s</string>
+  <string name="action_build_cmake">Build</string>
+  <string name="msg_build_finished">Build finished with exit code %1$d</string>
+  <string name="template_cpp_executable">C++ Executable</string>
+</resources>

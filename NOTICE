@@ -1,9 +1,6 @@
-Portions of this app bundle vector icon assets from Xed-Editor
-(https://github.com/Xed-Editor/Xed-Editor) and AndroidIDE
-(https://github.com/AndroidIDEOfficial/AndroidIDE), both licensed under the
-GNU General Public License version 3.
+This project ports the C++ editor language support (ANTLR grammars,
+analyzer and indent handling) from AndroidIDE
+(https://github.com/AndroidIDEOfficial/AndroidIDE) for use in EditorEs.
 
-Files affected: app/src/main/res/drawable/*.xml (file type and UI action icons)
-
-The full text of the GPL-3.0 license is available at:
-https://www.gnu.org/licenses/gpl-3.0.txt
+Both AndroidIDE and this project are licensed under the GNU General Public
+License version 3, see LICENSE.
